@@ -287,7 +287,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.greeting, { color: colors.mutedForeground }]}>YOUR AI COACH</Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>Shot Doc</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Shot Doc <Text style={{ fontSize: 12, color: colors.mutedForeground }}>v1.2</Text></Text>
         </View>
         <MaterialCommunityIcons name="basketball" size={32} color={colors.primary} />
       </View>
