@@ -12,3 +12,21 @@ id = "XZ1Cl1EBTPVAbURFy_7pz"
 uri = "file://artifacts/mobile/assets/images/splash-bg.png"
 type = "image"
 title = "generated_image"
+
+[[generated]]
+id = "qkOtD6CttvyHQxWuHXeNN"
+uri = "file://attached_assets/generated_images/logo_option_a.png"
+type = "image"
+title = "logo-option-a-flat-neon"
+
+[[generated]]
+id = "28Z9viC9v8ky4UtqO2tqV"
+uri = "file://attached_assets/generated_images/logo_option_b.png"
+type = "image"
+title = "logo-option-b-3d-dramatic"
+
+[[generated]]
+id = "uNAIk2K5bIZITM8NTdt19"
+uri = "file://attached_assets/generated_images/logo_option_c.png"
+type = "image"
+title = "logo-option-c-glowing-arcs"
