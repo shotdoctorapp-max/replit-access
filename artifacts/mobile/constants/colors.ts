@@ -1,41 +1,41 @@
 const colors = {
   light: {
-    text: "#0a0a14",
-    tint: "#FF6B00",
+    text: "#000000",
+    tint: "#00C853",
 
-    background: "#0a0a14",
-    foreground: "#f0f0f5",
+    background: "#000000",
+    foreground: "#f0f0f0",
 
-    card: "#141422",
-    cardForeground: "#f0f0f5",
+    card: "#0f0f0f",
+    cardForeground: "#f0f0f0",
 
-    primary: "#FF6B00",
-    primaryForeground: "#ffffff",
+    primary: "#00C853",
+    primaryForeground: "#000000",
 
-    secondary: "#1e1e32",
-    secondaryForeground: "#c0c0d0",
+    secondary: "#151515",
+    secondaryForeground: "#b0b0b0",
 
-    muted: "#1a1a2e",
-    mutedForeground: "#7070a0",
+    muted: "#111111",
+    mutedForeground: "#606060",
 
-    accent: "#FF8C42",
-    accentForeground: "#ffffff",
+    accent: "#69F0AE",
+    accentForeground: "#000000",
 
-    success: "#00D4A1",
-    successForeground: "#ffffff",
+    success: "#00E676",
+    successForeground: "#000000",
 
     warning: "#FFD166",
-    warningForeground: "#0a0a14",
+    warningForeground: "#000000",
 
     destructive: "#FF4757",
     destructiveForeground: "#ffffff",
 
-    border: "#2a2a45",
-    input: "#1e1e32",
+    border: "#1f1f1f",
+    input: "#151515",
 
-    surface1: "#141422",
-    surface2: "#1a1a2e",
-    surface3: "#20203a",
+    surface1: "#0f0f0f",
+    surface2: "#111111",
+    surface3: "#141414",
   },
 
   radius: 12,

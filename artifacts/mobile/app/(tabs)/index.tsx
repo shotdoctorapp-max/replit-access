@@ -284,8 +284,8 @@ export default function HomeScreen() {
     >
       <View style={styles.header}>
         <View>
-          <Text style={[styles.greeting, { color: colors.mutedForeground }]}>HOOPFORM</Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>Shooting Analyst</Text>
+          <Text style={[styles.greeting, { color: colors.mutedForeground }]}>SHOT DOC</Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Shot Doc</Text>
         </View>
         <MaterialCommunityIcons name="basketball" size={32} color={colors.primary} />
       </View>
