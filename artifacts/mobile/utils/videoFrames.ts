@@ -1,5 +1,3 @@
-import * as FileSystem from "expo-file-system";
-import * as VideoThumbnails from "expo-video-thumbnails";
 import { Platform } from "react-native";
 
 export interface ExtractedFrames {
@@ -15,8 +13,15 @@ export async function extractFrames(
   durationMs?: number
 ): Promise<ExtractedFrames> {
   if (Platform.OS === "web") {
-    throw new Error("Video frame extraction is not supported on web. Please use the photo option.");
+    throw new Error(
+      "Video frame extraction is not supported on web. Please use the photo option."
+    );
   }
+
+  const [VideoThumbnails, FileSystem] = await Promise.all([
+    import("expo-video-thumbnails"),
+    import("expo-file-system"),
+  ]);
 
   const captureDuration = durationMs ?? CAPTURE_DURATION_MS;
   const step = captureDuration / (FRAME_COUNT - 1);
