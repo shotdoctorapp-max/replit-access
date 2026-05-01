@@ -138,7 +138,8 @@ export default function HomeScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      await analyzeVideo(result.assets[0].uri);
+      const asset = result.assets[0];
+      await analyzeVideo(asset.uri, asset.duration ?? undefined);
     }
   };
 
@@ -163,18 +164,19 @@ export default function HomeScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      await analyzeVideo(result.assets[0].uri);
+      const asset = result.assets[0];
+      await analyzeVideo(asset.uri, asset.duration ?? undefined);
     }
   };
 
-  const analyzeVideo = async (videoUri: string) => {
+  const analyzeVideo = async (videoUri: string, durationMs?: number) => {
     setSelectedImage(null);
     setBestFrameInfo(null);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
       setStage("extracting");
-      const { base64Frames } = await extractFrames(videoUri);
+      const { base64Frames } = await extractFrames(videoUri, durationMs);
 
       setStage("selecting");
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
