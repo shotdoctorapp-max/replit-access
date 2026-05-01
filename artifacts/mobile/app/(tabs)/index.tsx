@@ -135,6 +135,7 @@ export default function HomeScreen() {
       mediaTypes: ["videos"],
       videoMaxDuration: 10,
       quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
+      copyToCacheDirectory: true,
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -161,6 +162,7 @@ export default function HomeScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["videos"],
       quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
+      copyToCacheDirectory: true,
     });
 
     if (!result.canceled && result.assets[0]) {

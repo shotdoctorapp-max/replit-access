@@ -6,25 +6,43 @@ export interface ExtractedFrames {
 }
 
 const FRAME_COUNT = 8;
-const DEFAULT_PROBE_DURATION_MS = 30000;
+const DEFAULT_PROBE_DURATION_MS = 10000;
+
+async function ensureFileUri(
+  videoUri: string,
+  FileSystem: typeof import("expo-file-system")
+): Promise<string> {
+  if (
+    videoUri.startsWith("ph://") ||
+    videoUri.startsWith("assets-library://")
+  ) {
+    const destUri = `${FileSystem.cacheDirectory}shotdoc_video_${Date.now()}.mp4`;
+    await FileSystem.copyAsync({ from: videoUri, to: destUri });
+    return destUri;
+  }
+  return videoUri;
+}
 
 async function probeDurationMs(
   VideoThumbnails: typeof import("expo-video-thumbnails"),
   videoUri: string
 ): Promise<number> {
-  const probePoints = [2000, 8000, 20000, 40000, 90000];
+  const probePoints = [1000, 3000, 8000, 20000, 45000];
   let lastSuccess = 0;
 
   for (const ts of probePoints) {
     try {
-      await VideoThumbnails.getThumbnailAsync(videoUri, { time: ts, quality: 0.05 });
+      await VideoThumbnails.getThumbnailAsync(videoUri, {
+        time: ts,
+        quality: 0.05,
+      });
       lastSuccess = ts;
     } catch {
       break;
     }
   }
 
-  return Math.max(4000, lastSuccess + 2000);
+  return Math.max(3000, lastSuccess + 1000);
 }
 
 export async function extractFrames(
@@ -42,23 +60,40 @@ export async function extractFrames(
     import("expo-file-system"),
   ]);
 
+  let localUri = videoUri;
+  try {
+    localUri = await ensureFileUri(videoUri, FileSystem);
+  } catch {
+  }
+
+  try {
+    await VideoThumbnails.getThumbnailAsync(localUri, {
+      time: 0,
+      quality: 0.1,
+    });
+  } catch (err) {
+    throw new Error(
+      "Could not open this video file. Please try a different video, or use the photo option instead."
+    );
+  }
+
   const captureDuration =
     durationMs && durationMs > 0
       ? durationMs
-      : await probeDurationMs(VideoThumbnails, videoUri).catch(
+      : await probeDurationMs(VideoThumbnails, localUri).catch(
           () => DEFAULT_PROBE_DURATION_MS
         );
 
-  const step = captureDuration / (FRAME_COUNT - 1);
+  const step = Math.max(200, captureDuration / (FRAME_COUNT - 1));
   const timestamps = Array.from({ length: FRAME_COUNT }, (_, i) =>
     Math.round(i * step)
   );
 
   const results = await Promise.allSettled(
     timestamps.map(async (time) => {
-      const { uri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
+      const { uri } = await VideoThumbnails.getThumbnailAsync(localUri, {
         time,
-        quality: 0.65,
+        quality: 0.6,
       });
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
@@ -79,7 +114,7 @@ export async function extractFrames(
 
   if (validFrames.length === 0) {
     throw new Error(
-      "Could not extract any frames from the video. The format may not be supported — try a regular (non-slow-motion) recording, or use the photo option instead."
+      "Could not extract frames from this video. Please try a different video or use the photo option instead."
     );
   }
 
