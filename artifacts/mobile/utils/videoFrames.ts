@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 
 export interface ExtractedFrames {
   base64Frames: string[];
+  thumbnailUris: string[];
   timestamps: number[];
 }
 
@@ -66,14 +67,11 @@ export async function extractFrames(
     // keep original URI if copy fails
   }
 
-  // Validate the video is readable at all — try both quality levels
+  // Validate the video is readable
   let videoAccessible = false;
   for (const quality of [0.5, 0.1, 0.3]) {
     try {
-      await VideoThumbnails.getThumbnailAsync(localUri, {
-        time: 0,
-        quality,
-      });
+      await VideoThumbnails.getThumbnailAsync(localUri, { time: 0, quality });
       videoAccessible = true;
       break;
     } catch {
@@ -87,7 +85,6 @@ export async function extractFrames(
     );
   }
 
-  // Use provided duration, otherwise probe
   const captureDuration =
     durationMs && durationMs > 500
       ? durationMs
@@ -107,17 +104,19 @@ export async function extractFrames(
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: "base64" as any,
       });
-      return { base64, time };
+      return { base64, uri, time };
     })
   );
 
   const validFrames: string[] = [];
+  const validUris: string[] = [];
   const validTimestamps: number[] = [];
   const errors: string[] = [];
 
   for (const result of results) {
     if (result.status === "fulfilled") {
       validFrames.push(result.value.base64);
+      validUris.push(result.value.uri);
       validTimestamps.push(result.value.time);
     } else {
       errors.push(result.reason?.message ?? "unknown");
@@ -133,6 +132,7 @@ export async function extractFrames(
 
   return {
     base64Frames: validFrames,
+    thumbnailUris: validUris,
     timestamps: validTimestamps,
   };
 }

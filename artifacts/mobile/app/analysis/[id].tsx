@@ -28,6 +28,17 @@ const COMPONENT_LABELS: Record<string, string> = {
   eyeTracking: "Eye Tracking",
 };
 
+const BODY_ZONES = [
+  { key: "eyeTracking",    label: "Eye Tracking",  icon: "eye-outline" },
+  { key: "setPoint",       label: "Set Point",     icon: "target" },
+  { key: "elbowPosition",  label: "Elbow",         icon: "arm-flex-outline" },
+  { key: "gripPosition",   label: "Grip & Hand",   icon: "hand-right-outline" },
+  { key: "followThrough",  label: "Follow-Thru",   icon: "arrow-up-bold-outline" },
+  { key: "hipAlignment",   label: "Hip Alignment", icon: "human" },
+  { key: "balance",        label: "Balance",       icon: "scale-balance" },
+  { key: "stance",         label: "Stance & Base", icon: "shoe-print" },
+];
+
 export default function AnalysisScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
@@ -118,6 +129,45 @@ export default function AnalysisScreen() {
             <Text style={[styles.summaryText, { color: colors.foreground }]}>
               {analysis.summary}
             </Text>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <MaterialCommunityIcons name="human" size={16} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>BODY MAP</Text>
+          </View>
+          <View style={styles.bodyMapGrid}>
+            {BODY_ZONES.map(({ key, label, icon }) => {
+              const component = analysis.components?.[key as keyof typeof analysis.components];
+              const score = component?.score ?? 0;
+              const zoneColor =
+                score >= 75
+                  ? colors.success
+                  : score >= 50
+                  ? colors.warning
+                  : colors.destructive;
+              return (
+                <View
+                  key={key}
+                  style={[
+                    styles.bodyZoneCard,
+                    {
+                      backgroundColor: zoneColor + "15",
+                      borderColor: zoneColor + "50",
+                    },
+                  ]}
+                >
+                  <View style={[styles.bodyZoneScoreBadge, { backgroundColor: zoneColor }]}>
+                    <Text style={styles.bodyZoneScoreText}>{score}</Text>
+                  </View>
+                  <MaterialCommunityIcons name={icon as any} size={22} color={zoneColor} style={styles.bodyZoneIcon} />
+                  <Text style={[styles.bodyZoneLabel, { color: colors.foreground }]} numberOfLines={2}>
+                    {label}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         </View>
 
@@ -300,5 +350,45 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     lineHeight: 20,
     flex: 1,
+  },
+  bodyMapGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  bodyZoneCard: {
+    width: "47%",
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "center",
+    position: "relative",
+    minHeight: 80,
+    justifyContent: "center",
+    gap: 4,
+  },
+  bodyZoneScoreBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    borderRadius: 10,
+    minWidth: 28,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    alignItems: "center",
+  },
+  bodyZoneScoreText: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: "#000",
+  },
+  bodyZoneIcon: {
+    marginBottom: 2,
+  },
+  bodyZoneLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    lineHeight: 14,
   },
 });

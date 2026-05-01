@@ -178,7 +178,7 @@ export default function HomeScreen() {
 
     try {
       setStage("extracting");
-      const { base64Frames } = await extractFrames(videoUri, durationMs);
+      const { base64Frames, thumbnailUris } = await extractFrames(videoUri, durationMs);
 
       setStage("selecting");
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -205,10 +205,24 @@ export default function HomeScreen() {
       setBestFrameInfo({ index: data.bestFrameIndex, total: data.totalFrames });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+      // Save the best frame thumbnail as a stable file for the analysis screen
+      let capturedFrameUri = videoUri;
+      const bestThumbUri = thumbnailUris[data.bestFrameIndex] ?? thumbnailUris[0];
+      if (bestThumbUri) {
+        try {
+          const FileSystem = await import("expo-file-system/legacy");
+          const destUri = `${FileSystem.cacheDirectory}shotdoc_frame_${Date.now()}.jpg`;
+          await FileSystem.copyAsync({ from: bestThumbUri, to: destUri });
+          capturedFrameUri = destUri;
+        } catch {
+          // fall back to videoUri, image will not display but app won't crash
+        }
+      }
+
       const session: Session = {
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         timestamp: data.timestamp,
-        imageUri: videoUri,
+        imageUri: capturedFrameUri,
         analysis: data.analysis,
         isVideo: true,
         bestFrameIndex: data.bestFrameIndex,
@@ -287,7 +301,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.greeting, { color: colors.mutedForeground }]}>YOUR AI COACH</Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>Shot Doc <Text style={{ fontSize: 12, color: colors.mutedForeground }}>v1.4</Text></Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Shot Doc <Text style={{ fontSize: 12, color: colors.mutedForeground }}>v1.5</Text></Text>
         </View>
         <MaterialCommunityIcons name="basketball" size={32} color={colors.primary} />
       </View>
