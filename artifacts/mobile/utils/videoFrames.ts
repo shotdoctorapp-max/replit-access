@@ -6,7 +6,6 @@ export interface ExtractedFrames {
 }
 
 const FRAME_COUNT = 8;
-const DEFAULT_PROBE_DURATION_MS = 10000;
 
 async function ensureFileUri(
   videoUri: string,
@@ -27,7 +26,7 @@ async function probeDurationMs(
   VideoThumbnails: typeof import("expo-video-thumbnails"),
   videoUri: string
 ): Promise<number> {
-  const probePoints = [1000, 3000, 8000, 20000, 45000];
+  const probePoints = [500, 1000, 2000, 5000, 10000, 20000, 45000];
   let lastSuccess = 0;
 
   for (const ts of probePoints) {
@@ -42,7 +41,7 @@ async function probeDurationMs(
     }
   }
 
-  return Math.max(3000, lastSuccess + 1000);
+  return Math.max(1000, lastSuccess + 500);
 }
 
 export async function extractFrames(
@@ -64,27 +63,37 @@ export async function extractFrames(
   try {
     localUri = await ensureFileUri(videoUri, FileSystem);
   } catch {
+    // keep original URI if copy fails
   }
 
-  try {
-    await VideoThumbnails.getThumbnailAsync(localUri, {
-      time: 0,
-      quality: 0.1,
-    });
-  } catch (err) {
+  // Validate the video is readable at all — try both quality levels
+  let videoAccessible = false;
+  for (const quality of [0.5, 0.1, 0.3]) {
+    try {
+      await VideoThumbnails.getThumbnailAsync(localUri, {
+        time: 0,
+        quality,
+      });
+      videoAccessible = true;
+      break;
+    } catch {
+      continue;
+    }
+  }
+
+  if (!videoAccessible) {
     throw new Error(
-      "Could not open this video file. Please try a different video, or use the photo option instead."
+      "Could not open this video. Please try recording directly with the 'Record Shot' button, or use the photo option instead."
     );
   }
 
+  // Use provided duration, otherwise probe
   const captureDuration =
-    durationMs && durationMs > 0
+    durationMs && durationMs > 500
       ? durationMs
-      : await probeDurationMs(VideoThumbnails, localUri).catch(
-          () => DEFAULT_PROBE_DURATION_MS
-        );
+      : await probeDurationMs(VideoThumbnails, localUri);
 
-  const step = Math.max(200, captureDuration / (FRAME_COUNT - 1));
+  const step = Math.max(150, captureDuration / (FRAME_COUNT - 1));
   const timestamps = Array.from({ length: FRAME_COUNT }, (_, i) =>
     Math.round(i * step)
   );
@@ -93,7 +102,7 @@ export async function extractFrames(
     timestamps.map(async (time) => {
       const { uri } = await VideoThumbnails.getThumbnailAsync(localUri, {
         time,
-        quality: 0.6,
+        quality: 0.65,
       });
       const base64 = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
@@ -104,17 +113,21 @@ export async function extractFrames(
 
   const validFrames: string[] = [];
   const validTimestamps: number[] = [];
+  const errors: string[] = [];
 
   for (const result of results) {
     if (result.status === "fulfilled") {
       validFrames.push(result.value.base64);
       validTimestamps.push(result.value.time);
+    } else {
+      errors.push(result.reason?.message ?? "unknown");
     }
   }
 
   if (validFrames.length === 0) {
+    const detail = errors.length > 0 ? ` (${errors[0]})` : "";
     throw new Error(
-      "Could not extract frames from this video. Please try a different video or use the photo option instead."
+      `Could not extract frames from this video${detail}. Please try a different clip or use the photo option instead.`
     );
   }
 
