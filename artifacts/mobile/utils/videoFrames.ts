@@ -105,7 +105,7 @@ export async function extractFrames(
         quality: 0.65,
       });
       const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+        encoding: "base64" as any,
       });
       return { base64, time };
     })
