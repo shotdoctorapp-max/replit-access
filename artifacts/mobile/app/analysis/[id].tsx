@@ -37,7 +37,7 @@ export default function AnalysisScreen() {
 
   const session = useMemo(() => sessions.find((s) => s.id === id), [sessions, id]);
 
-  if (!session) {
+  if (!session || !session.analysis) {
     return (
       <View style={[styles.notFound, { backgroundColor: colors.background }]}>
         <Text style={[styles.notFoundText, { color: colors.mutedForeground }]}>
@@ -48,7 +48,7 @@ export default function AnalysisScreen() {
   }
 
   const { analysis } = session;
-  const overallScore = analysis.overallScore;
+  const overallScore = analysis.overallScore ?? 0;
   const scoreColor =
     overallScore >= 80
       ? colors.success
@@ -56,8 +56,8 @@ export default function AnalysisScreen() {
       ? colors.warning
       : colors.destructive;
 
-  const sortedComponents = Object.entries(analysis.components).sort(
-    ([, a], [, b]) => a.score - b.score
+  const sortedComponents = Object.entries(analysis.components ?? {}).sort(
+    ([, a], [, b]) => (a?.score ?? 0) - (b?.score ?? 0)
   );
 
   return (
@@ -126,7 +126,7 @@ export default function AnalysisScreen() {
             <MaterialCommunityIcons name="star" size={16} color={colors.success} />
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>STRENGTHS</Text>
           </View>
-          {analysis.keyStrengths.map((s, i) => (
+          {(analysis.keyStrengths ?? []).map((s, i) => (
             <View key={i} style={styles.bulletRow}>
               <View style={[styles.dot, { backgroundColor: colors.success }]} />
               <Text style={[styles.bulletText, { color: colors.foreground }]}>{s}</Text>
@@ -139,7 +139,7 @@ export default function AnalysisScreen() {
             <MaterialCommunityIcons name="alert-circle" size={16} color={colors.warning} />
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>PRIORITY FIXES</Text>
           </View>
-          {analysis.priorityFixes.map((f, i) => (
+          {(analysis.priorityFixes ?? []).map((f, i) => (
             <View key={i} style={styles.bulletRow}>
               <View style={[styles.dot, { backgroundColor: colors.warning }]} />
               <Text style={[styles.bulletText, { color: colors.foreground }]}>{f}</Text>
@@ -160,10 +160,10 @@ export default function AnalysisScreen() {
           ))}
         </View>
 
-        {analysis.drillRecommendations.length > 0 && (
+        {(analysis.drillRecommendations ?? []).length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>RECOMMENDED DRILLS</Text>
-            {analysis.drillRecommendations.map((drill, i) => (
+            {(analysis.drillRecommendations ?? []).map((drill, i) => (
               <DrillCard key={`${drill.name}-${i}`} drill={drill} index={i} />
             ))}
           </View>

@@ -5,12 +5,12 @@ version = "1.0.0"
 id = "XegfDyZt7HqfW2Bb8Ghoy"
 
 [[services]]
-localPort = 8080
+localPort = 8088
 name = "Component Preview Server"
 paths = ["/__mockup"]
 
 [services.env]
-PORT = "8080"
+PORT = "8088"
 BASE_PATH = "/__mockup"
 
 [services.development]

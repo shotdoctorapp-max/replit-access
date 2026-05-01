@@ -65,8 +65,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
         if (raw) {
-          const parsed = JSON.parse(raw) as Session[];
-          setSessions(parsed);
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const valid = parsed.filter(
+              (s) =>
+                s &&
+                typeof s.id === "string" &&
+                typeof s.timestamp === "string" &&
+                typeof s.imageUri === "string" &&
+                s.analysis &&
+                typeof s.analysis.overallScore === "number" &&
+                s.analysis.components &&
+                Array.isArray(s.analysis.keyStrengths) &&
+                Array.isArray(s.analysis.priorityFixes) &&
+                Array.isArray(s.analysis.drillRecommendations)
+            ) as Session[];
+            setSessions(valid);
+          }
         }
       })
       .catch(() => {})
