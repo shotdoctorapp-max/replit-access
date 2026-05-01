@@ -1,5 +1,6 @@
+import { registerRootComponent } from 'expo';
 import { useEffect, useState, type ComponentType } from "react";
-
+import { View, Text, StyleSheet, ScrollView } from "react-native"; 
 import { modules as discoveredModules } from "./.generated/mockup-components";
 
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
@@ -76,9 +77,9 @@ function PreviewRenderer({
 
   if (error) {
     return (
-      <pre style={{ color: "red", padding: "2rem", fontFamily: "system-ui" }}>
-        {error}
-      </pre>
+      <View style={styles.container}>
+        <Text style={{ color: "red" }}>{error}</Text>
+      </View>
     );
   }
 
@@ -98,22 +99,19 @@ function getPreviewExamplePath(): string {
 
 function Gallery() {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
-      <div className="text-center max-w-md">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-3">
-          Component Preview Server
-        </h1>
-        <p className="text-gray-500 mb-4">
+    <View style={styles.container}>
+      <View style={styles.card}>
+        <Text style={styles.title}>Component Preview Server</Text>
+        <Text style={styles.description}>
           This server renders individual components for the workspace canvas.
-        </p>
-        <p className="text-sm text-gray-400">
-          Access component previews at{" "}
-          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-            {getPreviewExamplePath()}
-          </code>
-        </p>
-      </div>
-    </div>
+        </Text>
+        <View style={styles.codeBox}>
+          <Text style={styles.codeText}>
+            Native Preview Mode Active
+          </Text>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -142,5 +140,52 @@ function App() {
 
   return <Gallery />;
 }
-
-export default App;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    padding: 24,
+    borderRadius: 12,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    // 陰影效果 (iOS)
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    // 陰影效果 (Android)
+    elevation: 3,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  description: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  codeBox: {
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  codeText: {
+    fontFamily: 'System',
+    fontSize: 14,
+    color: '#4b5563',
+  },
+});
+registerRootComponent(App);
