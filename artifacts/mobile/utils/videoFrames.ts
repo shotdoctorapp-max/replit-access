@@ -9,7 +9,7 @@ const FRAME_COUNT = 8;
 
 async function ensureFileUri(
   videoUri: string,
-  FileSystem: typeof import("expo-file-system")
+  FileSystem: typeof import("expo-file-system/legacy")
 ): Promise<string> {
   if (
     videoUri.startsWith("ph://") ||
@@ -56,7 +56,7 @@ export async function extractFrames(
 
   const [VideoThumbnails, FileSystem] = await Promise.all([
     import("expo-video-thumbnails"),
-    import("expo-file-system"),
+    import("expo-file-system/legacy"),
   ]);
 
   let localUri = videoUri;
