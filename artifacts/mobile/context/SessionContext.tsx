@@ -41,6 +41,9 @@ export interface Session {
   timestamp: string;
   imageUri: string;
   analysis: AnalysisResult;
+  isVideo?: boolean;
+  bestFrameIndex?: number;
+  totalFrames?: number;
 }
 
 interface SessionContextValue {

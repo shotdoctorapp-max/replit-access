@@ -89,15 +89,25 @@ export default function AnalysisScreen() {
       </View>
 
       <View style={styles.body}>
-        <Text style={[styles.date, { color: colors.mutedForeground }]}>
-          {new Date(session.timestamp).toLocaleDateString("en-US", {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
+        <View style={styles.metaRow}>
+          <Text style={[styles.date, { color: colors.mutedForeground }]}>
+            {new Date(session.timestamp).toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+          {session.isVideo && (
+            <View style={[styles.videoBadge, { backgroundColor: colors.success + "20", borderColor: colors.success + "50" }]}>
+              <Feather name="video" size={11} color={colors.success} />
+              <Text style={[styles.videoBadgeText, { color: colors.success }]}>
+                Frame {(session.bestFrameIndex ?? 0) + 1}/{session.totalFrames ?? 8}
+              </Text>
+            </View>
+          )}
+        </View>
 
         <View style={[styles.summaryCard, { backgroundColor: colors.surface1, borderColor: colors.border }]}>
           <View style={styles.summaryLeft}>
@@ -171,6 +181,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 14,
+    flexWrap: "wrap",
+  },
+  videoBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  videoBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
   notFoundText: {
     fontSize: 16,
     fontFamily: "Inter_400Regular",
@@ -219,7 +249,6 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    marginBottom: 14,
   },
   summaryCard: {
     flexDirection: "row",
