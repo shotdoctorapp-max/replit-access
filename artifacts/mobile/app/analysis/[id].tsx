@@ -116,16 +116,25 @@ export default function AnalysisScreen() {
           )}
         </View>
 
-        <View style={[styles.summaryCard, { backgroundColor: colors.surface1, borderColor: colors.border }]}>
-          <View style={styles.summaryLeft}>
-            <ScoreRing score={overallScore} size={90} strokeWidth={7} fontSize={24} />
-            <Text style={[styles.overallLabel, { color: colors.mutedForeground }]}>Overall</Text>
+        <View style={[styles.summaryCard, { backgroundColor: colors.surface1, borderColor: scoreColor + "50" }]}>
+          <View style={styles.summaryTop}>
+            <ScoreRing score={overallScore} size={80} strokeWidth={7} fontSize={26} />
+            <View style={styles.summaryTopRight}>
+              <Text style={[styles.overallLabel, { color: colors.mutedForeground }]}>OVERALL GRADE</Text>
+              <Text style={[styles.gradeLabel, { color: scoreColor }]}>{overallGrade}</Text>
+            </View>
           </View>
-          <View style={styles.summaryRight}>
-            <Text style={[styles.summaryText, { color: colors.foreground }]}>
-              {analysis.summary}
-            </Text>
-          </View>
+          <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+          {analysis.summary
+            .split(/(?<=\.)\s+/)
+            .map((s) => s.replace(/\.$/, "").trim())
+            .filter((s) => s.length > 4)
+            .map((point, i) => (
+              <View key={i} style={styles.summaryBulletRow}>
+                <View style={[styles.summaryDot, { backgroundColor: scoreColor }]} />
+                <Text style={[styles.summaryBulletText, { color: colors.foreground }]}>{point}</Text>
+              </View>
+            ))}
         </View>
 
         <View style={styles.section}>
@@ -297,24 +306,52 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
   },
   summaryCard: {
-    flexDirection: "row",
-    gap: 16,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 24,
+    gap: 12,
+  },
+  summaryTop: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 16,
   },
-  summaryLeft: { alignItems: "center", gap: 6 },
+  summaryTopRight: {
+    flex: 1,
+    gap: 2,
+  },
   overallLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_500Medium",
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1.2,
   },
-  summaryRight: { flex: 1 },
-  summaryText: {
-    fontSize: 13,
+  gradeLabel: {
+    fontSize: 42,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 48,
+  },
+  summaryDivider: {
+    height: 1,
+    marginVertical: 2,
+  },
+  summaryBulletRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  summaryDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    marginTop: 7,
+    flexShrink: 0,
+  },
+  summaryBulletText: {
+    fontSize: 14,
     fontFamily: "Inter_400Regular",
-    lineHeight: 20,
+    lineHeight: 22,
+    flex: 1,
   },
   section: { marginBottom: 24 },
   sectionHeaderRow: {
