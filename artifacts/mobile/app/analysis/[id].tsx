@@ -29,17 +29,20 @@ const COMPONENT_LABELS: Record<string, string> = {
   eyeTracking: "Eye Tracking",
 };
 
-// Normalized positions [left%, top%] for a right-handed shooter centered in frame
-// Values tuned for a typical basketball shooting analysis shot
-const ZONE_POSITIONS: Record<string, { left: number; top: number; anchor: "left" | "right" }> = {
-  eyeTracking:   { left: 0.52, top: 0.12, anchor: "right" },
-  setPoint:      { left: 0.62, top: 0.24, anchor: "right" },
-  gripPosition:  { left: 0.60, top: 0.32, anchor: "right" },
-  elbowPosition: { left: 0.64, top: 0.42, anchor: "right" },
-  followThrough: { left: 0.65, top: 0.20, anchor: "right" },
-  hipAlignment:  { left: 0.50, top: 0.60, anchor: "left"  },
-  balance:       { left: 0.50, top: 0.73, anchor: "left"  },
-  stance:        { left: 0.48, top: 0.87, anchor: "left"  },
+// Normalized positions for a right-handed shooter roughly centered in frame.
+// anchor "right" → pos = left% value; dot placed at left:pos%, tag extends rightward
+// anchor "left"  → pos = right% value from right edge; dot is at the right end of the row,
+//                  tag extends leftward. right:pos% → dot at (1-pos)% from left.
+// Upper body stacks on the right side of the player; lower body on the left of center.
+const ZONE_POSITIONS: Record<string, { pos: number; top: number; anchor: "left" | "right" }> = {
+  eyeTracking:   { pos: 0.58, top: 0.13, anchor: "right" },
+  setPoint:      { pos: 0.62, top: 0.22, anchor: "right" },
+  followThrough: { pos: 0.64, top: 0.30, anchor: "right" },
+  gripPosition:  { pos: 0.60, top: 0.38, anchor: "right" },
+  elbowPosition: { pos: 0.63, top: 0.46, anchor: "right" },
+  hipAlignment:  { pos: 0.42, top: 0.60, anchor: "left"  },
+  balance:       { pos: 0.42, top: 0.71, anchor: "left"  },
+  stance:        { pos: 0.42, top: 0.82, anchor: "left"  },
 };
 
 const ZONE_SHORT: Record<string, string> = {
@@ -219,27 +222,20 @@ export default function AnalysisScreen() {
           const markerColor = gradeColor(comp.score, colors);
           const label = ZONE_SHORT[key] ?? key;
           const isRight = pos.anchor === "right";
+          const posStyle = isRight
+            ? { left: `${pos.pos * 100}%` as const, top: `${pos.top * 100}%` as const }
+            : { right: `${pos.pos * 100}%` as const, top: `${pos.top * 100}%` as const };
+          const dot = (
+            <View style={[styles.annotationDot, { backgroundColor: markerColor, shadowColor: markerColor }]} />
+          );
+          const tag = (
+            <View style={[styles.annotationTag, { backgroundColor: markerColor + "ee" }]}>
+              <Text style={styles.annotationTagText}>{label}</Text>
+            </View>
+          );
           return (
-            <View
-              key={key}
-              style={[
-                styles.annotationMarker,
-                { left: `${pos.left * 100}%`, top: `${pos.top * 100}%` },
-              ]}
-              pointerEvents="none"
-            >
-              {/* Dot */}
-              <View style={[styles.annotationDot, { backgroundColor: markerColor, shadowColor: markerColor }]} />
-              {/* Label tag */}
-              <View
-                style={[
-                  styles.annotationTag,
-                  isRight ? styles.annotationTagRight : styles.annotationTagLeft,
-                  { backgroundColor: markerColor + "ee" },
-                ]}
-              >
-                <Text style={styles.annotationTagText}>{label}</Text>
-              </View>
+            <View key={key} style={[styles.annotationMarker, posStyle]} pointerEvents="none">
+              {isRight ? <>{dot}{tag}</> : <>{tag}{dot}</>}
             </View>
           );
         })}
@@ -332,9 +328,15 @@ export default function AnalysisScreen() {
             .filter((s) => s.length > 4)
             .map((point, i) => {
               const parts = point.split(/\s*—\s*/);
+              const accentColor = i === 0 ? colors.primary : scoreColor;
               return (
-                <View key={i} style={styles.summaryBulletRow}>
-                  <View style={[styles.summaryDot, { backgroundColor: scoreColor }]} />
+                <View
+                  key={i}
+                  style={[
+                    styles.summaryBulletRow,
+                    { borderLeftColor: accentColor, borderLeftWidth: 3, paddingLeft: 10 },
+                  ]}
+                >
                   {parts.length >= 2 ? (
                     <Text style={[styles.summaryBulletText, { color: colors.foreground }]}>
                       <Text style={styles.summaryBulletLabel}>{parts[0]}</Text>
@@ -539,13 +541,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 5,
   },
-  annotationTagRight: {
-    marginLeft: 2,
-  },
-  annotationTagLeft: {
-    marginRight: 2,
-    order: -1,
-  },
   annotationTagText: {
     fontSize: 9,
     fontFamily: "Inter_700Bold",
@@ -621,14 +616,7 @@ const styles = StyleSheet.create({
   summaryBulletRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
-  },
-  summaryDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    marginTop: 7,
-    flexShrink: 0,
+    marginVertical: 4,
   },
   summaryBulletLabel: {
     fontFamily: "Inter_600SemiBold",
