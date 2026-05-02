@@ -47,13 +47,13 @@ const ZONE_POSITIONS: Record<string, { pos: number; top: number; anchor: "left" 
 
 const ZONE_SHORT: Record<string, string> = {
   eyeTracking:   "Eyes",
-  setPoint:      "Set Point",
+  setPoint:      "Hands",
   gripPosition:  "Grip",
   elbowPosition: "Elbow",
-  followThrough: "Release",
+  followThrough: "Wrist",
   hipAlignment:  "Hips",
-  balance:       "Balance",
-  stance:        "Stance",
+  balance:       "Core",
+  stance:        "Feet",
 };
 
 const BODY_ZONES = [
