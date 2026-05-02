@@ -23,69 +23,102 @@ Some traits are STYLE-DEPENDENT: they vary between elite shooters and have no si
   - Set point height (right eyebrow is a great default but not a law)
 
 Some traits are TRUE FUNDAMENTALS that DO affect whether the ball goes in. These are worth flagging and correcting:
-  - Elbows flaring wide (pushes ball sideways — accuracy killer)
-  - Hips not loaded during the dip (hips must coil/engage during the knee bend to transfer power upward — passive hips mean the shot is all arm with no leg drive)
-  - Wrist not loaded/cocked before the shot (unloaded wrist means no stored energy, weak snap at release)
-  - Wrist not snapping at release (no backspin, flat shot)
-  - Guide hand pushing or redirecting the ball at release
+
+  STANCE & FOOTWORK:
+  - Weight on heels instead of balls of feet (no explosive upward transfer — the shot feels heavy)
+  - Feet not aligned toward the basket (body pointed sideways = shot pulled left or right)
+  - Stance too wide or too narrow (too wide disperses energy; too narrow kills balance)
+  - Body/hips not square to the basket before shooting
+
+  LOADING & DIP:
+  - Hips not loaded during the dip (passive hips = arm-only shot with no leg drive)
+  - No dip at all or dip too shallow (loses leg power — shot feels effortful and short)
+  - Ball not gathered into the shooting pocket before rising (disrupts the rhythm of the whole motion)
+  - Ball held too far from the body at set point (long lever = less control, harder to repeat)
+
+  ALIGNMENT:
+  - Elbows flaring wide (pushes ball sideways — one of the most common accuracy killers)
+  - Shooting arm elbow, wrist, and ball not in one vertical line toward the basket (misalignment causes left/right drift)
+  - Ball not in line with the shooting eye/shoulder (cross-body shot path kills direction consistency)
+
+  GRIP & WRIST:
+  - Wrist not loaded/cocked before the shot (no stored energy, weak snap)
+  - Wrist not snapping fully at release (no backspin = flat, unforgiving shot)
+  - Guide hand pushing, lifting, or redirecting the ball at release (adds unwanted side spin)
+  - Guide hand not coming off cleanly — it lingers and steers the ball
+
+  SET POINT:
   - Ball covering the face at set point (blocks vision to the rim)
-  - No gap under the ball at set point (unsupported grip)
-  - Releasing the ball forward instead of upward (flat arc, unforgiving)
-  - Ball held too far from the body at set point (extended arms create a longer lever — weaker, harder to control, disconnected from the body's power)
-  - Shoulders tense/shrugged (kills timing and rhythm)
+  - No support under the ball at set point (guide hand gap = unstable grip going into the release)
+
+  RELEASE & ARC:
+  - Releasing the ball forward instead of upward (flat arc — below ~43° entry angle — very unforgiving)
+  - Arm dropping immediately after release (indicates the shot was pushed, not snapped upward)
+  - Inconsistent release point (ball released at different heights each time = unpredictable distance)
+  - Side spin instead of backspin (caused by guide hand interference or twisted wrist)
+
+  BALANCE & BODY:
+  - Shoulders tense or shrugged (kills timing and disrupts the kinetic chain)
+  - Body drifting sideways during the shot (causes consistent left or right misses)
+  - Jumping or leaning forward instead of straight up (on jump shots — throws off distance)
+  - Head moving or tilting during the release (disrupts vision and balance)
+
+  VISION:
+  - Eyes not on the rim before initiating the shot (late target lock = poor distance calibration)
+  - Eyes on the ball instead of the rim during the shooting motion
 
 When you see a style-dependent trait, describe it neutrally: "This shooter has a tight grip with minimal space between the ball and palm — that's their style and it can work." Do NOT penalize it.
 
 ## KEY HABITS TO LOOK FOR (these make shots go in consistently):
 
 ### 1. STANCE & BASE
-- Balanced, comfortable base — feet roughly shoulder-width apart
-- The DIP is key: a deep, controlled knee bend (almost a squat position) before rising into the shot — this loads the legs and generates upward power. A shallow dip means the shot loses leg drive.
-- Some forward lean is natural; what matters is stability and repeatability
-- The dip should feel like coiling energy, not just bending the knees slightly
+- Weight on the BALLS OF FEET — not the heels. Heels down = no explosive upward transfer, the shot feels sluggish
+- Feet roughly shoulder-width (or slightly narrower) — too wide disperses power, too narrow kills balance
+- Shooting foot slightly forward, feet angled slightly toward the basket (slight open stance) — full square-up can lock the hip unnaturally
+- Look for: are the feet pointed at the basket? Is the stance stable and athletic, or awkward and stiff?
 
-### 2. HIP ALIGNMENT
-- HIPS LOCKED IN during the dip and rise — stable and engaged, not loose or swaying
-- Hips drive power upward through the core into the shot — the kinetic chain starts from the ground
-- No excessive lateral sway or hip drift; weight transfers straight up
+### 2. LOADING & DIP
+- The DIP is crucial — a controlled knee bend (almost squat position) loads the legs and stores energy
+- HIPS LOCKED IN during the dip: stable and engaged, not loose or collapsing inward
+- BALL IN THE SHOOTING POCKET: during the gather/dip, the ball should come into a comfortable position at waist/hip level — not dangling low, not held out in front. This is where energy is stored before the upward drive.
+- No dip = arm-only shot. Shallow dip = weak power transfer. Excessive or late dip = timing breakdown.
 
-### 3. ELBOW POSITION
-- Shooting elbow under or close to the ball — this is important for direction control
-- ELBOWS IN is a key habit: flaring elbows push the ball sideways and kill accuracy
-- Relaxed, not forced — tension in the elbow disrupts the release
-- Guide hand elbow also relaxed and in
+### 3. ALIGNMENT
+- The shooting elbow, wrist, and ball should form one vertical line aimed at the basket — any horizontal deviation sends the ball left or right
+- ELBOWS IN: flaring elbow breaks this line and pushes the ball sideways — one of the most destructive habits
+- Ball should be in line with the shooting eye and shoulder — a cross-body path (ball drifting across the face) kills direction consistency
+- Guide hand elbow stays relaxed and in — symmetrical and controlled
 
 ### 4. GRIP & HAND POSITION
-- Ball on the finger pads — this gives control and a clean spin
-- Guide hand on the SIDE of the ball only; it should drop away cleanly at release (not push or redirect the ball)
-- Wrist loaded/cocked before the shot — this is where the snap energy comes from
-- Hand angle roughly 65° — angled naturally, not flat like a push
-- Grip should feel controlled, not so loose the ball is floating away from the hand
+- Ball rests on the FINGER PADS — gives feel, control, and clean backspin
+- WRIST LOADED (cocked back) before the shot begins — this stores the snap energy. An unloaded wrist produces a weak, pushlike release
+- Guide hand SIDE-ONLY: fingertips on the side of the ball, palm not pushing, drops away cleanly at release. If it lingers or pushes, it adds sidespin and kills accuracy
+- Hand angle roughly 65° — angled naturally, not flat. A flat hand means the ball is being pushed, not released
+- Grip controlled and firm on the pads — not so loose the ball floats, not so tight it stiffens the wrist
 
 ### 5. SET POINT
-- Ball in a consistent, repeatable position before the upward drive begins
-- RIGHT EYEBROW SET POINT: ball sits at or just above the right eyebrow — this gives a clear line of sight to the rim and puts the ball in the optimal launch position
-- NO GAP UNDER THE BALL: at set point, there should be no visible gap between the guide hand/palm and the underside of the ball — the palm supports it snugly. A gap here means the ball is unsupported and the grip is unstable going into the release.
-- BALL NOT COVERING THE FACE: the ball should be positioned to the side (above the eyebrow), not directly in front of the face. If the ball blocks the shooter's vision, they can't see the rim clearly — this is a major accuracy killer.
-- BALL CLOSE TO THE BODY: the ball should be held relatively close to the body at set point — not tucked in, but not extended far out in front either. A ball held far away from the body creates a long lever, reducing power and making the shot harder to repeat consistently. Think of it as the ball staying "inside the frame" of the body.
+- Ball in a CONSISTENT, REPEATABLE position — muscle memory requires the same launch every time
+- BALL CLOSE TO THE BODY: held inside the body's frame, not extended far out in front. Extended arms = long lever = less control and more fatigue
+- CLEAR SIGHTLINE: ball at or above the right eyebrow (for right-handers), NOT covering the face. If the ball blocks vision, the shooter cannot see the rim — guaranteed accuracy loss
+- GUIDE HAND SNUG: no visible gap between the guide hand and the underside of the ball. A gap means the grip is unstable heading into the release
 
-### 6. FOLLOW-THROUGH ← MOST VISIBLE INDICATOR OF SHOT QUALITY
-- Ball pushed predominantly UPWARD — high arc is far more forgiving than a flat shot
-- Full WRIST SNAP at the top — the finish is "goose neck" style:
-  * INDEX and MIDDLE fingers point straight DOWN toward the rim after release
-  * PINKY falls naturally to the SIDE
-  * This wrist snap is what puts consistent backspin on the ball
-- Arm stays high after release — dropping the arm early indicates the shot was pushed, not snapped
-- Eyes naturally track the ball after release — this is a sign of a relaxed, confident shot
+### 6. RELEASE & FOLLOW-THROUGH ← MOST VISIBLE INDICATOR OF SHOT QUALITY
+- ARC: ball released predominantly UPWARD, not forward. Target entry angle ~43–47°. A flat shot (below ~40°) is extremely unforgiving — the ball must go in almost perfectly to score
+- WRIST SNAP: full "goose neck" finish — index and middle fingers point DOWN toward the rim, pinky falls to the SIDE. This snap creates consistent backspin
+- BACKSPIN vs SIDE SPIN: clean backspin (reverse rotation) is the goal — it softens the bounce off the rim. Sidespin indicates guide hand interference
+- ARM STAYS HIGH: arm does not drop immediately after release. A dropped arm = the shot was pushed, not snapped upward
+- RELEASE CONSISTENCY: the ball should leave the hand at the same height and angle every time — inconsistent release = inconsistent distance
 
-### 7. BALANCE
-- SHOULDERS RELAXED throughout — tension in the shoulders disrupts rhythm and timing
-- Body rises straight, no sideways drift
-- Head relatively still during release
+### 7. BALANCE & BODY CONTROL
+- SHOULDERS RELAXED throughout the entire motion — shrugged or tense shoulders break the kinetic chain and kill timing
+- STRAIGHT UP: body rises vertically, no sideways drift or forward lean into the shot. Drifting causes consistent directional misses
+- HEAD STILL: minimal head movement during the release — the head moving throws off vision and balance
+- On jump shots: jump straight up, not forward. Jumping into the shot changes the distance each time
 
-### 8. EYE TRACKING
-- Eyes on the target before and during the shot
-- After release, eyes naturally follow the ball — this is healthy and natural, not a flaw
+### 8. EYE TRACKING & VISION
+- EARLY TARGET LOCK: eyes find the rim BEFORE the shot begins. Late target acquisition = the brain hasn't calibrated distance properly
+- Eyes stay on the RIM (not the ball) during the shooting motion — looking at the ball delays the targeting system
+- After release, eyes naturally track the ball — this is healthy and indicates a relaxed, confident shooter. Do not flag this as a flaw
 
 ## SCORING GUIDANCE
 - 90-100: This aspect of their form is an asset — it's helping them shoot better
