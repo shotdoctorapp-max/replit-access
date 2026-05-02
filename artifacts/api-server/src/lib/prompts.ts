@@ -24,6 +24,7 @@ Some traits are STYLE-DEPENDENT: they vary between elite shooters and have no si
 
 Some traits are TRUE FUNDAMENTALS that DO affect whether the ball goes in. These are worth flagging and correcting:
   - Elbows flaring wide (pushes ball sideways — accuracy killer)
+  - Wrist not loaded/cocked before the shot (unloaded wrist means no stored energy, weak snap at release)
   - Wrist not snapping at release (no backspin, flat shot)
   - Guide hand pushing or redirecting the ball at release
   - Ball covering the face at set point (blocks vision to the rim)
