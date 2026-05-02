@@ -77,18 +77,14 @@ const PATTERN_META: Record<
   "unknown":       { label: "Undetermined",     icon: "help-circle",    colorKey: "warning"     },
 };
 
-const RHYTHM_ROWS: { key: keyof Pick<RhythmAnalysis, "ballRiseFrame" | "bodyRiseFrame" | "armExtendFrame">; label: string; icon: string }[] = [
-  { key: "bodyRiseFrame",  label: "Legs / Hips",  icon: "run-fast" },
-  { key: "ballRiseFrame",  label: "Ball Rise",     icon: "basketball"      },
-  { key: "armExtendFrame", label: "Arm Extend",    icon: "arm-flex"        },
-];
-
-function RhythmSection({ rhythm, totalFrames }: { rhythm: RhythmAnalysis; totalFrames: number }) {
+function RhythmSection({ rhythm }: { rhythm: RhythmAnalysis }) {
   const colors = useColors();
   const meta = PATTERN_META[rhythm.pattern] ?? PATTERN_META["unknown"];
   const patternColor = colors[meta.colorKey];
   const rhythmGrade = scoreToGrade(rhythm.rhythmScore ?? 0);
-  const frames = Math.max(totalFrames, 1);
+  // Use last observation as the coaching cue (most actionable sentence)
+  const obs = rhythm.observations ?? [];
+  const coachingCue = obs[obs.length - 1] ?? null;
 
   return (
     <View style={styles.section}>
@@ -97,69 +93,17 @@ function RhythmSection({ rhythm, totalFrames }: { rhythm: RhythmAnalysis; totalF
         <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>SHOT RHYTHM</Text>
       </View>
 
-      {/* Pattern badge + grade */}
       <View style={[styles.rhythmHeader, { backgroundColor: patternColor + "15", borderColor: patternColor + "40" }]}>
         <MaterialCommunityIcons name={meta.icon as any} size={22} color={patternColor} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.rhythmPatternLabel, { color: patternColor }]}>{meta.label}</Text>
-          <Text style={[styles.rhythmPatternSub, { color: colors.mutedForeground }]}>Kinetic chain sequencing</Text>
+          {coachingCue && (
+            <Text style={[styles.rhythmCue, { color: colors.foreground }]}>{coachingCue}</Text>
+          )}
         </View>
         <View style={[styles.rhythmGradePill, { backgroundColor: patternColor + "25", borderColor: patternColor + "60" }]}>
           <Text style={[styles.rhythmGradeText, { color: patternColor }]}>{rhythmGrade}</Text>
         </View>
-      </View>
-
-      {/* Timeline */}
-      <View style={[styles.rhythmTimeline, { backgroundColor: colors.surface1, borderColor: colors.border }]}>
-        <Text style={[styles.rhythmTimelineTitle, { color: colors.mutedForeground }]}>MOVEMENT SEQUENCE</Text>
-        {RHYTHM_ROWS.map(({ key, label, icon }) => {
-          const frameIdx = rhythm[key];
-          const hasData = frameIdx >= 0;
-          const pct = hasData ? frameIdx / (frames - 1) : null;
-          return (
-            <View key={key} style={styles.rhythmRow}>
-              <MaterialCommunityIcons name={icon as any} size={14} color={colors.mutedForeground} style={styles.rhythmRowIcon} />
-              <Text style={[styles.rhythmRowLabel, { color: colors.foreground }]}>{label}</Text>
-              <View style={[styles.rhythmTrack, { backgroundColor: colors.surface3 }]}>
-                {pct !== null && (
-                  <View
-                    style={[
-                      styles.rhythmDot,
-                      { left: `${Math.round(pct * 88)}%`, backgroundColor: colors.primary },
-                    ]}
-                  />
-                )}
-                {/* Frame tick marks */}
-                {Array.from({ length: frames }, (_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.rhythmTick,
-                      { left: `${Math.round((i / (frames - 1)) * 100)}%`, backgroundColor: colors.surface3 },
-                    ]}
-                  />
-                ))}
-              </View>
-              <Text style={[styles.rhythmFrameNum, { color: colors.mutedForeground }]}>
-                {hasData ? `F${frameIdx + 1}` : "—"}
-              </Text>
-            </View>
-          );
-        })}
-        <View style={styles.rhythmLegend}>
-          <Text style={[styles.rhythmLegendText, { color: colors.mutedForeground }]}>Start →</Text>
-          <Text style={[styles.rhythmLegendText, { color: colors.mutedForeground }]}>Release</Text>
-        </View>
-      </View>
-
-      {/* Observations */}
-      <View style={styles.rhythmObs}>
-        {(rhythm.observations ?? []).map((obs, i) => (
-          <View key={i} style={styles.bulletRow}>
-            <MaterialCommunityIcons name="chevron-right" size={14} color={colors.primary} style={{ marginTop: 3 }} />
-            <Text style={[styles.bulletText, { color: colors.foreground }]}>{obs}</Text>
-          </View>
-        ))}
       </View>
     </View>
   );
@@ -191,6 +135,7 @@ export default function AnalysisScreen() {
   const [heroUri, setHeroUri] = useState(session.imageUri);
   const [activeFrameIdx, setActiveFrameIdx] = useState<number | null>(null);
   const [selectedZoneKey, setSelectedZoneKey] = useState<string | null>(null);
+  const [expandedBodyZone, setExpandedBodyZone] = useState<string | null>(null);
 
   const hasKeyFrames =
     session.isVideo &&
@@ -257,7 +202,7 @@ export default function AnalysisScreen() {
               style={[styles.annotationMarker, posStyle]}
               onPress={() => setSelectedZoneKey(prev => prev === key ? null : key)}
             >
-              {isRight ? <>{dot}{tag}</> : <>{tag}{dot}</>}
+              {dot}
             </Pressable>
           );
         })}
@@ -425,14 +370,17 @@ export default function AnalysisScreen() {
                   : score >= 50
                   ? colors.warning
                   : colors.destructive;
+              const isExpanded = expandedBodyZone === key;
+              const feedback = Array.isArray(component?.feedback) ? component.feedback : [];
               return (
-                <View
+                <Pressable
                   key={key}
+                  onPress={() => setExpandedBodyZone(prev => prev === key ? null : key)}
                   style={[
                     styles.bodyZoneCard,
                     {
-                      backgroundColor: zoneColor + "15",
-                      borderColor: zoneColor + "50",
+                      backgroundColor: isExpanded ? zoneColor + "25" : zoneColor + "15",
+                      borderColor: isExpanded ? zoneColor + "90" : zoneColor + "50",
                     },
                   ]}
                 >
@@ -443,10 +391,46 @@ export default function AnalysisScreen() {
                   <Text style={[styles.bodyZoneLabel, { color: colors.foreground }]} numberOfLines={2}>
                     {label}
                   </Text>
-                </View>
+                </Pressable>
               );
             })}
           </View>
+          {/* Expanded body zone feedback */}
+          {expandedBodyZone && (() => {
+            const comp = analysis.components?.[expandedBodyZone as keyof typeof analysis.components];
+            if (!comp) return null;
+            const color = gradeColor(comp.score, colors);
+            const feedback = Array.isArray(comp.feedback) ? comp.feedback : [];
+            const zoneLabel = COMPONENT_LABELS[expandedBodyZone] ?? expandedBodyZone;
+            return (
+              <View style={[styles.bodyZoneExpanded, { backgroundColor: color + "12", borderColor: color + "40" }]}>
+                <View style={styles.bodyZoneExpandedHeader}>
+                  <Text style={[styles.bodyZoneExpandedTitle, { color }]}>{zoneLabel}</Text>
+                  <View style={[styles.zoneGradeBadge, { backgroundColor: color + "33", borderColor: color }]}>
+                    <Text style={[styles.zoneGradeText, { color }]}>{scoreToGrade(comp.score)}</Text>
+                  </View>
+                </View>
+                {feedback.length === 0 && (
+                  <Text style={[styles.bodyZoneExpandedEmpty, { color: colors.mutedForeground }]}>No issues found</Text>
+                )}
+                {feedback.map((item, i) => {
+                  const parts = item.split(/\s*—\s*/);
+                  return (
+                    <View key={i} style={[styles.zonePopupItem, { borderLeftColor: color }]}>
+                      {parts.length >= 2 ? (
+                        <>
+                          <Text style={[styles.zonePopupIssue, { color }]}>{parts[0]}</Text>
+                          <Text style={[styles.zonePopupFix, { color: colors.foreground }]}>{parts.slice(1).join(" — ")}</Text>
+                        </>
+                      ) : (
+                        <Text style={[styles.zonePopupFix, { color: colors.foreground }]}>{item}</Text>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })()}
         </View>
 
         <View style={styles.section}>
@@ -475,7 +459,7 @@ export default function AnalysisScreen() {
           ))}
         </View>
 
-        {session.rhythm && <RhythmSection rhythm={session.rhythm} totalFrames={session.totalFrames ?? 8} />}
+        {session.rhythm && <RhythmSection rhythm={session.rhythm} />}
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>BIOMECHANICAL BREAKDOWN</Text>
@@ -605,6 +589,35 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
     color: "#fff",
     letterSpacing: 0.3,
+  },
+  rhythmCue: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+    opacity: 0.9,
+  },
+  bodyZoneExpanded: {
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    gap: 8,
+  },
+  bodyZoneExpandedHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  bodyZoneExpandedTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 14,
+  },
+  bodyZoneExpandedEmpty: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    fontStyle: "italic",
   },
   annotationDotSelected: {
     width: 13,

@@ -249,6 +249,20 @@ export default function HomeScreen() {
         .filter((f) => thumbnailUris[f.index] && !seen.has(f.index) && seen.add(f.index))
         .slice(0, 4);
 
+      // If deduplication left fewer than 4 frames, fill with evenly-spaced frames
+      const targetLabels = ["Dip", "Rising", "Set Point", "Release Point"];
+      if (keyFrameEntries.length < 4 && totalFrames >= 4) {
+        const spreads = [0.15, 0.38, 0.62, 0.85];
+        for (let si = 0; si < spreads.length && keyFrameEntries.length < 4; si++) {
+          const idx = Math.round(spreads[si] * (totalFrames - 1));
+          if (!seen.has(idx) && thumbnailUris[idx]) {
+            seen.add(idx);
+            keyFrameEntries.push({ index: idx, label: targetLabels[keyFrameEntries.length] });
+          }
+        }
+        keyFrameEntries.sort((a, b) => a.index - b.index);
+      }
+
       // Copy key frame thumbnails to stable cache paths
       const keyFrameUris: string[] = [];
       const keyFrameLabels: string[] = [];
