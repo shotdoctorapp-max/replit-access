@@ -8,7 +8,7 @@ import React, {
   useState,
 } from "react";
 
-const FREE_SHOTS = 3;
+const FREE_SHOTS = 100;
 const STORAGE_KEY = (userId: string) => `@shotdoc_shots_used_${userId}`;
 
 interface ShotsContextValue {
