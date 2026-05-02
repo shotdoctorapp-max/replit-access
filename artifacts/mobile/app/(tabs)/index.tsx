@@ -63,7 +63,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const { sessions, addSession } = useSessions();
   const [stage, setStage] = useState<AnalyzingStage>("idle");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [bestFrameInfo, setBestFrameInfo] = useState<{
     index: number;
     total: number;
@@ -78,43 +77,6 @@ export default function HomeScreen() {
             sessions.length
         )
       : 0;
-
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "Please allow access to your photo library.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      quality: 0.8,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setSelectedImage(asset.uri);
-      await analyzeImage(asset.uri, asset.base64 ?? "");
-    }
-  };
-
-  const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "Please allow camera access.");
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.8,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setSelectedImage(asset.uri);
-      await analyzeImage(asset.uri, asset.base64 ?? "");
-    }
-  };
 
   const recordVideo = async () => {
     if (Platform.OS === "web") {
@@ -172,7 +134,6 @@ export default function HomeScreen() {
   };
 
   const analyzeVideo = async (videoUri: string, durationMs?: number) => {
-    setSelectedImage(null);
     setBestFrameInfo(null);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
@@ -295,52 +256,6 @@ export default function HomeScreen() {
     }
   };
 
-  const analyzeImage = async (uri: string, base64: string) => {
-    if (!base64) {
-      Alert.alert("Error", "Could not read image data.");
-      return;
-    }
-    setStage("analyzing");
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    try {
-      const response = await fetch(`${API_BASE}/api/analyze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64, mimeType: "image/jpeg" }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error((err as { error: string }).error ?? "Analysis failed");
-      }
-
-      const data = (await response.json()) as {
-        analysis: AnalysisResult;
-        timestamp: string;
-      };
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      const session: Session = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        timestamp: data.timestamp,
-        imageUri: uri,
-        analysis: data.analysis,
-        isVideo: false,
-      };
-
-      await addSession(session);
-      setSelectedImage(null);
-      setStage("idle");
-      router.push({ pathname: "/analysis/[id]", params: { id: session.id } });
-    } catch (err) {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      const message = err instanceof Error ? err.message : "Something went wrong";
-      Alert.alert("Analysis Failed", message);
-      setStage("idle");
-    }
-  };
-
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -419,115 +334,40 @@ export default function HomeScreen() {
       )}
 
       <View style={styles.actionsSection}>
-        <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
-          PHOTO ANALYSIS
-        </Text>
         <Pressable
           style={({ pressed }) => [
-            styles.primaryAction,
+            styles.recordBtn,
             {
               backgroundColor: colors.primary,
-              opacity: pressed || isAnalyzing ? 0.7 : 1,
-            },
-          ]}
-          onPress={takePhoto}
-          disabled={isAnalyzing}
-        >
-          <Feather name="camera" size={22} color="#fff" />
-          <Text style={styles.primaryActionText}>Take Photo</Text>
-        </Pressable>
-        <Pressable
-          style={({ pressed }) => [
-            styles.secondaryAction,
-            {
-              backgroundColor: colors.surface1,
-              borderColor: colors.border,
-              opacity: pressed || isAnalyzing ? 0.7 : 1,
-            },
-          ]}
-          onPress={pickImage}
-          disabled={isAnalyzing}
-        >
-          <Feather name="image" size={20} color={colors.foreground} />
-          <Text style={[styles.secondaryActionText, { color: colors.foreground }]}>
-            Upload Photo
-          </Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.actionsSection}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
-            VIDEO ANALYSIS
-          </Text>
-          <View
-            style={[styles.newBadge, { backgroundColor: colors.success + "25" }]}
-          >
-            <Text style={[styles.newBadgeText, { color: colors.success }]}>NEW</Text>
-          </View>
-        </View>
-        <Text style={[styles.videoSubtitle, { color: colors.mutedForeground }]}>
-          AI automatically picks the best frame from your shot
-        </Text>
-        <Pressable
-          style={({ pressed }) => [
-            styles.videoAction,
-            {
-              backgroundColor: colors.surface1,
-              borderColor: colors.success + "60",
-              opacity: pressed || isAnalyzing ? 0.7 : 1,
+              opacity: pressed || isAnalyzing ? 0.75 : 1,
             },
           ]}
           onPress={recordVideo}
           disabled={isAnalyzing}
         >
-          <View
-            style={[
-              styles.videoIconContainer,
-              { backgroundColor: colors.success + "20" },
-            ]}
-          >
-            <Feather name="video" size={20} color={colors.success} />
+          <Feather name="video" size={24} color="#fff" />
+          <View style={styles.recordBtnText}>
+            <Text style={styles.recordBtnTitle}>Record Shot</Text>
+            <Text style={styles.recordBtnSub}>AI analyzes your form in seconds</Text>
           </View>
-          <View style={styles.videoActionText}>
-            <Text style={[styles.videoActionTitle, { color: colors.foreground }]}>
-              Record Shot
-            </Text>
-            <Text style={[styles.videoActionSub, { color: colors.mutedForeground }]}>
-              8 frames extracted automatically
-            </Text>
-          </View>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </Pressable>
+
         <Pressable
           style={({ pressed }) => [
-            styles.videoAction,
+            styles.uploadBtn,
             {
               backgroundColor: colors.surface1,
               borderColor: colors.border,
-              opacity: pressed || isAnalyzing ? 0.7 : 1,
+              opacity: pressed || isAnalyzing ? 0.75 : 1,
             },
           ]}
           onPress={pickVideo}
           disabled={isAnalyzing}
         >
-          <View
-            style={[
-              styles.videoIconContainer,
-              { backgroundColor: colors.accent + "20" },
-            ]}
-          >
-            <Feather name="film" size={20} color={colors.accent} />
-          </View>
-          <View style={styles.videoActionText}>
-            <Text style={[styles.videoActionTitle, { color: colors.foreground }]}>
-              Upload Video
-            </Text>
-            <Text style={[styles.videoActionSub, { color: colors.mutedForeground }]}>
-              Pick from your library
-            </Text>
-          </View>
-          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+          <Feather name="film" size={18} color={colors.mutedForeground} />
+          <Text style={[styles.uploadBtnText, { color: colors.mutedForeground }]}>
+            Upload from library
+          </Text>
         </Pressable>
       </View>
 
@@ -541,12 +381,6 @@ export default function HomeScreen() {
             },
           ]}
         >
-          {selectedImage && (
-            <Image
-              source={{ uri: selectedImage }}
-              style={styles.previewImage}
-            />
-          )}
           <View style={styles.stagesContainer}>
             {(["extracting", "selecting", "analyzing"] as AnalyzingStage[]).map(
               (s) => {
@@ -692,11 +526,10 @@ export default function HomeScreen() {
             color={colors.mutedForeground}
           />
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            Start Analyzing
+            Record Your First Shot
           </Text>
           <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-            Take a photo, upload an image, or record a video of your shot for AI
-            biomechanical feedback
+            Hit Record, take your shot, and get AI biomechanical feedback in seconds
           </Text>
         </View>
       )}
@@ -750,47 +583,40 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     marginBottom: 12,
   },
-  newBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginBottom: 10,
+  recordBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 20,
+    paddingHorizontal: 22,
+    borderRadius: 18,
+    marginBottom: 12,
   },
-  newBadgeText: {
-    fontSize: 9,
+  recordBtnText: { flex: 1 },
+  recordBtnTitle: {
+    color: "#fff",
+    fontSize: 17,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 1,
+    marginBottom: 2,
   },
-  videoSubtitle: {
+  recordBtnSub: {
+    color: "rgba(255,255,255,0.7)",
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    marginBottom: 12,
-    marginTop: -8,
   },
-  primaryAction: {
+  uploadBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    paddingVertical: 16,
-    borderRadius: 14,
-    marginBottom: 10,
-  },
-  primaryActionText: {
-    color: "#fff",
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
-  secondaryAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingVertical: 14,
+    gap: 8,
+    paddingVertical: 13,
     borderRadius: 14,
     borderWidth: 1,
   },
-  secondaryActionText: { fontSize: 15, fontFamily: "Inter_500Medium" },
+  uploadBtnText: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+  },
   videoAction: {
     flexDirection: "row",
     alignItems: "center",
