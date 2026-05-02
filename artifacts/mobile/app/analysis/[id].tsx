@@ -214,7 +214,9 @@ export default function AnalysisScreen() {
           const color = gradeColor(comp.score, colors);
           const grade = scoreToGrade(comp.score);
           const zoneLabel = COMPONENT_LABELS[selectedZoneKey] ?? selectedZoneKey;
-          const items = Array.isArray(comp.feedback) ? comp.feedback.slice(0, 2) : [];
+          const items = typeof comp.feedback === "string"
+            ? comp.feedback.split(/(?<=\.)\s+/).map((s) => s.replace(/\.$/, "").trim()).filter((s) => s.length > 2).slice(0, 2)
+            : [];
           return (
             <View style={[styles.zonePopup, { backgroundColor: colors.surface2 + "f8", borderColor: color + "55" }]}>
               <View style={styles.zonePopupHeader}>
@@ -371,7 +373,6 @@ export default function AnalysisScreen() {
                   ? colors.warning
                   : colors.destructive;
               const isExpanded = expandedBodyZone === key;
-              const feedback = Array.isArray(component?.feedback) ? component.feedback : [];
               return (
                 <Pressable
                   key={key}
@@ -400,7 +401,9 @@ export default function AnalysisScreen() {
             const comp = analysis.components?.[expandedBodyZone as keyof typeof analysis.components];
             if (!comp) return null;
             const color = gradeColor(comp.score, colors);
-            const feedback = Array.isArray(comp.feedback) ? comp.feedback : [];
+            const feedback = typeof comp.feedback === "string"
+              ? comp.feedback.split(/(?<=\.)\s+/).map((s) => s.replace(/\.$/, "").trim()).filter((s) => s.length > 2)
+              : [];
             const zoneLabel = COMPONENT_LABELS[expandedBodyZone] ?? expandedBodyZone;
             return (
               <View style={[styles.bodyZoneExpanded, { backgroundColor: color + "12", borderColor: color + "40" }]}>
