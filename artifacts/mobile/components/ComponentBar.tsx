@@ -7,6 +7,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useColors } from "@/hooks/useColors";
+import { scoreToGrade, gradeColor } from "@/utils/grading";
 
 interface ComponentBarProps {
   label: string;
@@ -27,18 +28,14 @@ export function ComponentBar({ label, score, feedback, delay = 0 }: ComponentBar
     width: `${width.value * 100}%`,
   }));
 
-  const barColor =
-    score >= 80
-      ? colors.success
-      : score >= 60
-      ? colors.warning
-      : colors.destructive;
+  const barColor = gradeColor(score, colors);
+  const grade = scoreToGrade(score);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
-        <Text style={[styles.score, { color: barColor }]}>{score}</Text>
+        <Text style={[styles.score, { color: barColor }]}>{grade}</Text>
       </View>
       <View style={[styles.track, { backgroundColor: colors.surface3 }]}>
         <Animated.View
@@ -66,7 +63,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
   },
   score: {
-    fontSize: 13,
+    fontSize: 15,
     fontFamily: "Inter_700Bold",
   },
   track: {

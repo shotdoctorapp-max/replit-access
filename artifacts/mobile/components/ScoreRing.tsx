@@ -7,6 +7,7 @@ import Animated, {
 } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 import { useColors } from "@/hooks/useColors";
+import { scoreToGrade, gradeColor } from "@/utils/grading";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -38,12 +39,8 @@ export function ScoreRing({
     strokeDashoffset: circumference * (1 - progress.value),
   }));
 
-  const scoreColor =
-    score >= 80
-      ? colors.success
-      : score >= 60
-      ? colors.warning
-      : colors.destructive;
+  const ringColor = gradeColor(score, colors);
+  const grade = scoreToGrade(score);
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
@@ -60,7 +57,7 @@ export function ScoreRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={scoreColor}
+          stroke={ringColor}
           strokeWidth={strokeWidth}
           fill="none"
           strokeDasharray={circumference}
@@ -70,8 +67,8 @@ export function ScoreRing({
         />
       </Svg>
       <View style={styles.center}>
-        <Text style={[styles.score, { color: scoreColor, fontSize }]}>
-          {score}
+        <Text style={[styles.score, { color: ringColor, fontSize }]}>
+          {grade}
         </Text>
         {label && (
           <Text style={[styles.label, { color: colors.mutedForeground }]}>

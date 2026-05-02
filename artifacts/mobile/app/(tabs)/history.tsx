@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useSessions, type Session } from "@/context/SessionContext";
+import { scoreToGrade, gradeColor } from "@/utils/grading";
 
 function SessionItem({ session, onPress, onDelete }: {
   session: Session;
@@ -23,8 +24,8 @@ function SessionItem({ session, onPress, onDelete }: {
 }) {
   const colors = useColors();
   const score = session.analysis.overallScore;
-  const scoreColor =
-    score >= 80 ? colors.success : score >= 60 ? colors.warning : colors.destructive;
+  const scoreColor = gradeColor(score, colors);
+  const grade = scoreToGrade(score);
 
   const weakest = Object.entries(session.analysis.components).sort(
     ([, a], [, b]) => a.score - b.score
@@ -55,8 +56,7 @@ function SessionItem({ session, onPress, onDelete }: {
           })}
         </Text>
         <View style={styles.scoreRow}>
-          <Text style={[styles.score, { color: scoreColor }]}>{score}</Text>
-          <Text style={[styles.scoreSuffix, { color: scoreColor }]}>/100</Text>
+          <Text style={[styles.score, { color: scoreColor }]}>{grade}</Text>
         </View>
         {weakestLabel ? (
           <View style={[styles.tag, { backgroundColor: colors.destructive + "20" }]}>
@@ -104,6 +104,9 @@ export default function HistoryScreen() {
     sessions.length > 0
       ? Math.round(sessions.reduce((a, s) => a + s.analysis.overallScore, 0) / sessions.length)
       : 0;
+  const avgGrade = scoreToGrade(avgScore);
+  const bestScore = sessions.length > 0 ? Math.max(...sessions.map(s => s.analysis.overallScore)) : 0;
+  const bestGrade = scoreToGrade(bestScore);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -138,15 +141,15 @@ export default function HistoryScreen() {
                 </View>
                 <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <View style={styles.summaryItem}>
-                  <Text style={[styles.summaryNum, { color: avgScore >= 70 ? colors.success : colors.warning }]}>
-                    {avgScore}
+                  <Text style={[styles.summaryNum, { color: gradeColor(avgScore, colors) }]}>
+                    {avgGrade}
                   </Text>
-                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Avg Score</Text>
+                  <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Avg Grade</Text>
                 </View>
                 <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <View style={styles.summaryItem}>
-                  <Text style={[styles.summaryNum, { color: colors.foreground }]}>
-                    {sessions.length > 0 ? Math.max(...sessions.map(s => s.analysis.overallScore)) : 0}
+                  <Text style={[styles.summaryNum, { color: gradeColor(bestScore, colors) }]}>
+                    {bestGrade}
                   </Text>
                   <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Best</Text>
                 </View>

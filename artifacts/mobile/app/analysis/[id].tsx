@@ -16,6 +16,7 @@ import { useSessions } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
 import { ComponentBar } from "@/components/ComponentBar";
 import { DrillCard } from "@/components/DrillCard";
+import { scoreToGrade, gradeColor } from "@/utils/grading";
 
 const COMPONENT_LABELS: Record<string, string> = {
   stance: "Stance & Base",
@@ -60,12 +61,8 @@ export default function AnalysisScreen() {
 
   const { analysis } = session;
   const overallScore = analysis.overallScore ?? 0;
-  const scoreColor =
-    overallScore >= 80
-      ? colors.success
-      : overallScore >= 60
-      ? colors.warning
-      : colors.destructive;
+  const scoreColor = gradeColor(overallScore, colors);
+  const overallGrade = scoreToGrade(overallScore);
 
   const sortedComponents = Object.entries(analysis.components ?? {}).sort(
     ([, a], [, b]) => (a?.score ?? 0) - (b?.score ?? 0)
@@ -93,8 +90,7 @@ export default function AnalysisScreen() {
         </Pressable>
         <View style={styles.imageOverlay}>
           <View style={[styles.scoreBadge, { backgroundColor: colors.surface1 + "ee" }]}>
-            <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>{overallScore}</Text>
-            <Text style={[styles.scoreBadgeSub, { color: colors.mutedForeground }]}>/100</Text>
+            <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>{overallGrade}</Text>
           </View>
         </View>
       </View>
@@ -159,7 +155,7 @@ export default function AnalysisScreen() {
                   ]}
                 >
                   <View style={[styles.bodyZoneScoreBadge, { backgroundColor: zoneColor }]}>
-                    <Text style={styles.bodyZoneScoreText}>{score}</Text>
+                    <Text style={styles.bodyZoneScoreText}>{scoreToGrade(score)}</Text>
                   </View>
                   <MaterialCommunityIcons name={icon as any} size={22} color={zoneColor} style={styles.bodyZoneIcon} />
                   <Text style={[styles.bodyZoneLabel, { color: colors.foreground }]} numberOfLines={2}>
