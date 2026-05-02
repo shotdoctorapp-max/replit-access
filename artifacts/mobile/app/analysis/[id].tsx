@@ -29,32 +29,6 @@ const COMPONENT_LABELS: Record<string, string> = {
   eyeTracking: "Eye Tracking",
 };
 
-// Normalized positions for a right-handed shooter roughly centered in frame.
-// anchor "right" → pos = left% value; dot placed at left:pos%, tag extends rightward
-// anchor "left"  → pos = right% value from right edge; dot is at the right end of the row,
-//                  tag extends leftward. right:pos% → dot at (1-pos)% from left.
-// Upper body stacks on the right side of the player; lower body on the left of center.
-const ZONE_POSITIONS: Record<string, { pos: number; top: number; anchor: "left" | "right" }> = {
-  eyeTracking:   { pos: 0.58, top: 0.13, anchor: "right" },
-  setPoint:      { pos: 0.62, top: 0.22, anchor: "right" },
-  followThrough: { pos: 0.64, top: 0.30, anchor: "right" },
-  gripPosition:  { pos: 0.60, top: 0.38, anchor: "right" },
-  elbowPosition: { pos: 0.63, top: 0.46, anchor: "right" },
-  hipAlignment:  { pos: 0.42, top: 0.60, anchor: "left"  },
-  balance:       { pos: 0.42, top: 0.71, anchor: "left"  },
-  stance:        { pos: 0.42, top: 0.82, anchor: "left"  },
-};
-
-const ZONE_SHORT: Record<string, string> = {
-  eyeTracking:   "Eyes",
-  setPoint:      "Hands",
-  gripPosition:  "Grip",
-  elbowPosition: "Elbow",
-  followThrough: "Wrist",
-  hipAlignment:  "Hips",
-  balance:       "Core",
-  stance:        "Feet",
-};
 
 const BODY_ZONES = [
   { key: "eyeTracking",    label: "Eye Tracking",  icon: "eye-outline" },
@@ -134,7 +108,6 @@ export default function AnalysisScreen() {
   const overallGrade = scoreToGrade(overallScore);
   const [heroUri, setHeroUri] = useState(session.imageUri);
   const [activeFrameIdx, setActiveFrameIdx] = useState<number | null>(null);
-  const [selectedZoneKey, setSelectedZoneKey] = useState<string | null>(null);
   const [expandedBodyZone, setExpandedBodyZone] = useState<string | null>(null);
 
   const hasKeyFrames =
@@ -161,90 +134,6 @@ export default function AnalysisScreen() {
       <View style={styles.imageContainer}>
         <Image source={{ uri: heroUri }} style={styles.heroImage} />
 
-        {/* Dismiss popup when tapping the image background */}
-        {selectedZoneKey && (
-          <Pressable
-            style={StyleSheet.absoluteFillObject}
-            onPress={() => setSelectedZoneKey(null)}
-          />
-        )}
-
-        {/* Body zone annotation markers — shown for zones scoring below 75 */}
-        {Object.entries(analysis.components ?? {}).map(([key, comp]) => {
-          const pos = ZONE_POSITIONS[key];
-          if (!pos || !comp || comp.score >= 75) return null;
-          const markerColor = gradeColor(comp.score, colors);
-          const label = ZONE_SHORT[key] ?? key;
-          const isRight = pos.anchor === "right";
-          const isSelected = selectedZoneKey === key;
-          const posStyle = isRight
-            ? { left: `${pos.pos * 100}%` as const, top: `${pos.top * 100}%` as const }
-            : { right: `${pos.pos * 100}%` as const, top: `${pos.top * 100}%` as const };
-          const dot = (
-            <View style={[
-              styles.annotationDot,
-              { backgroundColor: markerColor, shadowColor: markerColor },
-              isSelected && styles.annotationDotSelected,
-            ]} />
-          );
-          const tag = (
-            <View style={[
-              styles.annotationTag,
-              { backgroundColor: isSelected ? markerColor : markerColor + "cc" },
-              isSelected && styles.annotationTagSelected,
-            ]}>
-              <Text style={styles.annotationTagText}>{label}</Text>
-            </View>
-          );
-          return (
-            <Pressable
-              key={key}
-              style={[styles.annotationMarker, posStyle]}
-              onPress={() => setSelectedZoneKey(prev => prev === key ? null : key)}
-            >
-              {dot}
-            </Pressable>
-          );
-        })}
-
-        {/* Zone detail popup — appears at bottom of image when a label is tapped */}
-        {selectedZoneKey && (() => {
-          const comp = analysis.components?.[selectedZoneKey as keyof typeof analysis.components];
-          if (!comp) return null;
-          const color = gradeColor(comp.score, colors);
-          const grade = scoreToGrade(comp.score);
-          const zoneLabel = COMPONENT_LABELS[selectedZoneKey] ?? selectedZoneKey;
-          const items = typeof comp.feedback === "string"
-            ? comp.feedback.split(/(?<=\.)\s+/).map((s) => s.replace(/\.$/, "").trim()).filter((s) => s.length > 2).slice(0, 2)
-            : [];
-          return (
-            <View style={[styles.zonePopup, { backgroundColor: colors.surface2 + "f8", borderColor: color + "55" }]}>
-              <View style={styles.zonePopupHeader}>
-                <Text style={[styles.zonePopupTitle, { color: colors.foreground }]}>{zoneLabel}</Text>
-                <View style={[styles.zoneGradeBadge, { backgroundColor: color + "33", borderColor: color }]}>
-                  <Text style={[styles.zoneGradeText, { color }]}>{grade}</Text>
-                </View>
-              </View>
-              {items.map((item, i) => {
-                const parts = item.split(/\s*—\s*/);
-                return (
-                  <View key={i} style={[styles.zonePopupItem, { borderLeftColor: color }]}>
-                    {parts.length >= 2 ? (
-                      <>
-                        <Text style={[styles.zonePopupIssue, { color }]}>{parts[0]}</Text>
-                        <Text style={[styles.zonePopupFix, { color: colors.foreground }]}>
-                          {parts.slice(1).join(" — ")}
-                        </Text>
-                      </>
-                    ) : (
-                      <Text style={[styles.zonePopupFix, { color: colors.foreground }]}>{item}</Text>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          );
-        })()}
 
         <Pressable
           style={[styles.backButton, { backgroundColor: colors.surface1 + "cc" }]}
