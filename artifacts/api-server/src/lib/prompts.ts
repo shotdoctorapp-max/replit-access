@@ -154,8 +154,25 @@ Respond ONLY with valid JSON in exactly this format:
     { "name": "<drill name>", "description": "<20-word max description of how to do it>", "targetArea": "<component>" },
     { "name": "<drill name>", "description": "<20-word max>", "targetArea": "<component>" },
     { "name": "<drill name>", "description": "<20-word max>", "targetArea": "<component>" }
+  ],
+  "annotations": [
+    {
+      "frameIndex": <0 for Dip frame | 1 for Set Point frame — use 0 if only one frame>,
+      "zone": "<one of: elbowPosition | gripPosition | setPoint | followThrough | stance | hipAlignment | balance | eyeTracking>",
+      "x": <0.0–1.0 normalized horizontal position of the body part in the image, 0=left 1=right>,
+      "y": <0.0–1.0 normalized vertical position of the body part in the image, 0=top 1=bottom>,
+      "severity": "<good | warning | issue>",
+      "label": "<2–4 word label matching the component feedback, e.g. 'Elbow flaring', 'Wrist loaded'>"
+    }
   ]
-}`;
+}
+
+ANNOTATION RULES:
+- Add ONE annotation per body zone that you evaluated (8 total matching the 8 components).
+- Coordinates must point to the actual body part visible in the image (e.g. for elbowPosition, point at the shooting elbow; for stance, point at the feet).
+- severity: "good" if score >= 75, "warning" if score 50–74, "issue" if score < 50.
+- Use frameIndex 0 for all annotations when only a single image is provided.
+- ONLY include annotations for body parts that are clearly visible in the image.`;
 
 export const RHYTHM_SYSTEM_PROMPT = `You are a basketball shooting coach specializing in shot rhythm and kinetic chain timing.
 

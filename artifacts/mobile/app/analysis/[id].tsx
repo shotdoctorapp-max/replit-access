@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Image,
+  LayoutChangeEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -12,10 +13,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useSessions, type RhythmAnalysis } from "@/context/SessionContext";
+import { useSessions, type RhythmAnalysis, type FrameAnnotation } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
 import { ComponentBar } from "@/components/ComponentBar";
 import { DrillCard } from "@/components/DrillCard";
+import { FrameAnnotationOverlay } from "@/components/FrameAnnotationOverlay";
 import { scoreToGrade, gradeColor } from "@/utils/grading";
 
 const COMPONENT_LABELS: Record<string, string> = {
@@ -106,9 +108,18 @@ export default function AnalysisScreen() {
   const overallScore = analysis.overallScore ?? 0;
   const scoreColor = gradeColor(overallScore, colors);
   const overallGrade = scoreToGrade(overallScore);
-  const [heroUri, setHeroUri] = useState(session.imageUri);
-  const [activeFrameIdx, setActiveFrameIdx] = useState<number | null>(null);
+  const initialKeyFrameUri =
+    session.isVideo && session.keyFrameUris && session.keyFrameUris.length > 0
+      ? session.keyFrameUris[0]
+      : session.imageUri;
+  const initialFrameIdx =
+    session.isVideo && session.keyFrameUris && session.keyFrameUris.length > 0 ? 0 : null;
+
+  const [heroUri, setHeroUri] = useState(initialKeyFrameUri);
+  const [activeFrameIdx, setActiveFrameIdx] = useState<number | null>(initialFrameIdx);
   const [expandedBodyZone, setExpandedBodyZone] = useState<string | null>(null);
+  const [showAnnotations, setShowAnnotations] = useState(true);
+  const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
 
   const hasKeyFrames =
     session.isVideo &&
@@ -118,6 +129,31 @@ export default function AnalysisScreen() {
   const sortedComponents = Object.entries(analysis.components ?? {}).sort(
     ([, a], [, b]) => (a?.score ?? 0) - (b?.score ?? 0)
   );
+
+  const allAnnotations: FrameAnnotation[] = analysis.annotations ?? [];
+
+  const activeAnnotations = useMemo(() => {
+    if (allAnnotations.length === 0) return [];
+    if (activeFrameIdx === null) {
+      return allAnnotations.filter((a) => a.frameIndex === 0);
+    }
+    return allAnnotations.filter((a) => a.frameIndex === activeFrameIdx);
+  }, [allAnnotations, activeFrameIdx]);
+
+  function worstSeverityForFrame(frameIdx: number): FrameAnnotation["severity"] | null {
+    const frameAnns = allAnnotations.filter((a) => a.frameIndex === frameIdx);
+    if (frameAnns.length === 0) return null;
+    if (frameAnns.some((a) => a.severity === "issue")) return "issue";
+    if (frameAnns.some((a) => a.severity === "warning")) return "warning";
+    return "good";
+  }
+
+  function severityToColor(s: FrameAnnotation["severity"] | null): string {
+    if (s === "issue") return colors.destructive;
+    if (s === "warning") return colors.warning;
+    if (s === "good") return colors.success;
+    return colors.border;
+  }
 
   return (
     <ScrollView
@@ -132,8 +168,24 @@ export default function AnalysisScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.imageContainer}>
-        <Image source={{ uri: heroUri }} style={styles.heroImage} />
+        <Image
+          source={{ uri: heroUri }}
+          style={styles.heroImage}
+          onLayout={(e: LayoutChangeEvent) => {
+            const { width, height } = e.nativeEvent.layout;
+            setImageLayout({ width, height });
+          }}
+        />
 
+        {showAnnotations && activeAnnotations.length > 0 && imageLayout.width > 0 && (
+          <FrameAnnotationOverlay
+            annotations={activeAnnotations}
+            containerWidth={imageLayout.width}
+            containerHeight={imageLayout.height}
+            imageUri={heroUri}
+            componentFeedback={analysis.components as Record<string, { score: number; feedback: string }>}
+          />
+        )}
 
         <Pressable
           style={[styles.backButton, { backgroundColor: colors.surface1 + "cc" }]}
@@ -141,6 +193,27 @@ export default function AnalysisScreen() {
         >
           <Feather name="arrow-left" size={20} color={colors.foreground} />
         </Pressable>
+
+        {allAnnotations.length > 0 && (
+          <Pressable
+            style={[
+              styles.annotationToggle,
+              {
+                backgroundColor: showAnnotations
+                  ? colors.primary + "cc"
+                  : colors.surface1 + "cc",
+              },
+            ]}
+            onPress={() => setShowAnnotations((v) => !v)}
+          >
+            <Feather
+              name={showAnnotations ? "eye" : "eye-off"}
+              size={17}
+              color={showAnnotations ? "#fff" : colors.mutedForeground}
+            />
+          </Pressable>
+        )}
+
         <View style={styles.imageOverlay}>
           <View style={[styles.scoreBadge, { backgroundColor: colors.surface1 + "ee" }]}>
             <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>{overallGrade}</Text>
@@ -158,6 +231,14 @@ export default function AnalysisScreen() {
             {(session.keyFrameUris ?? []).map((uri, i) => {
               const label = session.keyFrameLabels?.[i] ?? `Frame ${i + 1}`;
               const isActive = activeFrameIdx === i;
+              const frameSeverity = worstSeverityForFrame(i);
+              const severityBorderColor =
+                allAnnotations.length > 0 && frameSeverity
+                  ? severityToColor(frameSeverity)
+                  : null;
+              const borderColor = isActive
+                ? colors.primary
+                : severityBorderColor ?? colors.border;
               return (
                 <Pressable
                   key={i}
@@ -169,7 +250,7 @@ export default function AnalysisScreen() {
                 >
                   <View style={[
                     styles.frameThumb,
-                    { borderColor: isActive ? colors.primary : colors.border },
+                    { borderColor },
                   ]}>
                     <Image source={{ uri }} style={styles.frameThumbImg} />
                     {isActive && (
@@ -574,6 +655,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  annotationToggle: {
+    position: "absolute",
+    top: 50,
+    right: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },

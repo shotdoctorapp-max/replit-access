@@ -178,6 +178,8 @@ export default function HomeScreen() {
         bestFrameIndex: number;
         totalFrames: number;
         timestamp: string;
+        annotationDipFrame?: number;
+        annotationSetPointFrame?: number;
       };
 
       setBestFrameInfo({ index: data.bestFrameIndex, total: data.totalFrames });
@@ -203,17 +205,28 @@ export default function HomeScreen() {
       const totalFrames = data.totalFrames ?? thumbnailUris.length;
       const rhythm = data.rhythm;
       // Only 2 key frames: Dip and Set Point.
-      // Use rhythm indices only when they fall in a plausible range of the shot;
-      // otherwise fall back to fixed percentages so the frames are never swapped.
+      // The server returns annotationDipFrame and annotationSetPointFrame — the exact frame
+      // indices it used to generate annotation coordinates. When present, these are used as
+      // the primary source to ensure keyFrameUris[0/1] match the images the AI annotated.
+      // Fall back to rhythm-derived or fixed-percentage indices when server indices are absent.
       const dipIdx = (() => {
+        if (typeof data.annotationDipFrame === "number" &&
+            data.annotationDipFrame >= 0 &&
+            data.annotationDipFrame < totalFrames) {
+          return data.annotationDipFrame;
+        }
         const d = rhythm?.dipFrame;
-        // Dip must be in the first 45% of the shot
         if (d !== undefined && d >= 0 && d < totalFrames * 0.45) return d;
         return Math.floor(totalFrames * 0.25);
       })();
       const setPointIdx = (() => {
+        if (typeof data.annotationSetPointFrame === "number" &&
+            data.annotationSetPointFrame >= 0 &&
+            data.annotationSetPointFrame < totalFrames &&
+            data.annotationSetPointFrame !== dipIdx) {
+          return data.annotationSetPointFrame;
+        }
         const sp = rhythm?.ballRiseFrame;
-        // Set Point must be in the 40–80% window and after the dip
         if (sp !== undefined && sp > dipIdx && sp >= totalFrames * 0.4 && sp < totalFrames * 0.82) return sp;
         return Math.floor(totalFrames * 0.62);
       })();

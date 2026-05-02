@@ -93,6 +93,68 @@ router.post("/analyze-video", async (req, res) => {
 
     req.log.info({ bestFrameIndex }, "Running biomechanics + rhythm analysis in parallel");
 
+    // Estimate the two key frame positions used for annotations:
+    // frameIndex 0 = Dip (~25% through the sequence)
+    // frameIndex 1 = Set Point (~62% through the sequence)
+    const dipFrameIdx = Math.max(0, Math.floor(frames.length * 0.25));
+    const setPointFrameIdx = Math.min(frames.length - 1, Math.floor(frames.length * 0.62));
+
+    // Build user content: best frame for primary biomechanics analysis,
+    // then the two annotation key frames labeled by their frameIndex.
+    const biomechanicsUserContent: Array<
+      | { type: "image_url"; image_url: { url: string; detail: "high" | "low" } }
+      | { type: "text"; text: string }
+    > = [
+      {
+        type: "image_url",
+        image_url: {
+          url: `data:${mimeType};base64,${frames[bestFrameIndex]}`,
+          detail: "high",
+        },
+      },
+      {
+        type: "text",
+        text: "PRIMARY ANALYSIS FRAME (use for all 8 component scores and feedback): Analyze this basketball shooting form image extracted from a video at the optimal moment. Evaluate all 8 biomechanical components using the coaching framework provided. Pay close attention to: whether elbows are IN or flaring, guide hand placement (side only, not underneath), grip gap between ball and palm (no huge gap — controlled finger-pad grip), loaded wrist, 65° hand angle, right-eyebrow set point, ball not covering the face, pushing ball UP at release, wrist snap quality, arm staying high, eyes tracking ball post-release, and relaxed shoulders.",
+      },
+    ];
+
+    // Only include separate key frames if they differ from bestFrameIndex and from each other
+    if (dipFrameIdx !== bestFrameIndex) {
+      biomechanicsUserContent.push(
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${mimeType};base64,${frames[dipFrameIdx]}`,
+            detail: "low",
+          },
+        },
+        {
+          type: "text",
+          text: `ANNOTATION FRAME — frameIndex: 0 (Dip phase, ~${Math.round(dipFrameIdx / frames.length * 100)}% through shot). Use this frame's body part positions for all annotations with frameIndex: 0.`,
+        }
+      );
+    }
+    if (setPointFrameIdx !== bestFrameIndex && setPointFrameIdx !== dipFrameIdx) {
+      biomechanicsUserContent.push(
+        {
+          type: "image_url",
+          image_url: {
+            url: `data:${mimeType};base64,${frames[setPointFrameIdx]}`,
+            detail: "low",
+          },
+        },
+        {
+          type: "text",
+          text: `ANNOTATION FRAME — frameIndex: 1 (Set Point phase, ~${Math.round(setPointFrameIdx / frames.length * 100)}% through shot). Use this frame's body part positions for all annotations with frameIndex: 1. Place upper-body zone annotations (elbowPosition, gripPosition, setPoint, followThrough, eyeTracking) on this frame. Place lower-body zone annotations (stance, hipAlignment, balance) on frameIndex: 0.`,
+        }
+      );
+    }
+
+    biomechanicsUserContent.push({
+      type: "text",
+      text: "Return ONLY valid JSON as specified. For annotations, use the Dip frame (frameIndex 0) for lower-body zones and the Set Point frame (frameIndex 1) for upper-body zones. If only one distinct frame is available, use frameIndex 0 for all annotations.",
+    });
+
     // Step 2: biomechanics + rhythm in parallel
     const [analysisResponse, rhythmResponse] = await Promise.all([
       openai.chat.completions.create({
@@ -102,19 +164,7 @@ router.post("/analyze-video", async (req, res) => {
           { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },
           {
             role: "user",
-            content: [
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${frames[bestFrameIndex]}`,
-                  detail: "high",
-                },
-              },
-              {
-                type: "text",
-                text: "Analyze this basketball shooting form image extracted from a video at the optimal moment. Evaluate all 8 biomechanical components using the coaching framework provided. Pay close attention to: whether elbows are IN or flaring, guide hand placement (side only, not underneath), grip gap between ball and palm (no huge gap — controlled finger-pad grip), loaded wrist, 65° hand angle, right-eyebrow set point, ball not covering the face, pushing ball UP at release, wrist snap quality, arm staying high, eyes tracking ball post-release, and relaxed shoulders. Return ONLY valid JSON as specified.",
-              },
-            ],
+            content: biomechanicsUserContent,
           },
         ],
       }),
@@ -169,6 +219,8 @@ router.post("/analyze-video", async (req, res) => {
       bestFrameIndex,
       totalFrames: frames.length,
       timestamp: new Date().toISOString(),
+      annotationDipFrame: dipFrameIdx,
+      annotationSetPointFrame: setPointFrameIdx,
     });
   } catch (err) {
     req.log.error({ err }, "Error analyzing video frames");

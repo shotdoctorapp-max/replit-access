@@ -12,6 +12,15 @@ export interface ComponentScore {
   feedback: string;
 }
 
+export interface FrameAnnotation {
+  frameIndex: number;
+  zone: string;
+  x: number;
+  y: number;
+  severity: "good" | "warning" | "issue";
+  label: string;
+}
+
 export interface DrillRecommendation {
   name: string;
   description: string;
@@ -44,6 +53,7 @@ export interface AnalysisResult {
   keyStrengths: string[];
   priorityFixes: string[];
   drillRecommendations: DrillRecommendation[];
+  annotations?: FrameAnnotation[];
 }
 
 export interface Session {
