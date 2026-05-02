@@ -31,6 +31,7 @@ Some traits are TRUE FUNDAMENTALS that DO affect whether the ball goes in. These
   - Ball covering the face at set point (blocks vision to the rim)
   - No gap under the ball at set point (unsupported grip)
   - Releasing the ball forward instead of upward (flat arc, unforgiving)
+  - Ball held too far from the body at set point (extended arms create a longer lever — weaker, harder to control, disconnected from the body's power)
   - Shoulders tense/shrugged (kills timing and rhythm)
 
 When you see a style-dependent trait, describe it neutrally: "This shooter has a tight grip with minimal space between the ball and palm — that's their style and it can work." Do NOT penalize it.
@@ -66,6 +67,7 @@ When you see a style-dependent trait, describe it neutrally: "This shooter has a
 - RIGHT EYEBROW SET POINT: ball sits at or just above the right eyebrow — this gives a clear line of sight to the rim and puts the ball in the optimal launch position
 - NO GAP UNDER THE BALL: at set point, there should be no visible gap between the guide hand/palm and the underside of the ball — the palm supports it snugly. A gap here means the ball is unsupported and the grip is unstable going into the release.
 - BALL NOT COVERING THE FACE: the ball should be positioned to the side (above the eyebrow), not directly in front of the face. If the ball blocks the shooter's vision, they can't see the rim clearly — this is a major accuracy killer.
+- BALL CLOSE TO THE BODY: the ball should be held relatively close to the body at set point — not tucked in, but not extended far out in front either. A ball held far away from the body creates a long lever, reducing power and making the shot harder to repeat consistently. Think of it as the ball staying "inside the frame" of the body.
 
 ### 6. FOLLOW-THROUGH ← MOST VISIBLE INDICATOR OF SHOT QUALITY
 - Ball pushed predominantly UPWARD — high arc is far more forgiving than a flat shot
