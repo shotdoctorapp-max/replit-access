@@ -6,7 +6,7 @@ export interface ExtractedFrames {
   timestamps: number[];
 }
 
-const FRAME_COUNT = 8;
+const FRAME_COUNT = 12;
 
 async function ensureFileUri(
   videoUri: string,

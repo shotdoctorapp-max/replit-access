@@ -452,17 +452,25 @@ export default function HomeScreen() {
             styles.uploadBtn,
             {
               backgroundColor: colors.surface1,
-              borderColor: colors.border,
+              borderColor: colors.primary + "60",
               opacity: pressed || isAnalyzing ? 0.75 : 1,
             },
           ]}
           onPress={pickVideo}
           disabled={isAnalyzing}
         >
-          <Feather name="film" size={18} color={colors.mutedForeground} />
-          <Text style={[styles.uploadBtnText, { color: colors.mutedForeground }]}>
-            Upload from library
-          </Text>
+          <Feather name="upload" size={18} color={colors.primary} />
+          <View style={styles.uploadBtnInner}>
+            <Text style={[styles.uploadBtnText, { color: colors.foreground }]}>
+              Upload from library
+            </Text>
+            <Text style={[styles.uploadBtnSub, { color: colors.mutedForeground }]}>
+              Use slow-mo for best results
+            </Text>
+          </View>
+          <View style={[styles.recommendedBadge, { backgroundColor: colors.primary }]}>
+            <Text style={styles.recommendedText}>Recommended</Text>
+          </View>
         </Pressable>
       </View>
 
@@ -634,7 +642,7 @@ export default function HomeScreen() {
       visible={showTipsSheet}
       onConfirm={() => {
         setShowTipsSheet(false);
-        openCamera();
+        pickVideo();
       }}
       onDismiss={() => setShowTipsSheet(false)}
     />
@@ -761,15 +769,34 @@ const styles = StyleSheet.create({
   uploadBtn: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 13,
+    gap: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: 14,
-    borderWidth: 1,
+    borderWidth: 1.5,
+  },
+  uploadBtnInner: {
+    flex: 1,
   },
   uploadBtnText: {
     fontSize: 14,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Inter_600SemiBold",
+  },
+  uploadBtnSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+  recommendedBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  recommendedText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    color: "#000",
+    letterSpacing: 0.2,
   },
   videoAction: {
     flexDirection: "row",

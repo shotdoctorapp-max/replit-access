@@ -21,6 +21,26 @@ interface Props {
   onDismiss: () => void;
 }
 
+function SlowMoIcon({ color }: { color: string }) {
+  return (
+    <View style={diagramStyles.container}>
+      <View style={[diagramStyles.court, { borderColor: color + "40" }]}>
+        <View style={[diagramStyles.slowFrames]}>
+          <View style={[diagramStyles.slowFrame, { backgroundColor: color + "30", borderColor: color + "80" }]} />
+          <View style={[diagramStyles.slowFrame, { backgroundColor: color + "50", borderColor: color + "80" }]} />
+          <View style={[diagramStyles.slowFrame, { backgroundColor: color + "80", borderColor: color }]} />
+          <View style={[diagramStyles.slowFrame, { backgroundColor: color + "50", borderColor: color + "80" }]} />
+        </View>
+        <View style={diagramStyles.swipeRow}>
+          <View style={[diagramStyles.swipeArrowLeft, { borderRightColor: color }]} />
+          <Text style={[diagramStyles.slowLabel, { color: color }]}>SLO-MO</Text>
+          <View style={[diagramStyles.swipeArrowRight, { borderLeftColor: color }]} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function AngleIcon({ color }: { color: string }) {
   return (
     <View style={diagramStyles.container}>
@@ -129,8 +149,30 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
           Quick Filming Tips
         </Text>
         <Text style={[styles.subheading, { color: colors.mutedForeground }]}>
-          Two things that make a big difference in your analysis
+          Slow-mo gives 4× more frames for better AI accuracy
         </Text>
+
+        <View
+          style={[
+            styles.slowMoCard,
+            { backgroundColor: accentColor + "15", borderColor: accentColor + "50" },
+          ]}
+        >
+          <View style={styles.slowMoLeft}>
+            <View style={[styles.tipNumberBadge, { backgroundColor: accentColor }]}>
+              <Text style={styles.tipNumber}>1</Text>
+            </View>
+            <SlowMoIcon color={accentColor} />
+          </View>
+          <View style={styles.slowMoRight}>
+            <Text style={[styles.tipTitle, { color: colors.foreground }]}>
+              Record in Slow-Mo
+            </Text>
+            <Text style={[styles.tipBody, { color: colors.mutedForeground }]}>
+              iPhone: open Camera → swipe to Slo-Mo → record → upload from library
+            </Text>
+          </View>
+        </View>
 
         <View style={styles.tipsRow}>
           <View
@@ -139,6 +181,9 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
               { backgroundColor: colors.surface3, borderColor: colors.border },
             ]}
           >
+            <View style={[styles.tipNumberBadge, { backgroundColor: colors.border }]}>
+              <Text style={[styles.tipNumber, { color: colors.mutedForeground }]}>2</Text>
+            </View>
             <AngleIcon color={accentColor} />
             <Text style={[styles.tipTitle, { color: colors.foreground }]}>
               Side / Profile View
@@ -154,6 +199,9 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
               { backgroundColor: colors.surface3, borderColor: colors.border },
             ]}
           >
+            <View style={[styles.tipNumberBadge, { backgroundColor: colors.border }]}>
+              <Text style={[styles.tipNumber, { color: colors.mutedForeground }]}>3</Text>
+            </View>
             <DistanceIcon color={accentColor} />
             <Text style={[styles.tipTitle, { color: colors.foreground }]}>
               Full Body in Frame
@@ -174,9 +222,9 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
           ]}
           onPress={handleConfirm}
         >
-          <Feather name="video" size={18} color="#000" />
+          <Feather name="upload" size={18} color="#000" />
           <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>
-            Got it — Start Recording
+            Got it — Upload Slow-Mo Video
           </Text>
         </Pressable>
 
@@ -231,17 +279,62 @@ const diagramStyles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   court: {
-    width: 72,
-    height: 72,
+    width: 64,
+    height: 64,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
     overflow: "hidden",
+  },
+  slowFrames: {
+    flexDirection: "row",
+    gap: 3,
+    alignItems: "flex-end",
+    paddingHorizontal: 6,
+    paddingBottom: 20,
+  },
+  slowFrame: {
+    width: 10,
+    borderRadius: 2,
+    borderWidth: 1,
+  },
+  swipeRow: {
+    position: "absolute",
+    bottom: 5,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+  },
+  swipeArrowLeft: {
+    width: 0,
+    height: 0,
+    borderTopWidth: 4,
+    borderBottomWidth: 4,
+    borderRightWidth: 5,
+    borderTopColor: "transparent",
+    borderBottomColor: "transparent",
+  },
+  swipeArrowRight: {
+    width: 0,
+    height: 0,
+    borderTopWidth: 4,
+    borderBottomWidth: 4,
+    borderLeftWidth: 5,
+    borderTopColor: "transparent",
+    borderBottomColor: "transparent",
+  },
+  slowLabel: {
+    fontSize: 6,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
   },
   hoop: {
     position: "absolute",
@@ -372,25 +465,55 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 19,
-    marginBottom: 22,
+    marginBottom: 16,
+  },
+  slowMoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 14,
+    marginBottom: 12,
+    gap: 14,
+  },
+  slowMoLeft: {
+    alignItems: "center",
+    gap: 6,
+  },
+  slowMoRight: {
+    flex: 1,
+  },
+  tipNumberBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+    alignSelf: "center",
+  },
+  tipNumber: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    color: "#000",
   },
   tipsRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   tipCard: {
     flex: 1,
     borderRadius: 16,
     borderWidth: 1,
-    padding: 14,
+    padding: 12,
     alignItems: "center",
   },
   tipTitle: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   tipBody: {
     fontSize: 11,
