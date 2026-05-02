@@ -80,6 +80,9 @@ export default function SignUpScreen() {
         <Pressable onPress={() => signUp.verifications.sendEmailCode()} style={styles.linkBtn}>
           <Text style={styles.linkText}>Resend code</Text>
         </Pressable>
+        <Pressable onPress={() => signUp.reset()} style={styles.linkBtn}>
+          <Text style={[styles.linkText, { color: MUTED }]}>Back to Sign In</Text>
+        </Pressable>
         <View nativeID="clerk-captcha" />
       </View>
     );
