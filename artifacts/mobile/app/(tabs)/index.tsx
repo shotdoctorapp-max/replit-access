@@ -28,6 +28,7 @@ import { useShots } from "@/context/ShotsContext";
 import type { AnalysisResult, Session } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
 import { extractFrames } from "@/utils/videoFrames";
+import { FilmingTipsSheet, shouldShowFilmingTips } from "@/components/FilmingTipsSheet";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -72,6 +73,7 @@ export default function HomeScreen() {
     index: number;
     total: number;
   } | null>(null);
+  const [showTipsSheet, setShowTipsSheet] = useState(false);
 
   const isAnalyzing = stage !== "idle";
   const recentSessions = sessions.slice(0, 3);
@@ -92,8 +94,7 @@ export default function HomeScreen() {
     return true;
   };
 
-  const recordVideo = async () => {
-    if (!checkShotsOrPaywall()) return;
+  const openCamera = async () => {
     if (Platform.OS === "web") {
       Alert.alert(
         "Mobile Only",
@@ -118,6 +119,16 @@ export default function HomeScreen() {
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       await analyzeVideo(asset.uri, asset.duration ?? undefined);
+    }
+  };
+
+  const recordVideo = async () => {
+    if (!checkShotsOrPaywall()) return;
+    const show = await shouldShowFilmingTips();
+    if (show) {
+      setShowTipsSheet(true);
+    } else {
+      await openCamera();
     }
   };
 
@@ -287,6 +298,7 @@ export default function HomeScreen() {
   };
 
   return (
+    <>
     <ScrollView
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={[
@@ -608,6 +620,16 @@ export default function HomeScreen() {
         </View>
       )}
     </ScrollView>
+
+    <FilmingTipsSheet
+      visible={showTipsSheet}
+      onConfirm={() => {
+        setShowTipsSheet(false);
+        openCamera();
+      }}
+      onDismiss={() => setShowTipsSheet(false)}
+    />
+    </>
   );
 }
 
