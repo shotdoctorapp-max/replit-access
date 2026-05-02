@@ -30,7 +30,7 @@ router.post("/analyze", async (req, res) => {
             },
             {
               type: "text",
-              text: "Analyze this basketball shooting form image. Evaluate all 8 biomechanical components using the coaching framework provided. Pay close attention to: loaded wrist, 65° hand angle, right-eyebrow set point, ball not covering the face, elbows in and relaxed, pushing ball UP at release, wrist snap quality, arm staying high, eyes tracking ball post-release, and relaxed shoulders. Return ONLY valid JSON as specified.",
+              text: "Analyze this basketball shooting form image. Evaluate all 8 biomechanical components using the coaching framework provided. Pay close attention to: whether elbows are IN or flaring, guide hand placement (side only, not underneath), grip gap between ball and palm (no huge gap), loaded wrist, 65° hand angle, right-eyebrow set point, ball not covering the face, pushing ball UP at release, wrist snap quality, arm staying high, eyes tracking ball post-release, and relaxed shoulders. Return ONLY valid JSON as specified.",
             },
           ],
         },
