@@ -29,6 +29,30 @@ const COMPONENT_LABELS: Record<string, string> = {
   eyeTracking: "Eye Tracking",
 };
 
+// Normalized positions [left%, top%] for a right-handed shooter centered in frame
+// Values tuned for a typical basketball shooting analysis shot
+const ZONE_POSITIONS: Record<string, { left: number; top: number; anchor: "left" | "right" }> = {
+  eyeTracking:   { left: 0.52, top: 0.12, anchor: "right" },
+  setPoint:      { left: 0.62, top: 0.24, anchor: "right" },
+  gripPosition:  { left: 0.60, top: 0.32, anchor: "right" },
+  elbowPosition: { left: 0.64, top: 0.42, anchor: "right" },
+  followThrough: { left: 0.65, top: 0.20, anchor: "right" },
+  hipAlignment:  { left: 0.50, top: 0.60, anchor: "left"  },
+  balance:       { left: 0.50, top: 0.73, anchor: "left"  },
+  stance:        { left: 0.48, top: 0.87, anchor: "left"  },
+};
+
+const ZONE_SHORT: Record<string, string> = {
+  eyeTracking:   "Eyes",
+  setPoint:      "Set Point",
+  gripPosition:  "Grip",
+  elbowPosition: "Elbow",
+  followThrough: "Release",
+  hipAlignment:  "Hips",
+  balance:       "Balance",
+  stance:        "Stance",
+};
+
 const BODY_ZONES = [
   { key: "eyeTracking",    label: "Eye Tracking",  icon: "eye-outline" },
   { key: "setPoint",       label: "Set Point",     icon: "target" },
@@ -187,6 +211,39 @@ export default function AnalysisScreen() {
     >
       <View style={styles.imageContainer}>
         <Image source={{ uri: heroUri }} style={styles.heroImage} />
+
+        {/* Body zone annotation markers — shown for zones scoring below 75 */}
+        {Object.entries(analysis.components ?? {}).map(([key, comp]) => {
+          const pos = ZONE_POSITIONS[key];
+          if (!pos || !comp || comp.score >= 75) return null;
+          const markerColor = gradeColor(comp.score, colors);
+          const label = ZONE_SHORT[key] ?? key;
+          const isRight = pos.anchor === "right";
+          return (
+            <View
+              key={key}
+              style={[
+                styles.annotationMarker,
+                { left: `${pos.left * 100}%`, top: `${pos.top * 100}%` },
+              ]}
+              pointerEvents="none"
+            >
+              {/* Dot */}
+              <View style={[styles.annotationDot, { backgroundColor: markerColor, shadowColor: markerColor }]} />
+              {/* Label tag */}
+              <View
+                style={[
+                  styles.annotationTag,
+                  isRight ? styles.annotationTagRight : styles.annotationTagLeft,
+                  { backgroundColor: markerColor + "ee" },
+                ]}
+              >
+                <Text style={styles.annotationTagText}>{label}</Text>
+              </View>
+            </View>
+          );
+        })}
+
         <Pressable
           style={[styles.backButton, { backgroundColor: colors.surface1 + "cc" }]}
           onPress={() => router.back()}
@@ -459,6 +516,41 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.5,
     textTransform: "uppercase",
+  },
+  annotationMarker: {
+    position: "absolute",
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+  },
+  annotationDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: "#fff",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  annotationTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  annotationTagRight: {
+    marginLeft: 2,
+  },
+  annotationTagLeft: {
+    marginRight: 2,
+    order: -1,
+  },
+  annotationTagText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+    letterSpacing: 0.3,
   },
   backButton: {
     position: "absolute",
