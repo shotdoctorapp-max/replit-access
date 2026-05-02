@@ -1,43 +1,8 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { BIOMECHANICS_SYSTEM_PROMPT } from "../lib/prompts";
 
 const router = Router();
-
-const BIOMECHANICS_SYSTEM_PROMPT = `You are an elite basketball shooting form analyst and biomechanics expert. Your role is to analyze basketball shooting mechanics from images with the precision of a professional coach.
-
-When analyzing a shooting form image, evaluate these biomechanical components:
-
-1. **Stance & Base**: Feet positioning, shoulder-width stance, dominant foot alignment
-2. **Hip & Core Alignment**: Hip position, core engagement, weight distribution
-3. **Elbow Position**: Shooting elbow alignment under the ball (90° ideal), guide hand position
-4. **Grip & Hand Position**: Ball placement in fingers vs palm, guide hand placement
-5. **Set Point**: Ball release position relative to head, consistency of starting position
-6. **Arm Extension**: Full arm extension at release, wrist snap, follow-through
-7. **Body Balance**: Overall balance throughout the motion, jump alignment (if jump shot)
-8. **Head & Eye Tracking**: Head stillness, eye contact with target
-
-Respond ONLY with valid JSON in exactly this format:
-{
-  "overallScore": <0-100 integer>,
-  "summary": "<2-3 sentence expert summary of the shooter's form>",
-  "components": {
-    "stance": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "hipAlignment": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "elbowPosition": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "gripPosition": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "setPoint": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "followThrough": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "balance": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "eyeTracking": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" }
-  },
-  "keyStrengths": ["<strength 1>", "<strength 2>"],
-  "priorityFixes": ["<fix 1>", "<fix 2>", "<fix 3>"],
-  "drillRecommendations": [
-    { "name": "<drill name>", "description": "<30-word description>", "targetArea": "<component it improves>" },
-    { "name": "<drill name>", "description": "<30-word description>", "targetArea": "<component it improves>" },
-    { "name": "<drill name>", "description": "<30-word description>", "targetArea": "<component it improves>" }
-  ]
-}`;
 
 router.post("/analyze", async (req, res) => {
   try {
@@ -52,10 +17,7 @@ router.post("/analyze", async (req, res) => {
       model: "gpt-5.4",
       max_completion_tokens: 2048,
       messages: [
-        {
-          role: "system",
-          content: BIOMECHANICS_SYSTEM_PROMPT,
-        },
+        { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },
         {
           role: "user",
           content: [
@@ -68,7 +30,7 @@ router.post("/analyze", async (req, res) => {
             },
             {
               type: "text",
-              text: "Analyze this basketball shooting form image. Evaluate all biomechanical components and provide detailed expert feedback. Return ONLY valid JSON as specified.",
+              text: "Analyze this basketball shooting form image. Evaluate all 8 biomechanical components using the coaching framework provided. Pay close attention to: loaded wrist, 65° hand angle, right-eyebrow set point, ball not covering the face, elbows in and relaxed, pushing ball UP at release, wrist snap quality, arm staying high, eyes tracking ball post-release, and relaxed shoulders. Return ONLY valid JSON as specified.",
             },
           ],
         },

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { BIOMECHANICS_SYSTEM_PROMPT, RHYTHM_SYSTEM_PROMPT } from "../lib/prompts";
 
 const router = Router();
 
@@ -9,74 +10,11 @@ Your task: identify which single frame number best captures the shooting mechani
 
 The ideal frame shows:
 - The shooter at or near their release point (arm fully extended, wrist snapped)
-- OR the set point (ball at release position above forehead)
+- OR the set point (ball at right-eyebrow height, face/vision clear)
 - Clear full-body visibility
 - Minimal motion blur
 
 Respond with ONLY a JSON object: { "bestFrameIndex": <0-based index>, "reason": "<10-word explanation>" }`;
-
-const BIOMECHANICS_SYSTEM_PROMPT = `You are an elite basketball shooting form analyst and biomechanics expert. Your role is to analyze basketball shooting mechanics from images with the precision of a professional coach.
-
-When analyzing a shooting form image, evaluate these biomechanical components:
-
-1. **Stance & Base**: Feet positioning, shoulder-width stance, dominant foot alignment
-2. **Hip & Core Alignment**: Hip position, core engagement, weight distribution
-3. **Elbow Position**: Shooting elbow alignment under the ball (90° ideal), guide hand position
-4. **Grip & Hand Position**: Ball placement in fingers vs palm, guide hand placement
-5. **Set Point**: Ball release position relative to head, consistency of starting position
-6. **Arm Extension**: Full arm extension at release, wrist snap, follow-through
-7. **Body Balance**: Overall balance throughout the motion, jump alignment (if jump shot)
-8. **Head & Eye Tracking**: Head stillness, eye contact with target
-
-Respond ONLY with valid JSON in exactly this format:
-{
-  "overallScore": <0-100 integer>,
-  "summary": "<2-3 sentence expert summary of the shooter's form>",
-  "components": {
-    "stance": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "hipAlignment": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "elbowPosition": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "gripPosition": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "setPoint": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "followThrough": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "balance": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" },
-    "eyeTracking": { "score": <0-100>, "feedback": "<specific observation and improvement tip>" }
-  },
-  "keyStrengths": ["<strength 1>", "<strength 2>"],
-  "priorityFixes": ["<fix 1>", "<fix 2>", "<fix 3>"],
-  "drillRecommendations": [
-    { "name": "<drill name>", "description": "<30-word description>", "targetArea": "<component it improves>" },
-    { "name": "<drill name>", "description": "<30-word description>", "targetArea": "<component it improves>" },
-    { "name": "<drill name>", "description": "<30-word description>", "targetArea": "<component it improves>" }
-  ]
-}`;
-
-const RHYTHM_SYSTEM_PROMPT = `You are a basketball shooting mechanics expert specializing in temporal motion analysis and kinetic chain sequencing.
-
-You will receive sequential frames from a basketball shooting video, each labeled with its timestamp in milliseconds.
-
-Analyze the MOTION SEQUENCE across all frames. Identify:
-1. ballRiseFrame: The frame index where the ball clearly begins its upward rise toward the release point
-2. bodyRiseFrame: The frame index where the legs/hips begin their upward drive (the "dip" ends and the body starts extending)
-3. armExtendFrame: The frame index where the shooting arm begins extending toward full extension/release
-
-Then classify the sequencing pattern:
-- "ball-first": Ball rises BEFORE the legs/hips drive — arm-dependent, disconnected from the body's power
-- "body-first": Legs/hips rise BEFORE the ball — correct kinetic chain, power flows from ground up
-- "synchronized": Body and ball rise together in one fluid motion — ideal for set shots and catch-and-shoot
-- "unknown": Cannot determine clearly from the provided frames
-
-Provide 2-3 specific observations about the timing and how to improve it.
-
-Respond ONLY with valid JSON:
-{
-  "pattern": "ball-first" | "body-first" | "synchronized" | "unknown",
-  "ballRiseFrame": <0-based index or -1 if unclear>,
-  "bodyRiseFrame": <0-based index or -1 if unclear>,
-  "armExtendFrame": <0-based index or -1 if unclear>,
-  "rhythmScore": <0-100 integer, 100 = perfect kinetic chain>,
-  "observations": ["<timing observation 1>", "<timing observation 2>", "<timing observation 3>"]
-}`;
 
 router.post("/analyze-video", async (req, res) => {
   try {
@@ -98,20 +36,17 @@ router.post("/analyze-video", async (req, res) => {
 
     req.log.info({ frameCount: frames.length }, "Selecting best frame from video");
 
-    // Build labeled frame messages for multi-frame prompts
-    const labeledFrameMessages = frames.map((b64, i) => {
+    // Build labeled frame messages for the rhythm multi-frame prompt
+    const labeledFrameMessages = frames.flatMap((b64, i) => {
       const ms = timestamps?.[i] ?? i * 200;
       return [
         {
           type: "image_url" as const,
           image_url: { url: `data:${mimeType};base64,${b64}`, detail: "low" as const },
         },
-        {
-          type: "text" as const,
-          text: `Frame ${i} @ ${ms}ms`,
-        },
+        { type: "text" as const, text: `Frame ${i} @ ${ms}ms` },
       ];
-    }).flat();
+    });
 
     // Step 1: select best frame
     let bestFrameIndex = 0;
@@ -124,7 +59,7 @@ router.post("/analyze-video", async (req, res) => {
           {
             role: "user",
             content: [
-              ...frames.map((b64, i) => ({
+              ...frames.map((b64) => ({
                 type: "image_url" as const,
                 image_url: { url: `data:${mimeType};base64,${b64}`, detail: "low" as const },
               })),
@@ -177,7 +112,7 @@ router.post("/analyze-video", async (req, res) => {
               },
               {
                 type: "text",
-                text: "Analyze this basketball shooting form image extracted from a video at the optimal moment. Evaluate all biomechanical components and provide detailed expert feedback. Return ONLY valid JSON as specified.",
+                text: "Analyze this basketball shooting form image extracted from a video at the optimal moment. Evaluate all 8 biomechanical components using the coaching framework provided. Pay close attention to: loaded wrist, 65° hand angle, right-eyebrow set point, ball not covering the face, elbows in and relaxed, pushing ball UP at release, wrist snap quality, arm staying high, eyes tracking ball post-release, and relaxed shoulders. Return ONLY valid JSON as specified.",
               },
             ],
           },
@@ -195,7 +130,7 @@ router.post("/analyze-video", async (req, res) => {
                   ...labeledFrameMessages,
                   {
                     type: "text",
-                    text: `These are ${frames.length} sequential frames from a basketball shooting video${timestamps ? ` spanning ${timestamps[timestamps.length - 1]}ms` : ""}. Analyze the temporal motion sequence to determine the shot rhythm pattern. Return ONLY valid JSON.`,
+                    text: `These are ${frames.length} sequential frames from a basketball shooting video${timestamps ? ` spanning ${timestamps[timestamps.length - 1]}ms` : ""}. Analyze the temporal motion sequence to determine the shot rhythm pattern. Look specifically for: when does the body/legs drive up vs when does the ball rise (body-first = good kinetic chain). Return ONLY valid JSON.`,
                   },
                 ],
               },

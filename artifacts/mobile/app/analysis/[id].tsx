@@ -33,7 +33,7 @@ const BODY_ZONES = [
   { key: "eyeTracking",    label: "Eye Tracking",  icon: "eye-outline" },
   { key: "setPoint",       label: "Set Point",     icon: "target" },
   { key: "elbowPosition",  label: "Elbow",         icon: "arm-flex" },
-  { key: "gripPosition",   label: "Grip & Hand",   icon: "hand-right" },
+  { key: "gripPosition",   label: "Grip & Hand",   icon: "gesture-tap" },
   { key: "followThrough",  label: "Follow-Thru",   icon: "arrow-up-bold-outline" },
   { key: "hipAlignment",   label: "Hip Alignment", icon: "human" },
   { key: "balance",        label: "Balance",       icon: "scale-balance" },
