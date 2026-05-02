@@ -1,17 +1,21 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import React, { useMemo, useState, useCallback } from "react";
 import {
+  Alert,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useSessions } from "@/context/SessionContext";
 import { DrillCard } from "@/components/DrillCard";
 import type { DrillRecommendation } from "@/context/SessionContext";
+import { isFilmingTipsSuppressed, resetFilmingTips } from "@/components/FilmingTipsSheet";
 
 const DEFAULT_DRILLS: DrillRecommendation[] = [
   {
@@ -73,6 +77,23 @@ export default function TipsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { sessions } = useSessions();
+  const [tipsHidden, setTipsHidden] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      isFilmingTipsSuppressed().then((suppressed) => {
+        if (active) setTipsHidden(suppressed);
+      });
+      return () => { active = false; };
+    }, [])
+  );
+
+  const handleResetFilmingTips = async () => {
+    await resetFilmingTips();
+    setTipsHidden(false);
+    Alert.alert("Filming Tips Re-enabled", "You'll see the filming tips next time you record a shot.");
+  };
 
   const personalizedDrills = useMemo(() => {
     if (sessions.length === 0) return DEFAULT_DRILLS;
@@ -159,6 +180,43 @@ export default function TipsScreen() {
           </View>
         </View>
       ))}
+
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginTop: 8 }]}>
+        PREFERENCES
+      </Text>
+      <View style={[styles.prefCard, { backgroundColor: colors.surface1, borderColor: colors.border }]}>
+        <View style={styles.prefRow}>
+          <View style={[styles.prefIconWrap, { backgroundColor: colors.primary + "20" }]}>
+            <Feather name="video" size={18} color={colors.primary} />
+          </View>
+          <View style={styles.prefText}>
+            <Text style={[styles.prefTitle, { color: colors.foreground }]}>Filming Tips</Text>
+            <Text style={[styles.prefSubtitle, { color: colors.mutedForeground }]}>
+              {tipsHidden
+                ? "Hidden — shown before recording"
+                : "Shown before each recording"}
+            </Text>
+          </View>
+          {tipsHidden ? (
+            <Pressable
+              style={({ pressed }) => [
+                styles.prefButton,
+                { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1 },
+              ]}
+              onPress={handleResetFilmingTips}
+            >
+              <Text style={[styles.prefButtonText, { color: colors.primaryForeground }]}>
+                Re-enable
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={[styles.prefBadge, { backgroundColor: colors.success + "20" }]}>
+              <Feather name="check" size={12} color={colors.success} />
+              <Text style={[styles.prefBadgeText, { color: colors.success }]}>On</Text>
+            </View>
+          )}
+        </View>
+      </View>
     </ScrollView>
   );
 }
@@ -229,5 +287,58 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     lineHeight: 18,
+  },
+  prefCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 10,
+  },
+  prefRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  prefIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  prefText: {
+    flex: 1,
+  },
+  prefTitle: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 2,
+  },
+  prefSubtitle: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+  },
+  prefButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  prefButtonText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  prefBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  prefBadgeText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
 });

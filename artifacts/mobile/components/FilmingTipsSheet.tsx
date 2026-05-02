@@ -214,6 +214,19 @@ export async function shouldShowFilmingTips(): Promise<boolean> {
   }
 }
 
+export async function isFilmingTipsSuppressed(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(DONT_SHOW_KEY);
+    return val === "true";
+  } catch {
+    return false;
+  }
+}
+
+export async function resetFilmingTips(): Promise<void> {
+  await AsyncStorage.removeItem(DONT_SHOW_KEY);
+}
+
 const diagramStyles = StyleSheet.create({
   container: {
     alignItems: "center",
