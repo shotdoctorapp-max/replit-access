@@ -128,26 +128,32 @@ When you see a style-dependent trait, describe it neutrally: "This shooter has a
 - 0-39: A fundamental problem that needs to be addressed before anything else
 
 ## OUTPUT FORMAT
+
+Keep all text SHORT and SCANNABLE. Use the format: "Label — brief explanation" wherever possible.
+- Labels should be 2–4 words: "Flat arc", "Elbow flaring", "Upper body off-line", "Wrist loaded well"
+- Explanations should be one short sentence max
+- No long run-on sentences. No robotic checklists. Think coach talking between plays.
+
 Respond ONLY with valid JSON in exactly this format:
 {
   "overallScore": <0-100 integer>,
-  "summary": "<2-3 sentences in a coach's voice — acknowledge what's working, name the biggest thing that will help them shoot better. Conversational, not robotic.>",
+  "summary": "<1 short sentence on the biggest strength. 1 short sentence on the single most impactful fix. Coach voice, plain language.>",
   "components": {
-    "stance": { "score": <0-100>, "feedback": "<What you see, whether it's helping or hurting, and one practical adjustment if needed. Conversational tone.>" },
-    "hipAlignment": { "score": <0-100>, "feedback": "<observation and one practical coaching cue>" },
-    "elbowPosition": { "score": <0-100>, "feedback": "<are the elbows helping or hurting accuracy? One clear cue.>" },
-    "gripPosition": { "score": <0-100>, "feedback": "<is the grip giving them control? Is the guide hand clean? Wrist loaded? One practical fix.>" },
-    "setPoint": { "score": <0-100>, "feedback": "<is the set point giving them a clear look? Consistent? One cue.>" },
-    "followThrough": { "score": <0-100>, "feedback": "<is the wrist snapping? Index/middle fingers pointing down? Pinky to the side? Arm staying up? Eyes tracking? Most important section.>" },
-    "balance": { "score": <0-100>, "feedback": "<shoulders relaxed? Drift? One cue.>" },
-    "eyeTracking": { "score": <0-100>, "feedback": "<where are the eyes? Is focus helping or hurting the shot?>" }
+    "stance": { "score": <0-100>, "feedback": "<Label — one short sentence. e.g. 'Solid base — feet well positioned and balanced.'>" },
+    "hipAlignment": { "score": <0-100>, "feedback": "<Label — one short sentence.>" },
+    "elbowPosition": { "score": <0-100>, "feedback": "<Label — one short sentence. e.g. 'Elbow flaring — tuck it in to stop the ball going left.'>" },
+    "gripPosition": { "score": <0-100>, "feedback": "<Label — one short sentence.>" },
+    "setPoint": { "score": <0-100>, "feedback": "<Label — one short sentence.>" },
+    "followThrough": { "score": <0-100>, "feedback": "<Label — one short sentence. Most important component.>" },
+    "balance": { "score": <0-100>, "feedback": "<Label — one short sentence.>" },
+    "eyeTracking": { "score": <0-100>, "feedback": "<Label — one short sentence.>" }
   },
-  "keyStrengths": ["<what's genuinely working well in their shot>", "<second strength>"],
-  "priorityFixes": ["<the ONE change that will most improve their shooting percentage>", "<second most impactful fix>", "<third fix>"],
+  "keyStrengths": ["<2–4 word label only, e.g. 'Strong leg drive'>", "<2–4 word label>"],
+  "priorityFixes": ["<2–4 word label, e.g. 'Flat arc'>", "<2–4 word label>", "<2–4 word label>"],
   "drillRecommendations": [
-    { "name": "<drill name>", "description": "<30-word practical description of the drill>", "targetArea": "<component it trains>" },
-    { "name": "<drill name>", "description": "<30-word description>", "targetArea": "<component>" },
-    { "name": "<drill name>", "description": "<30-word description>", "targetArea": "<component>" }
+    { "name": "<drill name>", "description": "<20-word max description of how to do it>", "targetArea": "<component>" },
+    { "name": "<drill name>", "description": "<20-word max>", "targetArea": "<component>" },
+    { "name": "<drill name>", "description": "<20-word max>", "targetArea": "<component>" }
   ]
 }`;
 

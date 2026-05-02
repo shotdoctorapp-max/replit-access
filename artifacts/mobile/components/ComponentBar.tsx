@@ -17,11 +17,25 @@ interface ComponentBarProps {
   delay?: number;
 }
 
+function LabeledFeedback({ text, color }: { text: string; color: string }) {
+  const parts = text.split(/\s*—\s*/);
+  if (parts.length >= 2) {
+    return (
+      <Text style={[styles.bulletText, { color }]}>
+        <Text style={styles.bulletLabel}>{parts[0]}</Text>
+        {" — "}
+        <Text>{parts.slice(1).join(" — ")}</Text>
+      </Text>
+    );
+  }
+  return <Text style={[styles.bulletText, { color }]}>{text}</Text>;
+}
+
 function parseBullets(text: string): string[] {
   return text
     .split(/(?<=\.)\s+/)
     .map((s) => s.replace(/\.$/, "").trim())
-    .filter((s) => s.length > 4);
+    .filter((s) => s.length > 2);
 }
 
 export function ComponentBar({ label, score, feedback, delay = 0 }: ComponentBarProps) {
@@ -64,7 +78,7 @@ export function ComponentBar({ label, score, feedback, delay = 0 }: ComponentBar
               color={barColor}
               style={styles.bulletIcon}
             />
-            <Text style={[styles.bulletText, { color: colors.foreground }]}>{point}</Text>
+            <LabeledFeedback text={point} color={colors.foreground} />
           </View>
         ))}
       </View>
@@ -120,6 +134,10 @@ const styles = StyleSheet.create({
   bulletIcon: {
     marginTop: 1,
     flexShrink: 0,
+  },
+  bulletLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
   },
   bulletText: {
     fontSize: 13,

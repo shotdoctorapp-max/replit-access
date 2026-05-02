@@ -227,12 +227,23 @@ export default function AnalysisScreen() {
             .split(/(?<=\.)\s+/)
             .map((s) => s.replace(/\.$/, "").trim())
             .filter((s) => s.length > 4)
-            .map((point, i) => (
-              <View key={i} style={styles.summaryBulletRow}>
-                <View style={[styles.summaryDot, { backgroundColor: scoreColor }]} />
-                <Text style={[styles.summaryBulletText, { color: colors.foreground }]}>{point}</Text>
-              </View>
-            ))}
+            .map((point, i) => {
+              const parts = point.split(/\s*—\s*/);
+              return (
+                <View key={i} style={styles.summaryBulletRow}>
+                  <View style={[styles.summaryDot, { backgroundColor: scoreColor }]} />
+                  {parts.length >= 2 ? (
+                    <Text style={[styles.summaryBulletText, { color: colors.foreground }]}>
+                      <Text style={styles.summaryBulletLabel}>{parts[0]}</Text>
+                      {" — "}
+                      <Text>{parts.slice(1).join(" — ")}</Text>
+                    </Text>
+                  ) : (
+                    <Text style={[styles.summaryBulletText, { color: colors.foreground }]}>{point}</Text>
+                  )}
+                </View>
+              );
+            })}
         </View>
 
         <View style={styles.section}>
@@ -446,6 +457,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginTop: 7,
     flexShrink: 0,
+  },
+  summaryBulletLabel: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
   },
   summaryBulletText: {
     fontSize: 14,
