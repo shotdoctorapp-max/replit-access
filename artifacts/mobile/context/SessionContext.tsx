@@ -55,6 +55,8 @@ export interface Session {
   isVideo?: boolean;
   bestFrameIndex?: number;
   totalFrames?: number;
+  keyFrameUris?: string[];
+  keyFrameLabels?: string[];
 }
 
 interface SessionContextValue {

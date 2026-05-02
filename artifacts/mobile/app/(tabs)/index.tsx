@@ -206,22 +206,69 @@ export default function HomeScreen() {
       setBestFrameInfo({ index: data.bestFrameIndex, total: data.totalFrames });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
+      const FileSystem = await import("expo-file-system/legacy");
+      const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+
       // Save the best frame thumbnail as a stable file for the analysis screen
       let capturedFrameUri = videoUri;
       const bestThumbUri = thumbnailUris[data.bestFrameIndex] ?? thumbnailUris[0];
       if (bestThumbUri) {
         try {
-          const FileSystem = await import("expo-file-system/legacy");
-          const destUri = `${FileSystem.cacheDirectory}shotdoc_frame_${Date.now()}.jpg`;
+          const destUri = `${FileSystem.cacheDirectory}shotdoc_frame_${sessionId}_best.jpg`;
           await FileSystem.copyAsync({ from: bestThumbUri, to: destUri });
           capturedFrameUri = destUri;
         } catch {
-          // fall back to videoUri, image will not display but app won't crash
+          // fall back to videoUri
+        }
+      }
+
+      // Select key frames that show the progression of the shot
+      const totalFrames = data.totalFrames ?? thumbnailUris.length;
+      const rhythm = data.rhythm;
+      const candidateFrames: { index: number; label: string }[] = [
+        { index: 0, label: "Load" },
+        ...(rhythm?.dipFrame !== undefined && rhythm.dipFrame > 0
+          ? [{ index: rhythm.dipFrame, label: "Dip" }]
+          : rhythm?.bodyRiseFrame !== undefined && rhythm.bodyRiseFrame > 0
+          ? [{ index: rhythm.bodyRiseFrame, label: "Dip" }]
+          : [{ index: Math.floor(totalFrames * 0.25), label: "Dip" }]),
+        ...(rhythm?.ballRiseFrame !== undefined && rhythm.ballRiseFrame >= 0
+          ? [{ index: rhythm.ballRiseFrame, label: "Set Point" }]
+          : [{ index: Math.floor(totalFrames * 0.5), label: "Set Point" }]),
+        { index: data.bestFrameIndex, label: "Release" },
+        ...(rhythm?.armExtendFrame !== undefined && rhythm.armExtendFrame >= 0 && rhythm.armExtendFrame !== data.bestFrameIndex
+          ? [{ index: rhythm.armExtendFrame, label: "Follow-Thru" }]
+          : totalFrames - 1 !== data.bestFrameIndex
+          ? [{ index: totalFrames - 1, label: "Follow-Thru" }]
+          : []),
+      ];
+
+      // Deduplicate by index, clamp to valid range, keep order
+      const seen = new Set<number>();
+      const keyFrameEntries = candidateFrames
+        .map((f) => ({ ...f, index: Math.max(0, Math.min(f.index, totalFrames - 1)) }))
+        .filter((f) => thumbnailUris[f.index] && !seen.has(f.index) && seen.add(f.index))
+        .slice(0, 5);
+
+      // Copy key frame thumbnails to stable cache paths
+      const keyFrameUris: string[] = [];
+      const keyFrameLabels: string[] = [];
+      for (let i = 0; i < keyFrameEntries.length; i++) {
+        const { index, label } = keyFrameEntries[i];
+        const src = thumbnailUris[index];
+        if (!src) continue;
+        try {
+          const dest = `${FileSystem.cacheDirectory}shotdoc_frame_${sessionId}_kf${i}.jpg`;
+          await FileSystem.copyAsync({ from: src, to: dest });
+          keyFrameUris.push(dest);
+          keyFrameLabels.push(label);
+        } catch {
+          // skip this frame if copy fails
         }
       }
 
       const session: Session = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        id: sessionId,
         timestamp: data.timestamp,
         imageUri: capturedFrameUri,
         analysis: data.analysis,
@@ -229,6 +276,8 @@ export default function HomeScreen() {
         isVideo: true,
         bestFrameIndex: data.bestFrameIndex,
         totalFrames: data.totalFrames,
+        keyFrameUris: keyFrameUris.length > 0 ? keyFrameUris : undefined,
+        keyFrameLabels: keyFrameLabels.length > 0 ? keyFrameLabels : undefined,
       };
 
       await addSession(session);

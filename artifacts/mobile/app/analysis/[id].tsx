@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Image,
   Platform,
@@ -161,6 +161,13 @@ export default function AnalysisScreen() {
   const overallScore = analysis.overallScore ?? 0;
   const scoreColor = gradeColor(overallScore, colors);
   const overallGrade = scoreToGrade(overallScore);
+  const [heroUri, setHeroUri] = useState(session.imageUri);
+  const [activeFrameIdx, setActiveFrameIdx] = useState<number | null>(null);
+
+  const hasKeyFrames =
+    session.isVideo &&
+    session.keyFrameUris &&
+    session.keyFrameUris.length > 1;
 
   const sortedComponents = Object.entries(analysis.components ?? {}).sort(
     ([, a], [, b]) => (a?.score ?? 0) - (b?.score ?? 0)
@@ -179,7 +186,7 @@ export default function AnalysisScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.imageContainer}>
-        <Image source={{ uri: session.imageUri }} style={styles.heroImage} />
+        <Image source={{ uri: heroUri }} style={styles.heroImage} />
         <Pressable
           style={[styles.backButton, { backgroundColor: colors.surface1 + "cc" }]}
           onPress={() => router.back()}
@@ -192,6 +199,45 @@ export default function AnalysisScreen() {
           </View>
         </View>
       </View>
+
+      {hasKeyFrames && (
+        <View style={[styles.frameStripContainer, { backgroundColor: colors.surface1, borderBottomColor: colors.border }]}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.frameStrip}
+          >
+            {(session.keyFrameUris ?? []).map((uri, i) => {
+              const label = session.keyFrameLabels?.[i] ?? `Frame ${i + 1}`;
+              const isActive = activeFrameIdx === i;
+              return (
+                <Pressable
+                  key={i}
+                  style={styles.frameThumbWrapper}
+                  onPress={() => {
+                    setHeroUri(uri);
+                    setActiveFrameIdx(i);
+                  }}
+                >
+                  <View style={[
+                    styles.frameThumb,
+                    { borderColor: isActive ? colors.primary : colors.border },
+                  ]}>
+                    <Image source={{ uri }} style={styles.frameThumbImg} />
+                    {isActive && (
+                      <View style={[styles.frameThumbActive, { backgroundColor: colors.primary + "33" }]} />
+                    )}
+                  </View>
+                  <Text style={[
+                    styles.frameThumbLabel,
+                    { color: isActive ? colors.primary : colors.mutedForeground },
+                  ]}>{label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
       <View style={styles.body}>
         <View style={styles.metaRow}>
@@ -379,6 +425,40 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 300,
     resizeMode: "cover",
+  },
+  frameStripContainer: {
+    borderBottomWidth: 1,
+  },
+  frameStrip: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  frameThumbWrapper: {
+    alignItems: "center",
+    gap: 5,
+  },
+  frameThumb: {
+    width: 72,
+    height: 96,
+    borderRadius: 8,
+    borderWidth: 2,
+    overflow: "hidden",
+  },
+  frameThumbImg: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+  },
+  frameThumbActive: {
+    position: "absolute",
+    inset: 0,
+  },
+  frameThumbLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
   backButton: {
     position: "absolute",
