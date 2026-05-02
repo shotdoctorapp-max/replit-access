@@ -201,7 +201,8 @@ Examine the motion sequence for these specific timing markers:
 1. **dipFrame**: When do the legs reach maximum bend (deepest dip point)?
 2. **bodyRiseFrame**: When do the legs/hips begin extending UPWARD (dip ends, body drives up)?
 3. **ballRiseFrame**: When does the ball begin its upward movement toward the set point or release?
-4. **armExtendFrame**: When does the shooting arm begin its final extension toward release?
+4. **setPointFrame**: The frame where the ball is held at the set point — wrist loaded/cocked, ball at roughly ear or eyebrow height, shooting arm NOT yet extended upward. This is the last calm moment before the arm drives up.
+5. **armExtendFrame**: When does the shooting arm begin its final extension toward release? This is the Release moment — arm fully extended upward, wrist snapping, ball leaving the hand.
 
 ## WHAT GOOD RHYTHM LOOKS LIKE
 - Smooth dip → body and ball rise together (or ball pauses at set point as body begins to rise) → arm extends → wrist snaps → ball pushes UP with high arc
@@ -217,7 +218,8 @@ Respond ONLY with valid JSON:
   "dipFrame": <0-based frame index of maximum dip/bend, or -1 if unclear>,
   "ballRiseFrame": <0-based frame index where ball begins upward movement, or -1 if unclear>,
   "bodyRiseFrame": <0-based frame index where legs/hips begin extending upward, or -1 if unclear>,
-  "armExtendFrame": <0-based frame index where shooting arm begins final extension, or -1 if unclear>,
+  "setPointFrame": <0-based frame index of set point — ball at ear/eyebrow height, wrist cocked, arm NOT yet extended, or -1 if unclear>,
+  "armExtendFrame": <0-based frame index where shooting arm begins final extension toward release (Release moment), or -1 if unclear>,
   "rhythmScore": <0-100 integer — 100 = perfectly synchronized fluid kinetic chain, 0 = ball rising while body still squatting (completely disconnected)>,
   "observations": [
     "<specific timing observation about what you see across the frames — reference frame numbers>",

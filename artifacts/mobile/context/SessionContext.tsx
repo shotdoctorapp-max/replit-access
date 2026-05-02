@@ -32,6 +32,7 @@ export interface RhythmAnalysis {
   dipFrame?: number;
   ballRiseFrame: number;
   bodyRiseFrame: number;
+  setPointFrame?: number;
   armExtendFrame: number;
   rhythmScore: number;
   observations: string[];

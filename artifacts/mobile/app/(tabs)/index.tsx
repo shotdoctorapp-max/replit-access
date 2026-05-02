@@ -215,45 +215,54 @@ export default function HomeScreen() {
       // Select key frames that show the progression of the shot
       const totalFrames = data.totalFrames ?? thumbnailUris.length;
       const rhythm = data.rhythm;
-      // Only 2 key frames: Dip and Set Point.
-      // The server returns annotationDipFrame and annotationSetPointFrame — the exact frame
-      // indices it used to generate annotation coordinates. When present, these are used as
-      // the primary source to ensure keyFrameUris[0/1] match the images the AI annotated.
-      // Fall back to rhythm-derived or fixed-percentage indices when server indices are absent.
-      const dipIdx = (() => {
-        if (typeof data.annotationDipFrame === "number" &&
-            data.annotationDipFrame >= 0 &&
-            data.annotationDipFrame < totalFrames) {
-          return data.annotationDipFrame;
-        }
+      // 3 key frames: Dip, Set Point, Release — selected using rhythm data with
+      // fixed-percentage fallbacks. Annotation frame indices from the server are NOT
+      // used here; they serve overlay alignment only (not the key-moment strip).
+
+      // Dip: rhythm.dipFrame if in [0, 45%), else 20% fallback
+      let dipIdx = (() => {
         const d = rhythm?.dipFrame;
         if (d !== undefined && d >= 0 && d < totalFrames * 0.45) return d;
-        return Math.floor(totalFrames * 0.25);
+        return Math.floor(totalFrames * 0.20);
       })();
-      const setPointIdx = (() => {
-        if (typeof data.annotationSetPointFrame === "number" &&
-            data.annotationSetPointFrame >= 0 &&
-            data.annotationSetPointFrame < totalFrames &&
-            data.annotationSetPointFrame !== dipIdx) {
-          return data.annotationSetPointFrame;
-        }
-        const sp = rhythm?.ballRiseFrame;
-        if (sp !== undefined && sp > dipIdx && sp >= totalFrames * 0.4 && sp < totalFrames * 0.82) return sp;
-        return Math.floor(totalFrames * 0.62);
+
+      // Set Point: rhythm.setPointFrame if in [40%, 75%) and after dip,
+      //            else armExtendFrame - 1 clamped above dip, else 55% fallback
+      let setPointIdx = (() => {
+        const sp = rhythm?.setPointFrame;
+        if (sp !== undefined && sp > dipIdx && sp >= totalFrames * 0.4 && sp < totalFrames * 0.75) return sp;
+        const ae = rhythm?.armExtendFrame;
+        if (ae !== undefined && ae > dipIdx + 1) return ae - 1;
+        return Math.floor(totalFrames * 0.55);
       })();
+
+      // Release: rhythm.armExtendFrame if in [60%, 95%) and after set point, else 78% fallback
+      let releaseIdx = (() => {
+        const ae = rhythm?.armExtendFrame;
+        if (ae !== undefined && ae > setPointIdx && ae >= totalFrames * 0.6 && ae < totalFrames * 0.95) return ae;
+        return Math.floor(totalFrames * 0.78);
+      })();
+
+      // Clamp all to valid range
+      dipIdx      = Math.max(0, Math.min(dipIdx,      totalFrames - 1));
+      setPointIdx = Math.max(0, Math.min(setPointIdx, totalFrames - 1));
+      releaseIdx  = Math.max(0, Math.min(releaseIdx,  totalFrames - 1));
+
+      // Resolve collisions: guarantee dipIdx < setPointIdx < releaseIdx when enough frames exist
+      if (setPointIdx <= dipIdx)      setPointIdx = Math.min(dipIdx      + 1, totalFrames - 1);
+      if (releaseIdx  <= setPointIdx) releaseIdx  = Math.min(setPointIdx + 1, totalFrames - 1);
 
       const candidateFrames: { index: number; label: string }[] = [
         { index: dipIdx,      label: "Dip"       },
         { index: setPointIdx, label: "Set Point"  },
+        { index: releaseIdx,  label: "Release"    },
       ];
 
-      // Deduplicate by index, clamp to valid range, keep chronological order
+      // Remove entries whose thumbnail is missing or whose index duplicates an earlier entry
       const seen = new Set<number>();
       const keyFrameEntries = candidateFrames
-        .map((f) => ({ ...f, index: Math.max(0, Math.min(f.index, totalFrames - 1)) }))
-        .filter((f) => thumbnailUris[f.index] && !seen.has(f.index) && seen.add(f.index))
-        .sort((a, b) => a.index - b.index)
-        .slice(0, 2);
+        .filter((f) => thumbnailUris[f.index] !== undefined && !seen.has(f.index) && seen.add(f.index))
+        .slice(0, 3);
 
       // Copy key frame thumbnails to stable cache paths
       const keyFrameUris: string[] = [];
