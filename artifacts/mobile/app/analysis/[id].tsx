@@ -413,12 +413,13 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     position: "relative",
-    height: 300,
+    height: 320,
+    backgroundColor: "#000",
   },
   heroImage: {
     width: "100%",
-    height: 300,
-    resizeMode: "cover",
+    height: 320,
+    resizeMode: "contain",
   },
   frameStripContainer: {
     borderBottomWidth: 1,

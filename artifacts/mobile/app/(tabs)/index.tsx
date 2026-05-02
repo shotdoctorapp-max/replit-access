@@ -1,4 +1,5 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useAuth, useUser } from "@clerk/expo";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -23,6 +24,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useSessions } from "@/context/SessionContext";
+import { useShots } from "@/context/ShotsContext";
 import type { AnalysisResult, Session } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
 import { extractFrames } from "@/utils/videoFrames";
@@ -62,6 +64,9 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { sessions, addSession } = useSessions();
+  const { signOut } = useAuth();
+  const { user } = useUser();
+  const { shotsRemaining, totalFreeShots, isPro, consumeShot } = useShots();
   const [stage, setStage] = useState<AnalyzingStage>("idle");
   const [bestFrameInfo, setBestFrameInfo] = useState<{
     index: number;
@@ -78,11 +83,21 @@ export default function HomeScreen() {
         )
       : 0;
 
+  const checkShotsOrPaywall = (): boolean => {
+    if (isPro) return true;
+    if (shotsRemaining <= 0) {
+      router.push("/paywall");
+      return false;
+    }
+    return true;
+  };
+
   const recordVideo = async () => {
+    if (!checkShotsOrPaywall()) return;
     if (Platform.OS === "web") {
       Alert.alert(
         "Mobile Only",
-        "Video analysis requires the Expo Go app on your iPhone or Android device. Use the photo option in the browser."
+        "Video analysis requires the Expo Go app on your iPhone or Android device."
       );
       return;
     }
@@ -107,6 +122,7 @@ export default function HomeScreen() {
   };
 
   const pickVideo = async () => {
+    if (!checkShotsOrPaywall()) return;
     if (Platform.OS === "web") {
       Alert.alert(
         "Mobile Only",
@@ -245,6 +261,7 @@ export default function HomeScreen() {
         keyFrameLabels: keyFrameLabels.length > 0 ? keyFrameLabels : undefined,
       };
 
+      await consumeShot();
       await addSession(session);
       setStage("idle");
       router.push({ pathname: "/analysis/[id]", params: { id: session.id } });
@@ -269,12 +286,56 @@ export default function HomeScreen() {
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.header}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={[styles.greeting, { color: colors.mutedForeground }]}>YOUR AI COACH</Text>
           <Text style={[styles.title, { color: colors.foreground }]}>Shot Doc <Text style={{ fontSize: 12, color: colors.mutedForeground }}>v2.1</Text></Text>
         </View>
-        <MaterialCommunityIcons name="basketball" size={32} color={colors.primary} />
+        <Pressable
+          onPress={() => signOut()}
+          style={[styles.userChip, { backgroundColor: colors.surface1, borderColor: colors.border }]}
+        >
+          <MaterialCommunityIcons name="account-circle-outline" size={16} color={colors.mutedForeground} />
+          <Text style={[styles.userChipText, { color: colors.mutedForeground }]} numberOfLines={1}>
+            {user?.primaryEmailAddress?.emailAddress?.split("@")[0] ?? "Account"}
+          </Text>
+        </Pressable>
       </View>
+
+      {!isPro && (
+        <Pressable
+          style={[styles.shotsBar, { backgroundColor: colors.surface1, borderColor: colors.border }]}
+          onPress={() => router.push("/paywall")}
+        >
+          <View style={styles.shotsBarLeft}>
+            <MaterialCommunityIcons
+              name="basketball-hoop"
+              size={16}
+              color={shotsRemaining > 0 ? colors.primary : colors.destructive}
+            />
+            <Text style={[styles.shotsBarLabel, { color: colors.foreground }]}>
+              {shotsRemaining > 0
+                ? `${shotsRemaining} free shot${shotsRemaining !== 1 ? "s" : ""} remaining`
+                : "No shots remaining"}
+            </Text>
+          </View>
+          <View style={styles.shotsDotsRow}>
+            {Array.from({ length: totalFreeShots }).map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.shotDot,
+                  {
+                    backgroundColor: i < shotsRemaining
+                      ? colors.primary
+                      : colors.surface3 ?? colors.border,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+          <Text style={[styles.shotsBarUpgrade, { color: colors.primary }]}>Upgrade</Text>
+        </Pressable>
+      )}
 
       {sessions.length > 0 && (
         <View
@@ -544,7 +605,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 14,
   },
   greeting: {
     fontSize: 11,
@@ -553,6 +614,55 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },
+  userChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    maxWidth: 130,
+  },
+  userChipText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    flexShrink: 1,
+  },
+  shotsBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 20,
+    gap: 10,
+  },
+  shotsBarLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+  },
+  shotsBarLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  shotsDotsRow: {
+    flexDirection: "row",
+    gap: 5,
+  },
+  shotDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  shotsBarUpgrade: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
+  },
   statsCard: {
     flexDirection: "row",
     borderRadius: 16,
