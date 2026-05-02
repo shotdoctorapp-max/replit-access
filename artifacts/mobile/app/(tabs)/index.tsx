@@ -225,43 +225,34 @@ export default function HomeScreen() {
       // Select key frames that show the progression of the shot
       const totalFrames = data.totalFrames ?? thumbnailUris.length;
       const rhythm = data.rhythm;
+      // Only 2 key frames: Dip and Set Point.
+      // Use rhythm indices only when they fall in a plausible range of the shot;
+      // otherwise fall back to fixed percentages so the frames are never swapped.
+      const dipIdx = (() => {
+        const d = rhythm?.dipFrame;
+        // Dip must be in the first 45% of the shot
+        if (d !== undefined && d >= 0 && d < totalFrames * 0.45) return d;
+        return Math.floor(totalFrames * 0.25);
+      })();
+      const setPointIdx = (() => {
+        const sp = rhythm?.ballRiseFrame;
+        // Set Point must be in the 40–80% window and after the dip
+        if (sp !== undefined && sp > dipIdx && sp >= totalFrames * 0.4 && sp < totalFrames * 0.82) return sp;
+        return Math.floor(totalFrames * 0.62);
+      })();
+
       const candidateFrames: { index: number; label: string }[] = [
-        // Dip — lowest body position before the drive up
-        ...(rhythm?.dipFrame !== undefined && rhythm.dipFrame >= 0
-          ? [{ index: rhythm.dipFrame, label: "Dip" }]
-          : [{ index: Math.floor(totalFrames * 0.2), label: "Dip" }]),
-        // Rising — body starts driving up (bodyRiseFrame), distinct from dip
-        ...(rhythm?.bodyRiseFrame !== undefined && rhythm.bodyRiseFrame >= 0
-          ? [{ index: rhythm.bodyRiseFrame, label: "Rising" }]
-          : [{ index: Math.floor(totalFrames * 0.4), label: "Rising" }]),
-        // Set Point — ball at shooting pocket / peak of gather
-        ...(rhythm?.ballRiseFrame !== undefined && rhythm.ballRiseFrame >= 0
-          ? [{ index: rhythm.ballRiseFrame, label: "Set Point" }]
-          : [{ index: Math.floor(totalFrames * 0.6), label: "Set Point" }]),
-        // Release Point — the best frame from AI analysis
-        { index: data.bestFrameIndex, label: "Release Point" },
+        { index: dipIdx,      label: "Dip"       },
+        { index: setPointIdx, label: "Set Point"  },
       ];
 
-      // Deduplicate by index, clamp to valid range, keep order
+      // Deduplicate by index, clamp to valid range, keep chronological order
       const seen = new Set<number>();
       const keyFrameEntries = candidateFrames
         .map((f) => ({ ...f, index: Math.max(0, Math.min(f.index, totalFrames - 1)) }))
         .filter((f) => thumbnailUris[f.index] && !seen.has(f.index) && seen.add(f.index))
-        .slice(0, 4);
-
-      // If deduplication left fewer than 4 frames, fill with evenly-spaced frames
-      const targetLabels = ["Dip", "Rising", "Set Point", "Release Point"];
-      if (keyFrameEntries.length < 4 && totalFrames >= 4) {
-        const spreads = [0.15, 0.38, 0.62, 0.85];
-        for (let si = 0; si < spreads.length && keyFrameEntries.length < 4; si++) {
-          const idx = Math.round(spreads[si] * (totalFrames - 1));
-          if (!seen.has(idx) && thumbnailUris[idx]) {
-            seen.add(idx);
-            keyFrameEntries.push({ index: idx, label: targetLabels[keyFrameEntries.length] });
-          }
-        }
-        keyFrameEntries.sort((a, b) => a.index - b.index);
-      }
+        .sort((a, b) => a.index - b.index)
+        .slice(0, 2);
 
       // Copy key frame thumbnails to stable cache paths
       const keyFrameUris: string[] = [];
