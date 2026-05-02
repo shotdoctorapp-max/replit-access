@@ -19,7 +19,8 @@ export interface DrillRecommendation {
 }
 
 export interface RhythmAnalysis {
-  pattern: "ball-first" | "body-first" | "synchronized" | "unknown";
+  pattern: "synchronized" | "set-then-drive" | "disconnected" | "unknown";
+  dipFrame?: number;
   ballRiseFrame: number;
   bodyRiseFrame: number;
   armExtendFrame: number;

@@ -44,9 +44,9 @@ const PATTERN_META: Record<
   RhythmAnalysis["pattern"],
   { label: string; icon: string; colorKey: "success" | "warning" | "destructive" | "primary" }
 > = {
-  "body-first":    { label: "Body-First ✓",    icon: "run-fast",       colorKey: "success"     },
-  "synchronized":  { label: "Synchronized ✓",  icon: "sync",           colorKey: "primary"     },
-  "ball-first":    { label: "Ball-First ✗",     icon: "alert-circle",   colorKey: "destructive" },
+  "synchronized":   { label: "Synchronized ✓",   icon: "sync",           colorKey: "success"     },
+  "set-then-drive": { label: "Set → Drive ✓",    icon: "arrow-up-bold",  colorKey: "primary"     },
+  "disconnected":   { label: "Disconnected ✗",   icon: "alert-circle",   colorKey: "destructive" },
   "unknown":       { label: "Undetermined",     icon: "help-circle",    colorKey: "warning"     },
 };
 
