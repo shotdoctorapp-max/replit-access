@@ -269,7 +269,7 @@ export default function AnalysisScreen() {
           const color = gradeColor(comp.score, colors);
           const grade = scoreToGrade(comp.score);
           const zoneLabel = COMPONENT_LABELS[selectedZoneKey] ?? selectedZoneKey;
-          const items = (comp.feedback ?? []).slice(0, 2);
+          const items = Array.isArray(comp.feedback) ? comp.feedback.slice(0, 2) : [];
           return (
             <View style={[styles.zonePopup, { backgroundColor: colors.surface2 + "f8", borderColor: color + "55" }]}>
               <View style={styles.zonePopupHeader}>

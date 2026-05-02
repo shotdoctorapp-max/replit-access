@@ -226,21 +226,20 @@ export default function HomeScreen() {
       const totalFrames = data.totalFrames ?? thumbnailUris.length;
       const rhythm = data.rhythm;
       const candidateFrames: { index: number; label: string }[] = [
-        { index: 0, label: "Load" },
-        ...(rhythm?.dipFrame !== undefined && rhythm.dipFrame > 0
+        // Dip — lowest body position before the drive up
+        ...(rhythm?.dipFrame !== undefined && rhythm.dipFrame >= 0
           ? [{ index: rhythm.dipFrame, label: "Dip" }]
-          : rhythm?.bodyRiseFrame !== undefined && rhythm.bodyRiseFrame > 0
-          ? [{ index: rhythm.bodyRiseFrame, label: "Dip" }]
-          : [{ index: Math.floor(totalFrames * 0.25), label: "Dip" }]),
+          : [{ index: Math.floor(totalFrames * 0.2), label: "Dip" }]),
+        // Rising — body starts driving up (bodyRiseFrame), distinct from dip
+        ...(rhythm?.bodyRiseFrame !== undefined && rhythm.bodyRiseFrame >= 0
+          ? [{ index: rhythm.bodyRiseFrame, label: "Rising" }]
+          : [{ index: Math.floor(totalFrames * 0.4), label: "Rising" }]),
+        // Set Point — ball at shooting pocket / peak of gather
         ...(rhythm?.ballRiseFrame !== undefined && rhythm.ballRiseFrame >= 0
           ? [{ index: rhythm.ballRiseFrame, label: "Set Point" }]
-          : [{ index: Math.floor(totalFrames * 0.5), label: "Set Point" }]),
-        { index: data.bestFrameIndex, label: "Release" },
-        ...(rhythm?.armExtendFrame !== undefined && rhythm.armExtendFrame >= 0 && rhythm.armExtendFrame !== data.bestFrameIndex
-          ? [{ index: rhythm.armExtendFrame, label: "Follow-Thru" }]
-          : totalFrames - 1 !== data.bestFrameIndex
-          ? [{ index: totalFrames - 1, label: "Follow-Thru" }]
-          : []),
+          : [{ index: Math.floor(totalFrames * 0.6), label: "Set Point" }]),
+        // Release Point — the best frame from AI analysis
+        { index: data.bestFrameIndex, label: "Release Point" },
       ];
 
       // Deduplicate by index, clamp to valid range, keep order
@@ -248,7 +247,7 @@ export default function HomeScreen() {
       const keyFrameEntries = candidateFrames
         .map((f) => ({ ...f, index: Math.max(0, Math.min(f.index, totalFrames - 1)) }))
         .filter((f) => thumbnailUris[f.index] && !seen.has(f.index) && seen.add(f.index))
-        .slice(0, 5);
+        .slice(0, 4);
 
       // Copy key frame thumbnails to stable cache paths
       const keyFrameUris: string[] = [];
