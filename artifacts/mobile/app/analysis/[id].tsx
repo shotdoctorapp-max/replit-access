@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useSessions } from "@/context/SessionContext";
+import { useSessions, type RhythmAnalysis } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
 import { ComponentBar } from "@/components/ComponentBar";
 import { DrillCard } from "@/components/DrillCard";
@@ -32,13 +32,111 @@ const COMPONENT_LABELS: Record<string, string> = {
 const BODY_ZONES = [
   { key: "eyeTracking",    label: "Eye Tracking",  icon: "eye-outline" },
   { key: "setPoint",       label: "Set Point",     icon: "target" },
-  { key: "elbowPosition",  label: "Elbow",         icon: "arm-flex-outline" },
-  { key: "gripPosition",   label: "Grip & Hand",   icon: "hand-right-outline" },
+  { key: "elbowPosition",  label: "Elbow",         icon: "arm-flex" },
+  { key: "gripPosition",   label: "Grip & Hand",   icon: "hand-right" },
   { key: "followThrough",  label: "Follow-Thru",   icon: "arrow-up-bold-outline" },
   { key: "hipAlignment",   label: "Hip Alignment", icon: "human" },
   { key: "balance",        label: "Balance",       icon: "scale-balance" },
   { key: "stance",         label: "Stance & Base", icon: "shoe-print" },
 ];
+
+const PATTERN_META: Record<
+  RhythmAnalysis["pattern"],
+  { label: string; icon: string; colorKey: "success" | "warning" | "destructive" | "primary" }
+> = {
+  "body-first":    { label: "Body-First ✓",    icon: "run-fast",       colorKey: "success"     },
+  "synchronized":  { label: "Synchronized ✓",  icon: "sync",           colorKey: "primary"     },
+  "ball-first":    { label: "Ball-First ✗",     icon: "alert-circle",   colorKey: "destructive" },
+  "unknown":       { label: "Undetermined",     icon: "help-circle",    colorKey: "warning"     },
+};
+
+const RHYTHM_ROWS: { key: keyof Pick<RhythmAnalysis, "ballRiseFrame" | "bodyRiseFrame" | "armExtendFrame">; label: string; icon: string }[] = [
+  { key: "bodyRiseFrame",  label: "Legs / Hips",  icon: "run-fast" },
+  { key: "ballRiseFrame",  label: "Ball Rise",     icon: "basketball"      },
+  { key: "armExtendFrame", label: "Arm Extend",    icon: "arm-flex"        },
+];
+
+function RhythmSection({ rhythm, totalFrames }: { rhythm: RhythmAnalysis; totalFrames: number }) {
+  const colors = useColors();
+  const meta = PATTERN_META[rhythm.pattern] ?? PATTERN_META["unknown"];
+  const patternColor = colors[meta.colorKey];
+  const rhythmGrade = scoreToGrade(rhythm.rhythmScore ?? 0);
+  const frames = Math.max(totalFrames, 1);
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeaderRow}>
+        <MaterialCommunityIcons name="timer-outline" size={16} color={colors.primary} />
+        <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>SHOT RHYTHM</Text>
+      </View>
+
+      {/* Pattern badge + grade */}
+      <View style={[styles.rhythmHeader, { backgroundColor: patternColor + "15", borderColor: patternColor + "40" }]}>
+        <MaterialCommunityIcons name={meta.icon as any} size={22} color={patternColor} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.rhythmPatternLabel, { color: patternColor }]}>{meta.label}</Text>
+          <Text style={[styles.rhythmPatternSub, { color: colors.mutedForeground }]}>Kinetic chain sequencing</Text>
+        </View>
+        <View style={[styles.rhythmGradePill, { backgroundColor: patternColor + "25", borderColor: patternColor + "60" }]}>
+          <Text style={[styles.rhythmGradeText, { color: patternColor }]}>{rhythmGrade}</Text>
+        </View>
+      </View>
+
+      {/* Timeline */}
+      <View style={[styles.rhythmTimeline, { backgroundColor: colors.surface1, borderColor: colors.border }]}>
+        <Text style={[styles.rhythmTimelineTitle, { color: colors.mutedForeground }]}>MOVEMENT SEQUENCE</Text>
+        {RHYTHM_ROWS.map(({ key, label, icon }) => {
+          const frameIdx = rhythm[key];
+          const hasData = frameIdx >= 0;
+          const pct = hasData ? frameIdx / (frames - 1) : null;
+          return (
+            <View key={key} style={styles.rhythmRow}>
+              <MaterialCommunityIcons name={icon as any} size={14} color={colors.mutedForeground} style={styles.rhythmRowIcon} />
+              <Text style={[styles.rhythmRowLabel, { color: colors.foreground }]}>{label}</Text>
+              <View style={[styles.rhythmTrack, { backgroundColor: colors.surface3 }]}>
+                {pct !== null && (
+                  <View
+                    style={[
+                      styles.rhythmDot,
+                      { left: `${Math.round(pct * 88)}%`, backgroundColor: colors.primary },
+                    ]}
+                  />
+                )}
+                {/* Frame tick marks */}
+                {Array.from({ length: frames }, (_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.rhythmTick,
+                      { left: `${Math.round((i / (frames - 1)) * 100)}%`, backgroundColor: colors.surface3 },
+                    ]}
+                  />
+                ))}
+              </View>
+              <Text style={[styles.rhythmFrameNum, { color: colors.mutedForeground }]}>
+                {hasData ? `F${frameIdx + 1}` : "—"}
+              </Text>
+            </View>
+          );
+        })}
+        <View style={styles.rhythmLegend}>
+          <Text style={[styles.rhythmLegendText, { color: colors.mutedForeground }]}>Start →</Text>
+          <Text style={[styles.rhythmLegendText, { color: colors.mutedForeground }]}>Release</Text>
+        </View>
+      </View>
+
+      {/* Observations */}
+      <View style={styles.rhythmObs}>
+        {(rhythm.observations ?? []).map((obs, i) => (
+          <View key={i} style={styles.bulletRow}>
+            <MaterialCommunityIcons name="chevron-right" size={14} color={colors.primary} style={{ marginTop: 3 }} />
+            <Text style={[styles.bulletText, { color: colors.foreground }]}>{obs}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function AnalysisScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -201,6 +299,8 @@ export default function AnalysisScreen() {
             </View>
           ))}
         </View>
+
+        {session.rhythm && <RhythmSection rhythm={session.rhythm} totalFrames={session.totalFrames ?? 8} />}
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>BIOMECHANICAL BREAKDOWN</Text>
@@ -423,5 +523,99 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
     lineHeight: 14,
+  },
+  rhythmHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  rhythmPatternLabel: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  rhythmPatternSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 1,
+  },
+  rhythmGradePill: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  rhythmGradeText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  rhythmTimeline: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 12,
+    gap: 10,
+  },
+  rhythmTimelineTitle: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 1.4,
+    marginBottom: 4,
+  },
+  rhythmRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  rhythmRowIcon: {
+    flexShrink: 0,
+  },
+  rhythmRowLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    width: 70,
+  },
+  rhythmTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    position: "relative",
+    overflow: "visible",
+  },
+  rhythmDot: {
+    position: "absolute",
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    top: -3,
+    marginLeft: -7,
+  },
+  rhythmTick: {
+    position: "absolute",
+    width: 1,
+    height: 8,
+    top: 0,
+    opacity: 0.3,
+  },
+  rhythmFrameNum: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    width: 22,
+    textAlign: "right",
+  },
+  rhythmLegend: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  rhythmLegendText: {
+    fontSize: 9,
+    fontFamily: "Inter_400Regular",
+  },
+  rhythmObs: {
+    gap: 6,
   },
 });

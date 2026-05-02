@@ -18,6 +18,15 @@ export interface DrillRecommendation {
   targetArea: string;
 }
 
+export interface RhythmAnalysis {
+  pattern: "ball-first" | "body-first" | "synchronized" | "unknown";
+  ballRiseFrame: number;
+  bodyRiseFrame: number;
+  armExtendFrame: number;
+  rhythmScore: number;
+  observations: string[];
+}
+
 export interface AnalysisResult {
   overallScore: number;
   summary: string;
@@ -41,6 +50,7 @@ export interface Session {
   timestamp: string;
   imageUri: string;
   analysis: AnalysisResult;
+  rhythm?: RhythmAnalysis;
   isVideo?: boolean;
   bestFrameIndex?: number;
   totalFrames?: number;

@@ -178,7 +178,7 @@ export default function HomeScreen() {
 
     try {
       setStage("extracting");
-      const { base64Frames, thumbnailUris } = await extractFrames(videoUri, durationMs);
+      const { base64Frames, thumbnailUris, timestamps } = await extractFrames(videoUri, durationMs);
 
       setStage("selecting");
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -186,7 +186,7 @@ export default function HomeScreen() {
       const response = await fetch(`${API_BASE}/api/analyze-video`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ frames: base64Frames, mimeType: "image/jpeg" }),
+        body: JSON.stringify({ frames: base64Frames, timestamps, mimeType: "image/jpeg" }),
       });
 
       if (!response.ok) {
@@ -197,6 +197,7 @@ export default function HomeScreen() {
       setStage("analyzing");
       const data = (await response.json()) as {
         analysis: AnalysisResult;
+        rhythm?: import("@/context/SessionContext").RhythmAnalysis;
         bestFrameIndex: number;
         totalFrames: number;
         timestamp: string;
@@ -224,6 +225,7 @@ export default function HomeScreen() {
         timestamp: data.timestamp,
         imageUri: capturedFrameUri,
         analysis: data.analysis,
+        rhythm: data.rhythm,
         isVideo: true,
         bestFrameIndex: data.bestFrameIndex,
         totalFrames: data.totalFrames,
@@ -301,7 +303,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View>
           <Text style={[styles.greeting, { color: colors.mutedForeground }]}>YOUR AI COACH</Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>Shot Doc <Text style={{ fontSize: 12, color: colors.mutedForeground }}>v1.7</Text></Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Shot Doc <Text style={{ fontSize: 12, color: colors.mutedForeground }}>v1.8</Text></Text>
         </View>
         <MaterialCommunityIcons name="basketball" size={32} color={colors.primary} />
       </View>
