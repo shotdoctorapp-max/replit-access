@@ -1,9 +1,10 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Animated,
+  Easing,
   Image,
   LayoutChangeEvent,
   Platform,
@@ -54,6 +55,37 @@ const PATTERN_META: Record<
   "disconnected":   { label: "Disconnected ✗",   icon: "alert-circle",   colorKey: "destructive" },
   "unknown":       { label: "Undetermined",     icon: "help-circle",    colorKey: "warning"     },
 };
+
+function PulsingDot({ color }: { color: string }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(0.9)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(scale, { toValue: 1.5, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0.3, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(scale, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0.9, duration: 700, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [scale, opacity]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.notificationDot,
+        { backgroundColor: color, transform: [{ scale }], opacity },
+      ]}
+    />
+  );
+}
 
 function RhythmSection({ rhythm }: { rhythm: RhythmAnalysis }) {
   const colors = useColors();
@@ -123,7 +155,9 @@ export default function AnalysisScreen() {
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
   const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set());
+  const [seenZones, setSeenZones] = useState<Set<string>>(new Set());
   const adjStorageKey = `hoopform_adj_done_${session.id}`;
+  const seenZonesKey = `hoopform_seen_zones_${session.id}`;
 
   useEffect(() => {
     AsyncStorage.getItem(adjStorageKey)
@@ -135,6 +169,27 @@ export default function AnalysisScreen() {
       })
       .catch(() => {});
   }, [adjStorageKey]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(seenZonesKey)
+      .then((raw) => {
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setSeenZones(new Set(parsed));
+        }
+      })
+      .catch(() => {});
+  }, [seenZonesKey]);
+
+  const markZoneSeen = useCallback((zoneKey: string) => {
+    setSeenZones((prev) => {
+      if (prev.has(zoneKey)) return prev;
+      const next = new Set(prev);
+      next.add(zoneKey);
+      AsyncStorage.setItem(seenZonesKey, JSON.stringify([...next])).catch(() => {});
+      return next;
+    });
+  }, [seenZonesKey]);
 
   const toggleStep = useCallback((key: string) => {
     setDoneSteps((prev) => {
@@ -368,10 +423,17 @@ export default function AnalysisScreen() {
                   ? colors.warning
                   : colors.destructive;
               const isExpanded = expandedBodyZone === key;
+              const isIssue = score < 75;
+              const isSeen = seenZones.has(key);
+              const showHint = isIssue && !isSeen;
+              const dotColor = score >= 50 ? colors.warning : colors.destructive;
               return (
                 <Pressable
                   key={key}
-                  onPress={() => setExpandedBodyZone(prev => prev === key ? null : key)}
+                  onPress={() => {
+                    setExpandedBodyZone(prev => prev === key ? null : key);
+                    if (isIssue) markZoneSeen(key);
+                  }}
                   style={[
                     styles.bodyZoneCard,
                     {
@@ -383,10 +445,18 @@ export default function AnalysisScreen() {
                   <View style={[styles.bodyZoneScoreBadge, { backgroundColor: zoneColor }]}>
                     <Text style={styles.bodyZoneScoreText}>{scoreToGrade(score)}</Text>
                   </View>
+                  {showHint && (
+                    <View style={styles.notificationDotWrapper}>
+                      <PulsingDot color={dotColor} />
+                    </View>
+                  )}
                   <MaterialCommunityIcons name={icon as any} size={22} color={zoneColor} style={styles.bodyZoneIcon} />
                   <Text style={[styles.bodyZoneLabel, { color: colors.foreground }]} numberOfLines={2}>
                     {label}
                   </Text>
+                  {showHint && (
+                    <Text style={[styles.howToFixHint, { color: dotColor }]}>How to fix →</Text>
+                  )}
                 </Pressable>
               );
             })}
@@ -869,6 +939,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
     lineHeight: 14,
+  },
+  notificationDotWrapper: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+  },
+  notificationDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+  },
+  howToFixHint: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.3,
+    marginTop: 2,
+    opacity: 0.85,
   },
   rhythmHeader: {
     flexDirection: "row",
