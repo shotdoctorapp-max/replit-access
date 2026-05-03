@@ -69,6 +69,7 @@ export interface Session {
   totalFrames?: number;
   keyFrameUris?: string[];
   keyFrameLabels?: string[];
+  videoUri?: string;
 }
 
 interface SessionContextValue {

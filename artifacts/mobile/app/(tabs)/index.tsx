@@ -262,6 +262,16 @@ export default function HomeScreen() {
         }
       }
 
+      // Copy original video to stable cache path (best-effort)
+      let cachedVideoUri: string | undefined;
+      try {
+        const videoDestUri = `${FileSystem.cacheDirectory}shotdoc_video_${sessionId}.mp4`;
+        await FileSystem.copyAsync({ from: videoUri, to: videoDestUri });
+        cachedVideoUri = videoDestUri;
+      } catch {
+        // non-fatal — video playback simply won't appear for this session
+      }
+
       const session: Session = {
         id: sessionId,
         timestamp: data.timestamp,
@@ -273,6 +283,7 @@ export default function HomeScreen() {
         totalFrames: data.totalFrames,
         keyFrameUris: keyFrameUris.length > 0 ? keyFrameUris : undefined,
         keyFrameLabels: keyFrameLabels.length > 0 ? keyFrameLabels : undefined,
+        videoUri: cachedVideoUri,
       };
 
       await consumeShot();
