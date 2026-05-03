@@ -416,6 +416,17 @@ export default function AnalysisScreen() {
           <View style={styles.sectionHeaderRow}>
             <MaterialCommunityIcons name="human" size={16} color={colors.primary} />
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>BODY MAP</Text>
+            {(() => {
+              const issueCount = BODY_ZONES.filter(({ key }) => {
+                const comp = analysis.components?.[key as keyof typeof analysis.components];
+                return (comp?.score ?? 0) < 75;
+              }).length;
+              return issueCount > 0 ? (
+                <View style={[styles.bodyMapIssueBadge, { backgroundColor: colors.destructive + "22", borderColor: colors.destructive + "66" }]}>
+                  <Text style={[styles.bodyMapIssueBadgeText, { color: colors.destructive }]}>{issueCount} {issueCount === 1 ? "issue" : "issues"}</Text>
+                </View>
+              ) : null;
+            })()}
             {seenZones.size > 0 && (
               <Pressable onPress={resetSeenZones} style={styles.resetHintsButton} hitSlop={8}>
                 <Text style={[styles.resetHintsText, { color: colors.mutedForeground }]}>reset hints</Text>
@@ -894,6 +905,17 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     letterSpacing: 0.5,
     opacity: 0.6,
+  },
+  bodyMapIssueBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  bodyMapIssueBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.3,
   },
   sectionTitle: {
     fontSize: 11,
