@@ -1,6 +1,7 @@
 import { useSignIn } from "@clerk/expo";
 import { Link, useRouter } from "expo-router";
 import React from "react";
+import { CourtBackground } from "@/components/CourtBackground";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -90,6 +91,7 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: BG }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <CourtBackground />
       <ScrollView
         contentContainerStyle={[styles.container, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 }]}
         keyboardShouldPersistTaps="handled"
@@ -151,7 +153,7 @@ export default function SignInScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: 28, backgroundColor: BG, flexGrow: 1 },
+  container: { paddingHorizontal: 28, flexGrow: 1 },
   logoRow: { alignItems: "center", marginBottom: 32 },
   title: { fontSize: 28, fontFamily: "Inter_700Bold", color: "#fff", marginBottom: 6 },
   subtitle: { fontSize: 14, fontFamily: "Inter_400Regular", color: MUTED, marginBottom: 36 },
