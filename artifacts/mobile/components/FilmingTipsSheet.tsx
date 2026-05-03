@@ -171,6 +171,9 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
             <Text style={[styles.tipBody, { color: colors.mutedForeground }]}>
               iPhone: open Camera → swipe to Slo-Mo → record → upload from library
             </Text>
+            <Text style={[styles.tipSub, { color: colors.mutedForeground }]}>
+              Record the full shot: dip → release → follow-through (~3–5 sec)
+            </Text>
           </View>
         </View>
 
@@ -191,6 +194,9 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
             <Text style={[styles.tipBody, { color: colors.mutedForeground }]}>
               Film from the side so the AI can see your full shooting motion
             </Text>
+            <Text style={[styles.tipSub, { color: colors.mutedForeground }]}>
+              Camera at waist–chest height, 90° side-on to the basket
+            </Text>
           </View>
 
           <View
@@ -208,6 +214,9 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
             </Text>
             <Text style={[styles.tipBody, { color: colors.mutedForeground }]}>
               Step back so your feet and hands are visible throughout the shot
+            </Text>
+            <Text style={[styles.tipSub, { color: colors.mutedForeground }]}>
+              Stand ~10–15 ft (3–5 m) away so feet and fingertips stay in frame
             </Text>
           </View>
         </View>
@@ -520,6 +529,14 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 16,
+  },
+  tipSub: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    lineHeight: 14,
+    marginTop: 5,
+    opacity: 0.7,
   },
   ctaButton: {
     flexDirection: "row",

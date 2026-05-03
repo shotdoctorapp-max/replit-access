@@ -398,6 +398,18 @@ export default function HomeScreen() {
             <Text style={styles.recordBtnSub}>Record in Slo-Mo, then upload for best results</Text>
           </View>
         </Pressable>
+
+        <Pressable
+          style={[styles.filmingHintRow, { borderColor: colors.border }]}
+          onPress={() => setShowTipsSheet(true)}
+          hitSlop={6}
+        >
+          <Feather name="camera" size={14} color={colors.mutedForeground} />
+          <Text style={[styles.filmingHintText, { color: colors.mutedForeground }]}>
+            How to film for best results
+          </Text>
+          <Feather name="chevron-right" size={14} color={colors.mutedForeground} />
+        </Pressable>
       </View>
 
       {isAnalyzing && (
@@ -687,6 +699,19 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     fontSize: 12,
     fontFamily: "Inter_400Regular",
+  },
+  filmingHintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 8,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  filmingHintText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
   uploadBtn: {
     flexDirection: "row",
