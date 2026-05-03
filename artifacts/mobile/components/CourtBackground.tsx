@@ -1,5 +1,5 @@
-import React from "react";
-import { StyleSheet, View, useWindowDimensions } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, StyleSheet, View, useWindowDimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 
@@ -20,8 +20,18 @@ export function CourtBackground() {
   const arcEndX   = cx + arcR * 0.88;
   const arcY      = ftCY + 30;
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
+
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]} pointerEvents="none">
       <LinearGradient
         colors={["rgba(0,200,83,0.16)", "rgba(0,0,0,0)"]}
         style={{ position: "absolute", top: 0, left: 0, right: 0, height: 280 }}
@@ -36,6 +46,6 @@ export function CourtBackground() {
           d={`M ${arcStartX} ${ftCY} Q ${cx} ${arcY + arcR * 0.55} ${arcEndX} ${ftCY}`}
           fill="none" stroke={stroke} strokeWidth={1} opacity={op} />
       </Svg>
-    </View>
+    </Animated.View>
   );
 }
