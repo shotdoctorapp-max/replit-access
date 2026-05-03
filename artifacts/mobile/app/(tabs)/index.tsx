@@ -99,6 +99,14 @@ export default function HomeScreen() {
   const progressAnim = useRef(new RNAnimated.Value(0)).current;
   const activeAnimRef = useRef<RNAnimated.CompositeAnimation | null>(null);
   const stageRef = useRef<AnalyzingStage>("idle");
+  const [progressPct, setProgressPct] = useState(0);
+
+  React.useEffect(() => {
+    const id = progressAnim.addListener(({ value }) => {
+      setProgressPct(Math.round(value));
+    });
+    return () => progressAnim.removeListener(id);
+  }, [progressAnim]);
 
   const isAnalyzing = stage !== "idle" || isCompleting;
 
@@ -537,19 +545,24 @@ export default function HomeScreen() {
             )}
 
             {/* Progress bar */}
-            <View style={[styles.progressTrack, { backgroundColor: colors.surface3 ?? colors.border }]}>
-              <RNAnimated.View
-                style={[
-                  styles.progressFill,
-                  {
-                    backgroundColor: colors.primary,
-                    width: progressAnim.interpolate({
-                      inputRange: [0, 100],
-                      outputRange: ["0%", "100%"],
-                    }),
-                  },
-                ]}
-              />
+            <View style={styles.progressRow}>
+              <View style={[styles.progressTrack, { backgroundColor: colors.surface3 ?? colors.border, flex: 1 }]}>
+                <RNAnimated.View
+                  style={[
+                    styles.progressFill,
+                    {
+                      backgroundColor: colors.primary,
+                      width: progressAnim.interpolate({
+                        inputRange: [0, 100],
+                        outputRange: ["0%", "100%"],
+                      }),
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.progressPctLabel, { color: colors.primary }]}>
+                {progressPct}%
+              </Text>
             </View>
 
             {/* Stage label */}
@@ -887,6 +900,17 @@ const styles = StyleSheet.create({
   completedChipText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
+  },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  progressPctLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+    minWidth: 36,
+    textAlign: "right",
   },
   progressTrack: {
     height: 8,
