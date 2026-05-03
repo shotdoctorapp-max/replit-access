@@ -3,9 +3,9 @@ import { useAuth, useUser } from "@clerk/expo";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
-  ActivityIndicator,
+  Animated as RNAnimated,
   Alert,
   Image,
   Platform,
@@ -15,12 +15,6 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useSessions } from "@/context/SessionContext";
@@ -43,22 +37,47 @@ type AnalyzingStage =
 
 const STAGE_LABELS: Record<AnalyzingStage, string> = {
   idle: "",
-  extracting: "Extracting key frames...",
-  selecting: "AI selecting best moment...",
-  analyzing: "Analyzing biomechanics...",
+  extracting: "Extracting key frames…",
+  selecting: "AI selecting best moment…",
+  analyzing: "Analyzing biomechanics…",
 };
 
-function PulsingDot({ color }: { color: string }) {
-  const opacity = useSharedValue(1);
-  React.useEffect(() => {
-    opacity.value = withRepeat(withTiming(0.3, { duration: 700 }), -1, true);
-  }, []);
-  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  return (
-    <Animated.View
-      style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }, style]}
-    />
-  );
+const STAGE_ORDER: AnalyzingStage[] = ["extracting", "selecting", "analyzing"];
+
+const STAGE_FLOORS: Record<AnalyzingStage, number> = {
+  idle: 0,
+  extracting: 0,
+  selecting: 25,
+  analyzing: 45,
+};
+
+const STAGE_CEILINGS: Record<AnalyzingStage, number> = {
+  idle: 0,
+  extracting: 25,
+  selecting: 45,
+  analyzing: 92,
+};
+
+function buildCreepSequence(
+  anim: import("react-native").Animated.Value,
+  from: number,
+  ceiling: number,
+  steps: number,
+  stepDuration: number,
+  decay: number
+): import("react-native").Animated.CompositeAnimation {
+  const anims: import("react-native").Animated.CompositeAnimation[] = [];
+  for (let i = 1; i <= steps; i++) {
+    const fraction = 1 - Math.pow(decay, i);
+    anims.push(
+      RNAnimated.timing(anim, {
+        toValue: from + (ceiling - from) * fraction,
+        duration: stepDuration,
+        useNativeDriver: false,
+      })
+    );
+  }
+  return RNAnimated.sequence(anims);
 }
 
 export default function HomeScreen() {
@@ -70,13 +89,57 @@ export default function HomeScreen() {
   const { user } = useUser();
   const { shotsRemaining, totalFreeShots, isPro, consumeShot } = useShots();
   const [stage, setStage] = useState<AnalyzingStage>("idle");
+  const [isCompleting, setIsCompleting] = useState(false);
   const [bestFrameInfo, setBestFrameInfo] = useState<{
     index: number;
     total: number;
   } | null>(null);
   const [showTipsSheet, setShowTipsSheet] = useState(false);
 
-  const isAnalyzing = stage !== "idle";
+  const progressAnim = useRef(new RNAnimated.Value(0)).current;
+  const activeAnimRef = useRef<RNAnimated.CompositeAnimation | null>(null);
+  const stageRef = useRef<AnalyzingStage>("idle");
+
+  const isAnalyzing = stage !== "idle" || isCompleting;
+
+  React.useEffect(() => {
+    stageRef.current = stage;
+    if (stage === "idle") return;
+
+    activeAnimRef.current?.stop();
+    const floor = STAGE_FLOORS[stage];
+    const ceiling = STAGE_CEILINGS[stage];
+    progressAnim.setValue(floor);
+
+    const startCreep = (initial: boolean) => {
+      if (stageRef.current !== stage) return;
+      let anim: RNAnimated.CompositeAnimation;
+      if (initial) {
+        if (stage === "extracting") {
+          anim = buildCreepSequence(progressAnim, floor, ceiling, 10, 120, 0.5);
+        } else if (stage === "selecting") {
+          anim = buildCreepSequence(progressAnim, floor, ceiling, 30, 1400, 0.82);
+        } else {
+          anim = buildCreepSequence(progressAnim, floor, ceiling, 35, 1600, 0.85);
+        }
+      } else {
+        anim = RNAnimated.timing(progressAnim, {
+          toValue: ceiling - 0.01,
+          duration: 180000,
+          useNativeDriver: false,
+        });
+      }
+      activeAnimRef.current = anim;
+      anim.start(({ finished }) => {
+        if (finished && stageRef.current === stage) {
+          startCreep(false);
+        }
+      });
+    };
+
+    startCreep(true);
+  }, [stage]);
+
   const recentSessions = sessions.slice(0, 3);
   const avgScore =
     sessions.length > 0
@@ -288,12 +351,26 @@ export default function HomeScreen() {
 
       await consumeShot();
       await addSession(session);
+
+      setIsCompleting(true);
       setStage("idle");
-      router.push({ pathname: "/analysis/[id]", params: { id: session.id } });
+      activeAnimRef.current?.stop();
+      RNAnimated.timing(progressAnim, {
+        toValue: 100,
+        duration: 450,
+        useNativeDriver: false,
+      }).start(() => {
+        setIsCompleting(false);
+        progressAnim.setValue(0);
+        router.push({ pathname: "/analysis/[id]", params: { id: session.id } });
+      });
     } catch (err) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = err instanceof Error ? err.message : "Something went wrong";
       Alert.alert("Video Analysis Failed", message);
+      activeAnimRef.current?.stop();
+      progressAnim.setValue(0);
+      setIsCompleting(false);
       setStage("idle");
     }
   };
@@ -433,53 +510,60 @@ export default function HomeScreen() {
             },
           ]}
         >
-          <View style={styles.stagesContainer}>
-            {(["extracting", "selecting", "analyzing"] as AnalyzingStage[]).map(
-              (s) => {
-                const isActive = stage === s;
-                const isDone =
-                  (s === "extracting" &&
-                    (stage === "selecting" || stage === "analyzing")) ||
-                  (s === "selecting" && stage === "analyzing");
-                const stageColor = isDone
-                  ? colors.success
-                  : isActive
-                  ? colors.primary
-                  : colors.mutedForeground + "50";
-                return (
-                  <View key={s} style={styles.stageRow}>
-                    {isDone ? (
-                      <Feather name="check-circle" size={16} color={colors.success} />
-                    ) : isActive ? (
-                      <PulsingDot color={colors.primary} />
-                    ) : (
-                      <View
-                        style={[
-                          styles.stageDot,
-                          { backgroundColor: colors.surface3 },
-                        ]}
-                      />
-                    )}
-                    <Text style={[styles.stageLabel, { color: stageColor }]}>
-                      {STAGE_LABELS[s]}
-                    </Text>
-                  </View>
-                );
-              }
+          <View style={styles.progressCardInner}>
+            {/* Completed stages row */}
+            {STAGE_ORDER.some((s) => {
+              const stageIdx = STAGE_ORDER.indexOf(s);
+              const currentIdx = STAGE_ORDER.indexOf(stage as AnalyzingStage);
+              return stageIdx < currentIdx || isCompleting;
+            }) && (
+              <View style={styles.completedRow}>
+                {STAGE_ORDER.map((s) => {
+                  const stageIdx = STAGE_ORDER.indexOf(s);
+                  const currentIdx = isCompleting
+                    ? STAGE_ORDER.length
+                    : STAGE_ORDER.indexOf(stage as AnalyzingStage);
+                  if (stageIdx >= currentIdx) return null;
+                  return (
+                    <View key={s} style={styles.completedChip}>
+                      <Feather name="check" size={11} color={colors.success} />
+                      <Text style={[styles.completedChipText, { color: colors.success }]}>
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
             )}
-            {stage === "analyzing" && (
-              <ActivityIndicator
-                color={colors.primary}
-                size="small"
-                style={styles.spinner}
+
+            {/* Progress bar */}
+            <View style={[styles.progressTrack, { backgroundColor: colors.surface3 ?? colors.border }]}>
+              <RNAnimated.View
+                style={[
+                  styles.progressFill,
+                  {
+                    backgroundColor: colors.primary,
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 100],
+                      outputRange: ["0%", "100%"],
+                    }),
+                  },
+                ]}
               />
+            </View>
+
+            {/* Stage label */}
+            <Text style={[styles.progressStageLabel, { color: colors.foreground }]}>
+              {isCompleting ? "Done!" : STAGE_LABELS[stage]}
+            </Text>
+
+            {/* Time hint for analyzing stage */}
+            {stage === "analyzing" && !isCompleting && (
+              <Text style={[styles.progressTimeHint, { color: colors.mutedForeground }]}>
+                Usually 15–25 seconds
+              </Text>
             )}
           </View>
-          {bestFrameInfo && (
-            <Text style={[styles.frameInfo, { color: colors.mutedForeground }]}>
-              Best frame: #{bestFrameInfo.index + 1} of {bestFrameInfo.total}
-            </Text>
-          )}
         </View>
       )}
 
@@ -786,24 +870,42 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 24,
   },
-  previewImage: { width: "100%", height: 160, resizeMode: "cover" },
-  stagesContainer: { padding: 16, gap: 10 },
-  stageRow: {
+  progressCardInner: {
+    padding: 20,
+    gap: 12,
+  },
+  completedRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  completedChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 4,
   },
-  stageDot: { width: 8, height: 8, borderRadius: 4 },
-  stageLabel: {
-    fontSize: 13,
+  completedChipText: {
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
   },
-  spinner: { marginTop: 4 },
-  frameInfo: {
-    fontSize: 11,
+  progressTrack: {
+    height: 8,
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  progressStageLabel: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    marginTop: 2,
+  },
+  progressTimeHint: {
+    fontSize: 12,
     fontFamily: "Inter_400Regular",
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    marginTop: -4,
   },
   recentSection: { marginBottom: 20 },
   sectionHeader: {
