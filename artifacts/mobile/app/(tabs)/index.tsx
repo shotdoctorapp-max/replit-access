@@ -397,35 +397,6 @@ export default function HomeScreen() {
               Sessions
             </Text>
           </View>
-          <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-          <View style={styles.statItem}>
-            <Text
-              style={[
-                styles.statNumber,
-                {
-                  color:
-                    sessions.length >= 2 &&
-                    sessions[0].analysis.overallScore >
-                      sessions[1].analysis.overallScore
-                      ? colors.success
-                      : colors.warning,
-                },
-              ]}
-            >
-              {sessions.length >= 2
-                ? (sessions[0].analysis.overallScore -
-                      sessions[1].analysis.overallScore >
-                    0
-                    ? "+"
-                    : "") +
-                  (sessions[0].analysis.overallScore -
-                    sessions[1].analysis.overallScore)
-                : "—"}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Trend
-            </Text>
-          </View>
         </View>
       )}
 
