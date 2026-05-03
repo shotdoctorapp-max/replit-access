@@ -6,7 +6,7 @@ import Svg, { Circle, Line, Path } from "react-native-svg";
 export function CourtBackground() {
   const { width } = useWindowDimensions();
   const stroke = "#00C853";
-  const op = 0.13;
+  const op = 0.24;
   const cx = width / 2;
 
   const keyW = width * 0.38;
@@ -33,7 +33,7 @@ export function CourtBackground() {
   return (
     <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]} pointerEvents="none">
       <LinearGradient
-        colors={["rgba(0,200,83,0.16)", "rgba(0,0,0,0)"]}
+        colors={["rgba(0,200,83,0.28)", "rgba(0,0,0,0)"]}
         style={{ position: "absolute", top: 0, left: 0, right: 0, height: 280 }}
       />
       <Svg width={width} height={500} style={{ position: "absolute", top: 0 }}>
