@@ -190,8 +190,7 @@ export default function HomeScreen() {
         bestFrameIndex: number;
         totalFrames: number;
         timestamp: string;
-        annotationDipFrame?: number;
-        annotationSetPointFrame?: number;
+        keyFrameIndices?: number[];
       };
 
       setBestFrameInfo({ index: data.bestFrameIndex, total: data.totalFrames });
@@ -213,45 +212,26 @@ export default function HomeScreen() {
         }
       }
 
-      // Select key frames that show the progression of the shot
+      // Select key frames — use server-returned indices when available so annotation
+      // coordinates always refer to the exact same frames that are displayed in the strip.
       const totalFrames = data.totalFrames ?? thumbnailUris.length;
-      const rhythm = data.rhythm;
-      // 3 key frames: Dip, Set Point, Release — selected using rhythm data with
-      // fixed-percentage fallbacks. Annotation frame indices from the server are NOT
-      // used here; they serve overlay alignment only (not the key-moment strip).
-
-      // Dip: rhythm.dipFrame if in [0, 45%), else 20% fallback
-      let dipIdx = (() => {
-        const d = rhythm?.dipFrame;
-        if (d !== undefined && d >= 0 && d < totalFrames * 0.45) return d;
-        return Math.floor(totalFrames * 0.20);
-      })();
-
-      // Set Point: rhythm.setPointFrame if in [40%, 75%) and after dip,
-      //            else armExtendFrame - 1 clamped above dip, else 55% fallback
-      let setPointIdx = (() => {
-        const sp = rhythm?.setPointFrame;
-        if (sp !== undefined && sp > dipIdx && sp >= totalFrames * 0.4 && sp < totalFrames * 0.75) return sp;
-        const ae = rhythm?.armExtendFrame;
-        if (ae !== undefined && ae > dipIdx + 1) return ae - 1;
-        return Math.floor(totalFrames * 0.55);
-      })();
-
-      // Release: rhythm.armExtendFrame if in [60%, 95%) and after set point, else 78% fallback
-      let releaseIdx = (() => {
-        const ae = rhythm?.armExtendFrame;
-        if (ae !== undefined && ae > setPointIdx && ae >= totalFrames * 0.6 && ae < totalFrames * 0.95) return ae;
-        return Math.floor(totalFrames * 0.78);
-      })();
-
-      // Clamp all to valid range
-      dipIdx      = Math.max(0, Math.min(dipIdx,      totalFrames - 1));
-      setPointIdx = Math.max(0, Math.min(setPointIdx, totalFrames - 1));
-      releaseIdx  = Math.max(0, Math.min(releaseIdx,  totalFrames - 1));
-
-      // Resolve collisions: guarantee dipIdx < setPointIdx < releaseIdx when enough frames exist
-      if (setPointIdx <= dipIdx)      setPointIdx = Math.min(dipIdx      + 1, totalFrames - 1);
-      if (releaseIdx  <= setPointIdx) releaseIdx  = Math.min(setPointIdx + 1, totalFrames - 1);
+      const serverIndices = data.keyFrameIndices;
+      const [dipIdx, setPointIdx, releaseIdx] = serverIndices && serverIndices.length >= 3
+        ? serverIndices
+        : (() => {
+            // Fallback: compute locally from rhythm (older server responses)
+            const rhythm = data.rhythm;
+            let d = Math.floor(totalFrames * 0.20);
+            let sp = Math.floor(totalFrames * 0.55);
+            let r = Math.floor(totalFrames * 0.78);
+            if (rhythm?.dipFrame !== undefined && rhythm.dipFrame >= 0 && rhythm.dipFrame < totalFrames * 0.45) d = rhythm.dipFrame;
+            if (rhythm?.setPointFrame !== undefined && rhythm.setPointFrame > d && rhythm.setPointFrame < totalFrames * 0.75) sp = rhythm.setPointFrame;
+            else if (rhythm?.armExtendFrame !== undefined && rhythm.armExtendFrame > d + 1) sp = rhythm.armExtendFrame - 1;
+            if (rhythm?.armExtendFrame !== undefined && rhythm.armExtendFrame > sp && rhythm.armExtendFrame < totalFrames * 0.95) r = rhythm.armExtendFrame;
+            if (sp <= d) sp = Math.min(d + 1, totalFrames - 1);
+            if (r <= sp) r = Math.min(sp + 1, totalFrames - 1);
+            return [d, sp, r];
+          })();
 
       const candidateFrames: { index: number; label: string }[] = [
         { index: dipIdx,      label: "Dip"       },

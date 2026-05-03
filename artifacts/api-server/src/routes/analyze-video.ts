@@ -16,6 +16,42 @@ The ideal frame shows:
 
 Respond with ONLY a JSON object: { "bestFrameIndex": <0-based index>, "reason": "<10-word explanation>" }`;
 
+/** Mirror of the mobile key-frame selection heuristic so annotation
+ *  coordinates always refer to the exact frames displayed in the strip. */
+function selectKeyFrameIndices(
+  totalFrames: number,
+  rhythm: { dipFrame?: number; setPointFrame?: number; armExtendFrame?: number } | null
+): { dipIdx: number; setPointIdx: number; releaseIdx: number } {
+  let dipIdx = (() => {
+    const d = rhythm?.dipFrame;
+    if (d !== undefined && d >= 0 && d < totalFrames * 0.45) return d;
+    return Math.floor(totalFrames * 0.20);
+  })();
+
+  let setPointIdx = (() => {
+    const sp = rhythm?.setPointFrame;
+    if (sp !== undefined && sp > dipIdx && sp >= totalFrames * 0.4 && sp < totalFrames * 0.75) return sp;
+    const ae = rhythm?.armExtendFrame;
+    if (ae !== undefined && ae > dipIdx + 1) return ae - 1;
+    return Math.floor(totalFrames * 0.55);
+  })();
+
+  let releaseIdx = (() => {
+    const ae = rhythm?.armExtendFrame;
+    if (ae !== undefined && ae > setPointIdx && ae >= totalFrames * 0.6 && ae < totalFrames * 0.95) return ae;
+    return Math.floor(totalFrames * 0.78);
+  })();
+
+  dipIdx      = Math.max(0, Math.min(dipIdx,      totalFrames - 1));
+  setPointIdx = Math.max(0, Math.min(setPointIdx, totalFrames - 1));
+  releaseIdx  = Math.max(0, Math.min(releaseIdx,  totalFrames - 1));
+
+  if (setPointIdx <= dipIdx)      setPointIdx = Math.min(dipIdx      + 1, totalFrames - 1);
+  if (releaseIdx  <= setPointIdx) releaseIdx  = Math.min(setPointIdx + 1, totalFrames - 1);
+
+  return { dipIdx, setPointIdx, releaseIdx };
+}
+
 router.post("/analyze-video", async (req, res) => {
   try {
     const { frames, timestamps, mimeType = "image/jpeg" } = req.body as {
@@ -34,9 +70,9 @@ router.post("/analyze-video", async (req, res) => {
       return;
     }
 
-    req.log.info({ frameCount: frames.length }, "Selecting best frame from video");
+    req.log.info({ frameCount: frames.length }, "Step 1: best frame + rhythm in parallel");
 
-    // Build labeled frame messages for the rhythm multi-frame prompt
+    // Build labeled frame messages for the rhythm prompt
     const labeledFrameMessages = frames.flatMap((b64, i) => {
       const ms = timestamps?.[i] ?? i * 200;
       return [
@@ -48,127 +84,134 @@ router.post("/analyze-video", async (req, res) => {
       ];
     });
 
-    // Step 1: select best frame
-    let bestFrameIndex = 0;
-    if (frames.length > 1) {
-      const selectionResponse = await openai.chat.completions.create({
-        model: "gpt-5-mini",
-        max_completion_tokens: 128,
-        messages: [
-          { role: "system", content: BEST_FRAME_PROMPT },
-          {
-            role: "user",
-            content: [
-              ...frames.map((b64) => ({
-                type: "image_url" as const,
-                image_url: { url: `data:${mimeType};base64,${b64}`, detail: "low" as const },
-              })),
+    // Step 1: best frame selection + rhythm in parallel — both need all frames at low detail
+    const [selectionResult, rhythmResult] = await Promise.all([
+      frames.length > 1
+        ? openai.chat.completions.create({
+            model: "gpt-5-mini",
+            max_completion_tokens: 128,
+            messages: [
+              { role: "system", content: BEST_FRAME_PROMPT },
               {
-                type: "text" as const,
-                text: `These are ${frames.length} frames from a basketball shooting video. Which frame index (0-based) best shows the shooting mechanics at the key moment (release or set point)? Respond with JSON only.`,
+                role: "user",
+                content: [
+                  ...frames.map((b64) => ({
+                    type: "image_url" as const,
+                    image_url: { url: `data:${mimeType};base64,${b64}`, detail: "low" as const },
+                  })),
+                  {
+                    type: "text" as const,
+                    text: `These are ${frames.length} frames from a basketball shooting video. Which frame index (0-based) best shows the shooting mechanics at the key moment (release or set point)? Respond with JSON only.`,
+                  },
+                ],
               },
             ],
-          },
-        ],
-      });
+          })
+        : Promise.resolve(null),
+      frames.length >= 3
+        ? openai.chat.completions.create({
+            model: "gpt-5.4",
+            max_completion_tokens: 512,
+            messages: [
+              { role: "system", content: RHYTHM_SYSTEM_PROMPT },
+              {
+                role: "user",
+                content: [
+                  ...labeledFrameMessages,
+                  {
+                    type: "text" as const,
+                    text: `These are ${frames.length} sequential frames from a basketball shooting video${timestamps ? ` spanning ${timestamps[timestamps.length - 1]}ms` : ""}. Analyze the temporal motion sequence to determine the shot rhythm pattern. Look specifically for: when does the body/legs drive up vs when does the ball rise (body-first = good kinetic chain). Return ONLY valid JSON.`,
+                  },
+                ],
+              },
+            ],
+          })
+        : Promise.resolve(null),
+    ]);
 
-      const selectionContent = selectionResponse.choices[0]?.message?.content ?? "{}";
+    // Parse best frame
+    let bestFrameIndex = Math.floor(frames.length / 2);
+    if (selectionResult) {
+      const selectionContent = selectionResult.choices[0]?.message?.content ?? "{}";
       try {
         const jsonMatch = selectionContent.match(/\{[\s\S]*\}/);
-        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : selectionContent) as {
-          bestFrameIndex: number;
-        };
-        if (
-          typeof parsed.bestFrameIndex === "number" &&
-          parsed.bestFrameIndex >= 0 &&
-          parsed.bestFrameIndex < frames.length
-        ) {
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : selectionContent) as { bestFrameIndex: number };
+        if (typeof parsed.bestFrameIndex === "number" && parsed.bestFrameIndex >= 0 && parsed.bestFrameIndex < frames.length) {
           bestFrameIndex = parsed.bestFrameIndex;
         }
       } catch {
         req.log.warn("Failed to parse frame selection, using middle frame");
-        bestFrameIndex = Math.floor(frames.length / 2);
       }
     }
 
-    req.log.info({ bestFrameIndex }, "Running biomechanics + rhythm analysis in parallel");
+    // Parse rhythm
+    let rhythm: { dipFrame?: number; setPointFrame?: number; armExtendFrame?: number; ballRiseFrame?: number; bodyRiseFrame?: number; pattern?: string; rhythmScore?: number; observations?: string[] } | null = null;
+    if (rhythmResult) {
+      const rhythmContent = rhythmResult.choices[0]?.message?.content ?? "{}";
+      try {
+        const jsonMatch = rhythmContent.match(/\{[\s\S]*\}/);
+        rhythm = JSON.parse(jsonMatch ? jsonMatch[0] : rhythmContent);
+      } catch {
+        req.log.warn("Failed to parse rhythm analysis");
+      }
+    }
 
-    // Estimate the two key frame positions used for annotations:
-    // frameIndex 0 = Dip (~25% through the sequence)
-    // frameIndex 1 = Set Point (~62% through the sequence)
-    const dipFrameIdx = Math.max(0, Math.floor(frames.length * 0.25));
-    const setPointFrameIdx = Math.min(frames.length - 1, Math.floor(frames.length * 0.62));
+    // Step 2: compute the 3 key frame indices using the same heuristic as the mobile client.
+    // This guarantees annotation coordinates match the exact frames shown in the strip.
+    const { dipIdx, setPointIdx, releaseIdx } = selectKeyFrameIndices(frames.length, rhythm);
+    req.log.info({ bestFrameIndex, dipIdx, setPointIdx, releaseIdx }, "Step 2: running biomechanics with 3 key frames");
 
-    // Build user content for biomechanics analysis.
-    // For video sessions: always include both key frames (Dip and Set Point) so the AI can
-    // place annotations on the correct frameIndex regardless of which was chosen as bestFrame.
-    // For single-image sessions: send just the one image with frameIndex 0 for all annotations.
+    // Build biomechanics prompt with all 3 key frames for annotation accuracy
+    const isVideoSession = frames.length > 1;
     const biomechanicsUserContent: Array<
       | { type: "image_url"; image_url: { url: string; detail: "high" | "low" } }
       | { type: "text"; text: string }
     > = [];
 
-    const isVideoSession = frames.length > 1;
-
     if (isVideoSession) {
-      // Primary (best) frame at high detail for scoring all 8 components
       biomechanicsUserContent.push(
         {
           type: "image_url",
-          image_url: {
-            url: `data:${mimeType};base64,${frames[bestFrameIndex]}`,
-            detail: "high",
-          },
+          image_url: { url: `data:${mimeType};base64,${frames[bestFrameIndex]}`, detail: "high" },
         },
         {
           type: "text",
           text: "PRIMARY ANALYSIS FRAME (use for all 8 component scores and feedback): Analyze this basketball shooting form image extracted from a video at the optimal moment. Evaluate all 8 biomechanical components using the coaching framework provided. Pay close attention to: whether elbows are IN or flaring, guide hand placement (side only, not underneath), grip gap between ball and palm (no huge gap — controlled finger-pad grip), loaded wrist, 65° hand angle, right-eyebrow set point, ball not covering the face, pushing ball UP at release, wrist snap quality, arm staying high, eyes tracking ball post-release, and relaxed shoulders.",
-        }
-      );
-
-      // Key frame 0: Dip phase — always included for lower-body annotation placement
-      biomechanicsUserContent.push(
+        },
         {
           type: "image_url",
-          image_url: {
-            url: `data:${mimeType};base64,${frames[dipFrameIdx]}`,
-            detail: "low",
-          },
+          image_url: { url: `data:${mimeType};base64,${frames[dipIdx]}`, detail: "low" },
         },
         {
           type: "text",
-          text: `KEY FRAME — frameIndex: 0 (Dip phase, ~${Math.round((dipFrameIdx / frames.length) * 100)}% through shot). Use the body part positions in THIS frame for all annotations with frameIndex: 0. This frame captures the loading phase — use it for lower-body zones: stance, hipAlignment, balance.`,
-        }
-      );
-
-      // Key frame 1: Set Point phase — always included for upper-body annotation placement
-      biomechanicsUserContent.push(
+          text: `KEY FRAME — frameIndex: 0 (Dip phase, frame ${dipIdx}/${frames.length - 1}). Place annotations with frameIndex 0 at the exact body-part positions visible in THIS image. Use for: stance (feet), hipAlignment (hips), balance (whole body center of mass).`,
+        },
         {
           type: "image_url",
-          image_url: {
-            url: `data:${mimeType};base64,${frames[setPointFrameIdx]}`,
-            detail: "low",
-          },
+          image_url: { url: `data:${mimeType};base64,${frames[setPointIdx]}`, detail: "low" },
         },
         {
           type: "text",
-          text: `KEY FRAME — frameIndex: 1 (Set Point phase, ~${Math.round((setPointFrameIdx / frames.length) * 100)}% through shot). Use the body part positions in THIS frame for all annotations with frameIndex: 1. This frame captures the set point / release — use it for upper-body zones: elbowPosition, gripPosition, setPoint, followThrough, eyeTracking.`,
+          text: `KEY FRAME — frameIndex: 1 (Set Point phase, frame ${setPointIdx}/${frames.length - 1}). Place annotations with frameIndex 1 at the exact body-part positions visible in THIS image. Use for: elbowPosition (shooting elbow), gripPosition (shooting hand/wrist), setPoint (ball position at ear/eyebrow).`,
+        },
+        {
+          type: "image_url",
+          image_url: { url: `data:${mimeType};base64,${frames[releaseIdx]}`, detail: "low" },
+        },
+        {
+          type: "text",
+          text: `KEY FRAME — frameIndex: 2 (Release phase, frame ${releaseIdx}/${frames.length - 1}). Place annotations with frameIndex 2 at the exact body-part positions visible in THIS image. Use for: followThrough (shooting wrist/arm finish), eyeTracking (eyes/head direction).`,
+        },
+        {
+          type: "text",
+          text: "Return ONLY valid JSON as specified. CRITICAL for annotations: use the exact pixel coordinates from each labeled KEY FRAME image — do NOT guess positions. frameIndex 0 = Dip image, frameIndex 1 = Set Point image, frameIndex 2 = Release image.",
         }
       );
-
-      biomechanicsUserContent.push({
-        type: "text",
-        text: "Return ONLY valid JSON as specified. For annotations: use frameIndex 0 (Dip frame) for stance, hipAlignment, and balance zones; use frameIndex 1 (Set Point frame) for elbowPosition, gripPosition, setPoint, followThrough, and eyeTracking zones.",
-      });
     } else {
-      // Single-image session — one frame, all annotations use frameIndex 0
       biomechanicsUserContent.push(
         {
           type: "image_url",
-          image_url: {
-            url: `data:${mimeType};base64,${frames[0]}`,
-            detail: "high",
-          },
+          image_url: { url: `data:${mimeType};base64,${frames[0]}`, detail: "high" },
         },
         {
           type: "text",
@@ -181,39 +224,14 @@ router.post("/analyze-video", async (req, res) => {
       );
     }
 
-    // Step 2: biomechanics + rhythm in parallel
-    const [analysisResponse, rhythmResponse] = await Promise.all([
-      openai.chat.completions.create({
-        model: "gpt-5.4",
-        max_completion_tokens: 2048,
-        messages: [
-          { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: biomechanicsUserContent,
-          },
-        ],
-      }),
-      frames.length >= 3
-        ? openai.chat.completions.create({
-            model: "gpt-5.4",
-            max_completion_tokens: 512,
-            messages: [
-              { role: "system", content: RHYTHM_SYSTEM_PROMPT },
-              {
-                role: "user",
-                content: [
-                  ...labeledFrameMessages,
-                  {
-                    type: "text",
-                    text: `These are ${frames.length} sequential frames from a basketball shooting video${timestamps ? ` spanning ${timestamps[timestamps.length - 1]}ms` : ""}. Analyze the temporal motion sequence to determine the shot rhythm pattern. Look specifically for: when does the body/legs drive up vs when does the ball rise (body-first = good kinetic chain). Return ONLY valid JSON.`,
-                  },
-                ],
-              },
-            ],
-          })
-        : Promise.resolve(null),
-    ]);
+    const analysisResponse = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 2048,
+      messages: [
+        { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },
+        { role: "user", content: biomechanicsUserContent },
+      ],
+    });
 
     // Parse biomechanics
     const content = analysisResponse.choices[0]?.message?.content ?? "{}";
@@ -227,26 +245,13 @@ router.post("/analyze-video", async (req, res) => {
       return;
     }
 
-    // Parse rhythm
-    let rhythm = null;
-    if (rhythmResponse) {
-      const rhythmContent = rhythmResponse.choices[0]?.message?.content ?? "{}";
-      try {
-        const jsonMatch = rhythmContent.match(/\{[\s\S]*\}/);
-        rhythm = JSON.parse(jsonMatch ? jsonMatch[0] : rhythmContent);
-      } catch {
-        req.log.warn("Failed to parse rhythm analysis");
-      }
-    }
-
     res.json({
       analysis,
       rhythm,
       bestFrameIndex,
       totalFrames: frames.length,
       timestamp: new Date().toISOString(),
-      annotationDipFrame: dipFrameIdx,
-      annotationSetPointFrame: setPointFrameIdx,
+      keyFrameIndices: isVideoSession ? [dipIdx, setPointIdx, releaseIdx] : [0],
     });
   } catch (err) {
     req.log.error({ err }, "Error analyzing video frames");
