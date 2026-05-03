@@ -27,6 +27,7 @@ import { useSessions } from "@/context/SessionContext";
 import { useShots } from "@/context/ShotsContext";
 import type { AnalysisResult, Session } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
+import { scoreToGrade, gradeColor } from "@/utils/grading";
 import { extractFrames } from "@/utils/videoFrames";
 import { FilmingTipsSheet, shouldShowFilmingTips } from "@/components/FilmingTipsSheet";
 
@@ -437,39 +438,13 @@ export default function HomeScreen() {
               opacity: pressed || isAnalyzing ? 0.75 : 1,
             },
           ]}
-          onPress={recordVideo}
-          disabled={isAnalyzing}
-        >
-          <Feather name="video" size={24} color="#fff" />
-          <View style={styles.recordBtnText}>
-            <Text style={styles.recordBtnTitle}>Record Shot</Text>
-            <Text style={styles.recordBtnSub}>AI analyzes your form in seconds</Text>
-          </View>
-        </Pressable>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.uploadBtn,
-            {
-              backgroundColor: colors.surface1,
-              borderColor: colors.primary + "60",
-              opacity: pressed || isAnalyzing ? 0.75 : 1,
-            },
-          ]}
           onPress={pickVideo}
           disabled={isAnalyzing}
         >
-          <Feather name="upload" size={18} color={colors.primary} />
-          <View style={styles.uploadBtnInner}>
-            <Text style={[styles.uploadBtnText, { color: colors.foreground }]}>
-              Upload from library
-            </Text>
-            <Text style={[styles.uploadBtnSub, { color: colors.mutedForeground }]}>
-              Use slow-mo for best results
-            </Text>
-          </View>
-          <View style={[styles.recommendedBadge, { backgroundColor: colors.primary }]}>
-            <Text style={styles.recommendedText}>Recommended</Text>
+          <Feather name="upload" size={24} color="#fff" />
+          <View style={styles.recordBtnText}>
+            <Text style={styles.recordBtnTitle}>Upload Slow-Mo Video</Text>
+            <Text style={styles.recordBtnSub}>Record in Slo-Mo, then upload for best results</Text>
           </View>
         </Pressable>
       </View>
@@ -546,12 +521,8 @@ export default function HomeScreen() {
           </View>
           {recentSessions.map((session) => {
             const score = session.analysis.overallScore;
-            const scoreColor =
-              score >= 80
-                ? colors.success
-                : score >= 60
-                ? colors.warning
-                : colors.destructive;
+            const scoreColor = gradeColor(score, colors);
+            const grade = scoreToGrade(score);
             return (
               <Pressable
                 key={session.id}
@@ -598,7 +569,7 @@ export default function HomeScreen() {
                     })}
                   </Text>
                   <Text style={[styles.sessionScore, { color: scoreColor }]}>
-                    {score}/100
+                    {grade}
                   </Text>
                   <Text
                     style={[
