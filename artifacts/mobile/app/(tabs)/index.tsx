@@ -409,10 +409,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
     <CourtBackground />
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={styles.transparentFill}
       contentContainerStyle={[
         styles.content,
         {
@@ -716,12 +716,13 @@ export default function HomeScreen() {
       }}
       onDismiss={() => setShowTipsSheet(false)}
     />
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  transparentFill: { flex: 1, backgroundColor: "transparent" },
   content: { paddingHorizontal: 20 },
   header: {
     flexDirection: "row",
