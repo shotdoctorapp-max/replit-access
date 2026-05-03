@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useVideoPlayer, VideoView } from "expo-video";
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Image,
@@ -123,16 +123,6 @@ export default function AnalysisScreen() {
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
   const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set());
-  const [isVideoMode, setIsVideoMode] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
-
-  const videoPlayer = useVideoPlayer(session.videoUri ?? null);
-
-  useEffect(() => {
-    videoPlayer.loop = true;
-    videoPlayer.muted = true;
-  }, [videoPlayer]);
-
   const adjStorageKey = `hoopform_adj_done_${session.id}`;
 
   useEffect(() => {
@@ -160,8 +150,7 @@ export default function AnalysisScreen() {
   }, [adjStorageKey]);
 
   const hasKeyFrames =
-    (session.isVideo && session.keyFrameUris && session.keyFrameUris.length > 1) ||
-    !!session.videoUri;
+    session.isVideo && session.keyFrameUris && session.keyFrameUris.length > 1;
 
   const sortedComponents = Object.entries(analysis.components ?? {}).sort(
     ([, a], [, b]) => (a?.score ?? 0) - (b?.score ?? 0)
@@ -211,29 +200,9 @@ export default function AnalysisScreen() {
           setImageLayout({ width, height });
         }}
       >
-        {isVideoMode ? (
-          <Pressable
-            style={styles.heroVideo}
-            onPress={() => {
-              if (videoPlayer.playing) {
-                videoPlayer.pause();
-              } else {
-                videoPlayer.play();
-              }
-            }}
-          >
-            <VideoView
-              player={videoPlayer}
-              style={StyleSheet.absoluteFill}
-              contentFit="contain"
-              nativeControls={false}
-            />
-          </Pressable>
-        ) : (
-          <Image source={{ uri: heroUri }} style={styles.heroImage} />
-        )}
+        <Image source={{ uri: heroUri }} style={styles.heroImage} />
 
-        {!isVideoMode && showAnnotations && activeAnnotations.length > 0 && imageLayout.width > 0 && (
+        {showAnnotations && activeAnnotations.length > 0 && imageLayout.width > 0 && (
           <FrameAnnotationOverlay
             annotations={activeAnnotations}
             containerWidth={imageLayout.width}
@@ -250,7 +219,7 @@ export default function AnalysisScreen() {
           <Feather name="arrow-left" size={20} color={colors.foreground} />
         </Pressable>
 
-        {!isVideoMode && allAnnotations.length > 0 && (
+        {allAnnotations.length > 0 && (
           <Pressable
             style={[
               styles.annotationToggle,
@@ -270,23 +239,6 @@ export default function AnalysisScreen() {
           </Pressable>
         )}
 
-        {isVideoMode && (
-          <Pressable
-            style={[styles.annotationToggle, { backgroundColor: colors.surface1 + "cc" }]}
-            onPress={() => {
-              const next = !isMuted;
-              setIsMuted(next);
-              videoPlayer.muted = next;
-            }}
-          >
-            <Feather
-              name={isMuted ? "volume-x" : "volume-2"}
-              size={17}
-              color={colors.foreground}
-            />
-          </Pressable>
-        )}
-
         <View style={styles.imageOverlay}>
           <View style={[styles.scoreBadge, { backgroundColor: colors.surface1 + "ee" }]}>
             <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>{overallGrade}</Text>
@@ -301,38 +253,9 @@ export default function AnalysisScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.frameStrip}
           >
-            {session.videoUri && (
-              <Pressable
-                style={styles.frameThumbWrapper}
-                onPress={() => {
-                  setIsVideoMode(true);
-                  setIsMuted(true);
-                  videoPlayer.muted = true;
-                  videoPlayer.play();
-                }}
-              >
-                <View style={[
-                  styles.frameThumb,
-                  { borderColor: isVideoMode ? colors.primary : colors.border },
-                ]}>
-                  <Image source={{ uri: session.imageUri }} style={styles.frameThumbImg} />
-                  <View style={styles.frameThumbPlayOverlay}>
-                    <Feather name="play-circle" size={24} color="#fff" />
-                  </View>
-                  {isVideoMode && (
-                    <View style={[styles.frameThumbActive, { backgroundColor: colors.primary + "33" }]} />
-                  )}
-                </View>
-                <Text style={[
-                  styles.frameThumbLabel,
-                  { color: isVideoMode ? colors.primary : colors.mutedForeground },
-                ]}>▶ Video</Text>
-              </Pressable>
-            )}
-
             {(session.keyFrameUris ?? []).map((uri, i) => {
               const label = session.keyFrameLabels?.[i] ?? `Frame ${i + 1}`;
-              const isActive = !isVideoMode && activeFrameIdx === i;
+              const isActive = activeFrameIdx === i;
               const frameSeverity = worstSeverityForFrame(i);
               const severityBorderColor =
                 allAnnotations.length > 0 && frameSeverity
@@ -346,10 +269,6 @@ export default function AnalysisScreen() {
                   key={i}
                   style={styles.frameThumbWrapper}
                   onPress={() => {
-                    if (isVideoMode) {
-                      setIsVideoMode(false);
-                      videoPlayer.pause();
-                    }
                     setHeroUri(uri);
                     setActiveFrameIdx(i);
                   }}
@@ -1044,17 +963,6 @@ const styles = StyleSheet.create({
   },
   rhythmObs: {
     gap: 6,
-  },
-  heroVideo: {
-    width: "100%",
-    height: 320,
-    backgroundColor: "#000",
-  },
-  frameThumbPlayOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.38)",
   },
   adjustmentStep: {
     flexDirection: "row",
