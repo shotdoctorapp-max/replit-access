@@ -126,10 +126,12 @@ export default function AnalysisScreen() {
   const [isVideoMode, setIsVideoMode] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
 
-  const videoPlayer = useVideoPlayer(session.videoUri ?? null, (p) => {
-    p.loop = true;
-    p.muted = true;
-  });
+  const videoPlayer = useVideoPlayer(session.videoUri ?? null);
+
+  useEffect(() => {
+    videoPlayer.loop = true;
+    videoPlayer.muted = true;
+  }, [videoPlayer]);
 
   const adjStorageKey = `hoopform_adj_done_${session.id}`;
 
