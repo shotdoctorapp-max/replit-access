@@ -210,12 +210,23 @@ export default function AnalysisScreen() {
         }}
       >
         {isVideoMode ? (
-          <VideoView
-            player={videoPlayer}
+          <Pressable
             style={styles.heroVideo}
-            contentFit="contain"
-            nativeControls={false}
-          />
+            onPress={() => {
+              if (videoPlayer.playing) {
+                videoPlayer.pause();
+              } else {
+                videoPlayer.play();
+              }
+            }}
+          >
+            <VideoView
+              player={videoPlayer}
+              style={StyleSheet.absoluteFill}
+              contentFit="contain"
+              nativeControls={false}
+            />
+          </Pressable>
         ) : (
           <Image source={{ uri: heroUri }} style={styles.heroImage} />
         )}
@@ -293,6 +304,8 @@ export default function AnalysisScreen() {
                 style={styles.frameThumbWrapper}
                 onPress={() => {
                   setIsVideoMode(true);
+                  setIsMuted(true);
+                  videoPlayer.muted = true;
                   videoPlayer.play();
                 }}
               >
@@ -311,7 +324,7 @@ export default function AnalysisScreen() {
                 <Text style={[
                   styles.frameThumbLabel,
                   { color: isVideoMode ? colors.primary : colors.mutedForeground },
-                ]}>Video</Text>
+                ]}>▶ Video</Text>
               </Pressable>
             )}
 
