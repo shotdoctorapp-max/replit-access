@@ -50,6 +50,27 @@ const DEFAULT_DRILLS: DrillRecommendation[] = [
   },
 ];
 
+const FILMING_TIPS = [
+  {
+    icon: "speedometer-slow" as const,
+    title: "Record in Slow-Mo",
+    body: "iPhone: open Camera → swipe to Slo-Mo → record → upload from library",
+    highlight: true,
+  },
+  {
+    icon: "rotate-3d-variant" as const,
+    title: "Side / Profile View",
+    body: "Film from the side so the AI can see your full shooting motion",
+    highlight: false,
+  },
+  {
+    icon: "human-male-height" as const,
+    title: "Full Body in Frame",
+    body: "Step back so your feet and hands are visible throughout the shot",
+    highlight: false,
+  },
+];
+
 const BIOMECHANICS_TIPS = [
   {
     icon: "arm-flex" as const,
@@ -161,6 +182,45 @@ export default function TipsScreen() {
       </Text>
       {personalizedDrills.map((drill, i) => (
         <DrillCard key={`${drill.name}-${i}`} drill={drill} index={i} />
+      ))}
+
+      <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginTop: 8 }]}>
+        FILMING TIPS
+      </Text>
+      {FILMING_TIPS.map((tip, i) => (
+        <View
+          key={tip.title}
+          style={[
+            styles.tipCard,
+            tip.highlight
+              ? { backgroundColor: colors.primary + "15", borderColor: colors.primary + "50" }
+              : { backgroundColor: colors.surface1, borderColor: colors.border },
+          ]}
+        >
+          <View
+            style={[
+              styles.tipIcon,
+              { backgroundColor: (tip.highlight ? colors.primary : colors.accent) + "20" },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={tip.icon}
+              size={20}
+              color={tip.highlight ? colors.primary : colors.accent}
+            />
+          </View>
+          <View style={styles.tipContent}>
+            <View style={styles.tipTitleRow}>
+              <View style={[styles.tipBadge, { backgroundColor: tip.highlight ? colors.primary : colors.border }]}>
+                <Text style={[styles.tipBadgeNum, { color: tip.highlight ? colors.primaryForeground : colors.mutedForeground }]}>
+                  {i + 1}
+                </Text>
+              </View>
+              <Text style={[styles.tipTitle, { color: colors.foreground }]}>{tip.title}</Text>
+            </View>
+            <Text style={[styles.tipBody, { color: colors.mutedForeground }]}>{tip.body}</Text>
+          </View>
+        </View>
       ))}
 
       <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginTop: 8 }]}>
@@ -278,6 +338,24 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   tipContent: { flex: 1 },
+  tipTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 4,
+  },
+  tipBadge: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  tipBadgeNum: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+  },
   tipTitle: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
