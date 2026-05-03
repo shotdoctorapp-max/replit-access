@@ -189,7 +189,6 @@ export default function HomeScreen() {
       mediaTypes: ["videos"],
       videoMaxDuration: 10,
       quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
-      copyToCacheDirectory: true,
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -227,7 +226,6 @@ export default function HomeScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["videos"],
       quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
-      copyToCacheDirectory: true,
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -425,7 +423,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.greeting, { color: colors.mutedForeground }]}>YOUR AI COACH</Text>
-          <Text style={[styles.title, { color: colors.foreground }]}>Shot Doc <Text style={{ fontSize: 12, color: colors.mutedForeground }}>v2.1</Text></Text>
+          <Text style={[styles.title, { color: colors.foreground }]}>Shot Doctor <Text style={{ fontSize: 12, color: colors.mutedForeground }}>v2.1</Text></Text>
         </View>
         <Pressable
           onPress={() => signOut()}

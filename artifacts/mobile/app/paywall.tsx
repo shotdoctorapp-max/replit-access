@@ -76,7 +76,7 @@ export default function PaywallScreen() {
         <View style={styles.iconCircle}>
           <MaterialCommunityIcons name="basketball" size={48} color={GREEN} />
         </View>
-        <Text style={styles.heroTitle}>Unlock Shot Doc Pro</Text>
+        <Text style={styles.heroTitle}>Unlock Shot Doctor Pro</Text>
         <Text style={styles.heroSubtitle}>
           You've used your 3 free shots. Upgrade to keep improving your game.
         </Text>

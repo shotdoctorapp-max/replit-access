@@ -100,7 +100,7 @@ export default function SignInScreen() {
           <MaterialCommunityIcons name="basketball" size={36} color={GREEN} />
         </View>
         <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Sign in to Shot Doc</Text>
+        <Text style={styles.subtitle}>Sign in to Shot Doctor</Text>
 
         <Text style={styles.label}>Email</Text>
         <TextInput
