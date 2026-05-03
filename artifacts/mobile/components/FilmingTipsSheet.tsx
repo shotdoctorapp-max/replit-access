@@ -13,6 +13,106 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
+function FilmingAnglePreview({ color, bgColor }: { color: string; bgColor: string }) {
+  const armAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const dotAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(armAnim, { toValue: 1, duration: 600, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.delay(400),
+        Animated.timing(armAnim, { toValue: 0, duration: 500, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.delay(600),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(dotAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(dotAnim, { toValue: 0, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const armRotate = armAnim.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "-38deg"] });
+
+  return (
+    <View style={[previewStyles.wrapper, { backgroundColor: bgColor, borderColor: color + "30" }]}>
+      <View style={previewStyles.labelRow}>
+        <Feather name="film" size={11} color={color} />
+        <Text style={[previewStyles.labelText, { color }]}>Ideal filming setup</Text>
+      </View>
+
+      <View style={previewStyles.scene}>
+        <View style={previewStyles.floorLine}>
+          <View style={[previewStyles.floor, { backgroundColor: color + "25" }]} />
+        </View>
+
+        <View style={previewStyles.playerGroup}>
+          <View style={[previewStyles.pHead, { backgroundColor: color + "cc" }]} />
+          <View style={previewStyles.pTorso}>
+            <View style={[previewStyles.pBody, { backgroundColor: color + "cc" }]} />
+            <Animated.View
+              style={[
+                previewStyles.pArm,
+                { backgroundColor: color + "cc", transformOrigin: "0% 50%", transform: [{ rotate: armRotate }] },
+              ]}
+            />
+          </View>
+          <View style={[previewStyles.pLegs, { backgroundColor: color + "cc" }]} />
+          <View style={[previewStyles.pLegRight, { backgroundColor: color + "99" }]} />
+        </View>
+
+        <View style={previewStyles.basketGroup}>
+          <View style={[previewStyles.backboard, { backgroundColor: color + "55", borderColor: color + "88" }]} />
+          <View style={[previewStyles.rim, { backgroundColor: color + "99" }]} />
+          <View style={[previewStyles.pole, { backgroundColor: color + "44" }]} />
+        </View>
+
+        <View style={previewStyles.cameraGroup}>
+          <Animated.View style={{ opacity: pulseAnim }}>
+            <View style={[previewStyles.cameraBody, { backgroundColor: color, borderColor: color }]}>
+              <View style={[previewStyles.cameraLens, { borderColor: bgColor }]} />
+            </View>
+            <View style={[previewStyles.cameraBase, { backgroundColor: color + "60" }]} />
+          </Animated.View>
+
+          <View style={previewStyles.dottedLine}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Animated.View
+                key={i}
+                style={[
+                  previewStyles.dot,
+                  { backgroundColor: color + "80" },
+                  { opacity: dotAnim.interpolate({ inputRange: [0, 1], outputRange: [i % 2 === 0 ? 0.9 : 0.2, i % 2 === 0 ? 0.2 : 0.9] }) },
+                ]}
+              />
+            ))}
+          </View>
+
+          <View style={[previewStyles.angleArc, { borderColor: color + "55" }]} />
+          <Text style={[previewStyles.angleLabel, { color: color + "cc" }]}>90°</Text>
+        </View>
+      </View>
+
+      <View style={previewStyles.captionRow}>
+        <View style={[previewStyles.captionBadge, { backgroundColor: color + "20", borderColor: color + "40" }]}>
+          <Text style={[previewStyles.captionText, { color }]}>Side-on  •  Waist–chest height  •  10–15 ft away</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 const DONT_SHOW_KEY = "filming_tips_dont_show";
 
 interface Props {
@@ -220,6 +320,8 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
             </Text>
           </View>
         </View>
+
+        <FilmingAnglePreview color={accentColor} bgColor={colors.surface3} />
 
         <Pressable
           style={({ pressed }) => [
@@ -569,5 +671,191 @@ const styles = StyleSheet.create({
   dontShowText: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+  },
+});
+
+const previewStyles = StyleSheet.create({
+  wrapper: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 10,
+    justifyContent: "center",
+  },
+  labelText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+  },
+  scene: {
+    height: 90,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+    position: "relative",
+  },
+  floorLine: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  floor: {
+    height: 2,
+    borderRadius: 1,
+    width: "100%",
+  },
+  playerGroup: {
+    alignItems: "center",
+    marginBottom: 2,
+    marginRight: 16,
+    position: "relative",
+  },
+  pHead: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginBottom: 2,
+  },
+  pTorso: {
+    flexDirection: "row",
+    alignItems: "center",
+    position: "relative",
+  },
+  pBody: {
+    width: 12,
+    height: 26,
+    borderRadius: 4,
+  },
+  pArm: {
+    position: "absolute",
+    left: 10,
+    top: 4,
+    width: 22,
+    height: 5,
+    borderRadius: 2.5,
+  },
+  pLegs: {
+    width: 8,
+    height: 18,
+    borderRadius: 3,
+    marginTop: 1,
+    marginLeft: -4,
+  },
+  pLegRight: {
+    position: "absolute",
+    bottom: 0,
+    left: "50%",
+    width: 8,
+    height: 16,
+    borderRadius: 3,
+    marginLeft: 2,
+  },
+  basketGroup: {
+    alignItems: "center",
+    marginBottom: 2,
+    marginRight: 32,
+    position: "relative",
+  },
+  backboard: {
+    width: 10,
+    height: 18,
+    borderRadius: 2,
+    borderWidth: 1,
+    marginBottom: 2,
+  },
+  rim: {
+    width: 16,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 1,
+  },
+  pole: {
+    width: 4,
+    height: 28,
+    borderRadius: 2,
+  },
+  cameraGroup: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginBottom: 4,
+    position: "relative",
+  },
+  cameraBody: {
+    width: 28,
+    height: 20,
+    borderRadius: 5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cameraLens: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 2,
+  },
+  cameraBase: {
+    width: 14,
+    height: 24,
+    borderRadius: 3,
+    alignSelf: "center",
+    marginTop: 1,
+  },
+  dottedLine: {
+    position: "absolute",
+    right: 28,
+    top: 10,
+    flexDirection: "row",
+    gap: 4,
+    alignItems: "center",
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  angleArc: {
+    position: "absolute",
+    top: -2,
+    right: 0,
+    width: 20,
+    height: 20,
+    borderTopWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderLeftWidth: 0,
+    borderBottomWidth: 0,
+    borderTopRightRadius: 12,
+  },
+  angleLabel: {
+    position: "absolute",
+    top: -14,
+    right: -2,
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.2,
+  },
+  captionRow: {
+    alignItems: "center",
+    marginTop: 8,
+  },
+  captionBadge: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  captionText: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 0.2,
   },
 });
