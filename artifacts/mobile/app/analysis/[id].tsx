@@ -183,7 +183,7 @@ export default function AnalysisScreen() {
             containerWidth={imageLayout.width}
             containerHeight={imageLayout.height}
             imageUri={heroUri}
-            componentFeedback={analysis.components as Record<string, { score: number; feedback: string }>}
+            componentFeedback={analysis.components as Record<string, { score: number; feedback: string; adjustments?: string[] }>}
           />
         )}
 
@@ -374,6 +374,7 @@ export default function AnalysisScreen() {
             const feedback = typeof comp.feedback === "string"
               ? comp.feedback.split(/(?<=\.)\s+/).map((s) => s.replace(/\.$/, "").trim()).filter((s) => s.length > 2)
               : [];
+            const adjustments: string[] = comp.score < 75 ? (comp.adjustments ?? []) : [];
             const zoneLabel = COMPONENT_LABELS[expandedBodyZone] ?? expandedBodyZone;
             return (
               <View style={[styles.bodyZoneExpanded, { backgroundColor: color + "12", borderColor: color + "40" }]}>
@@ -401,6 +402,12 @@ export default function AnalysisScreen() {
                     </View>
                   );
                 })}
+                {adjustments.length > 0 && adjustments.map((step, i) => (
+                  <View key={`adj-${i}`} style={styles.adjustmentStep}>
+                    <Text style={[styles.adjustmentNumber, { color }]}>{i + 1}</Text>
+                    <Text style={[styles.adjustmentText, { color: colors.foreground }]}>{step}</Text>
+                  </View>
+                ))}
               </View>
             );
           })()}
@@ -903,5 +910,27 @@ const styles = StyleSheet.create({
   },
   rhythmObs: {
     gap: 6,
+  },
+  adjustmentStep: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingLeft: 4,
+    marginTop: 5,
+  },
+  adjustmentNumber: {
+    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    width: 16,
+    textAlign: "center",
+    lineHeight: 17,
+    flexShrink: 0,
+  },
+  adjustmentText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+    flex: 1,
+    opacity: 0.88,
   },
 });

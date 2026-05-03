@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { BIOMECHANICS_SYSTEM_PROMPT } from "../lib/prompts";
+import { AnalyzeFormResponse } from "@workspace/api-zod";
 
 const router = Router();
 
@@ -39,17 +40,28 @@ router.post("/analyze", async (req, res) => {
 
     const content = response.choices[0]?.message?.content ?? "{}";
 
-    let analysis;
+    let rawAnalysis: unknown;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      analysis = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+      rawAnalysis = JSON.parse(jsonMatch ? jsonMatch[0] : content);
     } catch {
       req.log.error({ content }, "Failed to parse AI response as JSON");
       res.status(500).json({ error: "Failed to parse analysis response" });
       return;
     }
 
-    res.json({ analysis, timestamp: new Date().toISOString() });
+    const parsed = AnalyzeFormResponse.safeParse({
+      analysis: rawAnalysis,
+      timestamp: new Date().toISOString(),
+    });
+
+    if (!parsed.success) {
+      req.log.warn({ errors: parsed.error.issues, rawAnalysis }, "AI response failed schema validation — passing through raw");
+      res.json({ analysis: rawAnalysis, timestamp: new Date().toISOString() });
+      return;
+    }
+
+    res.json(parsed.data);
   } catch (err) {
     req.log.error({ err }, "Error analyzing shooting form");
     res.status(500).json({ error: "Analysis failed. Please try again." });

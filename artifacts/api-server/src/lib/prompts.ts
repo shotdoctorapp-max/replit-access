@@ -139,14 +139,14 @@ Respond ONLY with valid JSON in exactly this format:
   "overallScore": <0-100 integer>,
   "summary": "<1 short sentence on the biggest strength. 1 short sentence on the single most impactful fix. Coach voice, plain language.>",
   "components": {
-    "stance": { "score": <0-100>, "feedback": "<Label — one short sentence. e.g. 'Solid base — feet well positioned and balanced.'>" },
-    "hipAlignment": { "score": <0-100>, "feedback": "<Label — one short sentence.>" },
-    "elbowPosition": { "score": <0-100>, "feedback": "<Label — one short sentence. e.g. 'Elbow flaring — tuck it in to stop the ball going left.'>" },
-    "gripPosition": { "score": <0-100>, "feedback": "<Label — one short sentence.>" },
-    "setPoint": { "score": <0-100>, "feedback": "<Label — one short sentence.>" },
-    "followThrough": { "score": <0-100>, "feedback": "<Label — one short sentence. Most important component.>" },
-    "balance": { "score": <0-100>, "feedback": "<Label — one short sentence.>" },
-    "eyeTracking": { "score": <0-100>, "feedback": "<Label — one short sentence.>" }
+    "stance": { "score": <0-100>, "feedback": "<Label — one short sentence. e.g. 'Solid base — feet well positioned and balanced.'>", "adjustments": <omit if score >= 75, otherwise array of 2-4 short plain-English correction steps, e.g. ["Stand with feet shoulder-width apart, toes pointing slightly outward.", "Shift weight onto the balls of your feet, not your heels."]> },
+    "hipAlignment": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 75, otherwise 2-4 step array> },
+    "elbowPosition": { "score": <0-100>, "feedback": "<Label — one short sentence. e.g. 'Elbow flaring — tuck it in to stop the ball going left.'>", "adjustments": <omit if score >= 75, otherwise 2-4 step array e.g. ["Tuck your shooting elbow directly under the ball.", "Keep the elbow pointing at the basket throughout the motion."]> },
+    "gripPosition": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 75, otherwise 2-4 step array> },
+    "setPoint": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 75, otherwise 2-4 step array> },
+    "followThrough": { "score": <0-100>, "feedback": "<Label — one short sentence. Most important component.>", "adjustments": <omit if score >= 75, otherwise 2-4 step array> },
+    "balance": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 75, otherwise 2-4 step array> },
+    "eyeTracking": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 75, otherwise 2-4 step array> }
   },
   "keyStrengths": ["<2–4 word label only, e.g. 'Strong leg drive'>", "<2–4 word label>"],
   "priorityFixes": ["<2–4 word label, e.g. 'Flat arc'>", "<2–4 word label>", "<2–4 word label>"],

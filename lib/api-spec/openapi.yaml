@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: analysis
+    description: Shooting form analysis operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /analyze:
+    post:
+      operationId: analyzeForm
+      tags: [analysis]
+      summary: Analyze shooting form
+      description: Analyzes a basketball shooting form image and returns biomechanical feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRequest"
+      responses:
+        "200":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeResponse"
+        "400":
+          description: Bad request
+        "500":
+          description: Server error
 components:
   schemas:
     HealthStatus:
@@ -34,3 +59,143 @@ components:
       required:
         - status
 
+    AnalyzeRequest:
+      type: object
+      properties:
+        imageBase64:
+          type: string
+        mimeType:
+          type: string
+      required:
+        - imageBase64
+
+    ComponentScore:
+      type: object
+      properties:
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        feedback:
+          type: string
+        adjustments:
+          type: array
+          items:
+            type: string
+          description: 2-4 actionable correction steps; only present when score < 75
+      required:
+        - score
+        - feedback
+
+    FrameAnnotation:
+      type: object
+      properties:
+        frameIndex:
+          type: integer
+        zone:
+          type: string
+        x:
+          type: number
+        y:
+          type: number
+        severity:
+          type: string
+          enum: [good, warning, issue]
+        label:
+          type: string
+      required:
+        - frameIndex
+        - zone
+        - x
+        - y
+        - severity
+        - label
+
+    DrillRecommendation:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        targetArea:
+          type: string
+      required:
+        - name
+        - description
+        - targetArea
+
+    AnalysisComponents:
+      type: object
+      properties:
+        stance:
+          $ref: "#/components/schemas/ComponentScore"
+        hipAlignment:
+          $ref: "#/components/schemas/ComponentScore"
+        elbowPosition:
+          $ref: "#/components/schemas/ComponentScore"
+        gripPosition:
+          $ref: "#/components/schemas/ComponentScore"
+        setPoint:
+          $ref: "#/components/schemas/ComponentScore"
+        followThrough:
+          $ref: "#/components/schemas/ComponentScore"
+        balance:
+          $ref: "#/components/schemas/ComponentScore"
+        eyeTracking:
+          $ref: "#/components/schemas/ComponentScore"
+      required:
+        - stance
+        - hipAlignment
+        - elbowPosition
+        - gripPosition
+        - setPoint
+        - followThrough
+        - balance
+        - eyeTracking
+
+    AnalysisResult:
+      type: object
+      properties:
+        overallScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        summary:
+          type: string
+        components:
+          $ref: "#/components/schemas/AnalysisComponents"
+        keyStrengths:
+          type: array
+          items:
+            type: string
+        priorityFixes:
+          type: array
+          items:
+            type: string
+        drillRecommendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/DrillRecommendation"
+        annotations:
+          type: array
+          items:
+            $ref: "#/components/schemas/FrameAnnotation"
+      required:
+        - overallScore
+        - summary
+        - components
+        - keyStrengths
+        - priorityFixes
+        - drillRecommendations
+
+    AnalyzeResponse:
+      type: object
+      properties:
+        analysis:
+          $ref: "#/components/schemas/AnalysisResult"
+        timestamp:
+          type: string
+      required:
+        - analysis
+        - timestamp

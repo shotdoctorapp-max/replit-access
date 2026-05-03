@@ -8,7 +8,7 @@ interface Props {
   containerWidth: number;
   containerHeight: number;
   imageUri: string;
-  componentFeedback?: Record<string, { score: number; feedback: string }>;
+  componentFeedback?: Record<string, { score: number; feedback: string; adjustments?: string[] }>;
 }
 
 interface RenderedRect {
@@ -208,6 +208,7 @@ export function FrameAnnotationOverlay({
           toPixelX={toPixelX}
           toPixelY={toPixelY}
           feedback={componentFeedback?.[selectedAnnotation.zone]?.feedback}
+          firstAdjustment={componentFeedback?.[selectedAnnotation.zone]?.adjustments?.[0]}
           colors={colors}
         />
       )}
@@ -223,6 +224,7 @@ function CalloutCard({
   toPixelX,
   toPixelY,
   feedback,
+  firstAdjustment,
   colors,
 }: {
   annotation: FrameAnnotation;
@@ -232,13 +234,14 @@ function CalloutCard({
   toPixelX: (n: number) => number;
   toPixelY: (n: number) => number;
   feedback?: string;
+  firstAdjustment?: string;
   colors: ReturnType<typeof useColors>;
 }) {
   const cx = toPixelX(annotation.x);
   const cy = toPixelY(annotation.y);
 
-  const cardWidth = 200;
-  const cardHeight = 80;
+  const cardWidth = 210;
+  const cardHeight = firstAdjustment ? 110 : 80;
 
   let left = cx + 18;
   let top = cy - cardHeight / 2;
@@ -283,6 +286,14 @@ function CalloutCard({
           {shortFeedback}
         </Text>
       )}
+      {firstAdjustment && (
+        <View style={[styles.calloutTipRow, { borderTopColor: color + "30" }]}>
+          <Text style={[styles.calloutTipLabel, { color }]}>Tip: </Text>
+          <Text style={[styles.calloutTipText, { color: colors.foreground }]} numberOfLines={3}>
+            {firstAdjustment}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -324,5 +335,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     lineHeight: 16,
     opacity: 0.9,
+  },
+  calloutTipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+  },
+  calloutTipLabel: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+  },
+  calloutTipText: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 14,
+    flex: 1,
+    opacity: 0.88,
   },
 });

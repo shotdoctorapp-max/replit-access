@@ -10,6 +10,7 @@ import React, {
 export interface ComponentScore {
   score: number;
   feedback: string;
+  adjustments?: string[];
 }
 
 export interface FrameAnnotation {
