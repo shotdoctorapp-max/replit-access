@@ -109,6 +109,29 @@ function severityColor(
   return colors.destructive;
 }
 
+function computeCalloutPosition(
+  cx: number,
+  cy: number,
+  cardWidth: number,
+  cardHeight: number,
+  containerWidth: number,
+  containerHeight: number
+): { left: number; top: number } {
+  let left = cx + 18;
+  let top = cy - cardHeight / 2;
+
+  if (left + cardWidth > containerWidth - 8) {
+    left = cx - cardWidth - 18;
+  }
+  if (left < 8) left = 8;
+  if (top < 8) top = 8;
+  if (top + cardHeight > containerHeight - 8) {
+    top = containerHeight - cardHeight - 8;
+  }
+
+  return { left, top };
+}
+
 function PulsingDot({ color, selected }: { color: string; selected: boolean }) {
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(0.5)).current;
@@ -170,6 +193,56 @@ function PulsingDot({ color, selected }: { color: string; selected: boolean }) {
   );
 }
 
+function ConnectorLine({
+  dotX,
+  dotY,
+  cardLeft,
+  cardTop,
+  cardWidth,
+  cardHeight,
+  color,
+}: {
+  dotX: number;
+  dotY: number;
+  cardLeft: number;
+  cardTop: number;
+  cardWidth: number;
+  cardHeight: number;
+  color: string;
+}) {
+  const cardCenterY = cardTop + cardHeight / 2;
+
+  const cardIsRight = cardLeft > dotX;
+  const x2 = cardIsRight ? cardLeft : cardLeft + cardWidth;
+  const y2 = cardCenterY;
+
+  const dx = x2 - dotX;
+  const dy = y2 - dotY;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  if (length < 2) return null;
+
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  const midX = (dotX + x2) / 2;
+  const midY = (dotY + y2) / 2;
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        left: midX - length / 2,
+        top: midY - 1,
+        width: length,
+        height: 2,
+        backgroundColor: color,
+        opacity: 0.55,
+        borderRadius: 1,
+        transform: [{ rotate: `${angle}deg` }],
+      }}
+    />
+  );
+}
+
 export function FrameAnnotationOverlay({
   annotations,
   containerWidth,
@@ -222,6 +295,24 @@ export function FrameAnnotationOverlay({
     ? annotations.findIndex((a) => a.zone === selectedZone)
     : -1;
 
+  const CARD_WIDTH = 210;
+  const cardHeight =
+    selectedAnnotation && componentFeedback?.[selectedAnnotation.zone]?.adjustments?.[0]
+      ? 110
+      : 80;
+
+  const calloutPos =
+    selectedAnnotation && selectedIdx !== -1
+      ? computeCalloutPosition(
+          adjustedPositions[selectedIdx].cx,
+          adjustedPositions[selectedIdx].cy,
+          CARD_WIDTH,
+          cardHeight,
+          containerWidth,
+          containerHeight
+        )
+      : null;
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* 1. Dismiss backdrop — only present when a callout is open. Rendered below the dots
@@ -233,7 +324,20 @@ export function FrameAnnotationOverlay({
         />
       )}
 
-      {/* 2. Dot markers — rendered above the backdrop so they intercept their own taps */}
+      {/* 2. Connector line — drawn below dots and callout so it doesn't obscure them */}
+      {selectedAnnotation && selectedIdx !== -1 && calloutPos && (
+        <ConnectorLine
+          dotX={adjustedPositions[selectedIdx].cx}
+          dotY={adjustedPositions[selectedIdx].cy}
+          cardLeft={calloutPos.left}
+          cardTop={calloutPos.top}
+          cardWidth={CARD_WIDTH}
+          cardHeight={cardHeight}
+          color={selectedColor}
+        />
+      )}
+
+      {/* 3. Dot markers — rendered above the backdrop so they intercept their own taps */}
       {annotations.map((ann, idx) => {
         const { cx, cy } = adjustedPositions[idx];
         const color = severityColor(ann.severity, colors);
@@ -254,7 +358,7 @@ export function FrameAnnotationOverlay({
         );
       })}
 
-      {/* 3. Callout card — rendered on top of everything */}
+      {/* 4. Callout card — rendered on top of everything */}
       {selectedAnnotation && selectedIdx !== -1 && (
         <CalloutCard
           annotation={selectedAnnotation}
@@ -296,17 +400,7 @@ function CalloutCard({
   const cardWidth = 210;
   const cardHeight = firstAdjustment ? 110 : 80;
 
-  let left = cx + 18;
-  let top = cy - cardHeight / 2;
-
-  if (left + cardWidth > containerWidth - 8) {
-    left = cx - cardWidth - 18;
-  }
-  if (left < 8) left = 8;
-  if (top < 8) top = 8;
-  if (top + cardHeight > containerHeight - 8) {
-    top = containerHeight - cardHeight - 8;
-  }
+  const { left, top } = computeCalloutPosition(cx, cy, cardWidth, cardHeight, containerWidth, containerHeight);
 
   const shortFeedback = feedback
     ? feedback.split(/(?<=\.)\s+/)[0]?.replace(/\.$/, "").trim()
