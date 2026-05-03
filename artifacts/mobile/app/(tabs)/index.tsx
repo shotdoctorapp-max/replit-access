@@ -14,10 +14,7 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Circle, Line, Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useSessions } from "@/context/SessionContext";
@@ -27,6 +24,7 @@ import { ScoreRing } from "@/components/ScoreRing";
 import { scoreToGrade, gradeColor } from "@/utils/grading";
 import { extractFrames } from "@/utils/videoFrames";
 import { FilmingTipsSheet, shouldShowFilmingTips } from "@/components/FilmingTipsSheet";
+import { CourtBackground } from "@/components/CourtBackground";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -83,42 +81,6 @@ function buildCreepSequence(
   return RNAnimated.sequence(anims);
 }
 
-function CourtBackground() {
-  const { width } = useWindowDimensions();
-  const stroke = "#00C853";
-  const op = 0.065;
-  const cx = width / 2;
-
-  const keyW = width * 0.38;
-  const keyH = 110;
-  const keyX = cx - keyW / 2;
-  const ftRadius = keyW / 2;
-  const ftCY = keyH + 10;
-
-  const arcR = width * 0.58;
-  const arcStartX = cx - arcR * 0.88;
-  const arcEndX   = cx + arcR * 0.88;
-  const arcY      = ftCY + 30;
-
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <LinearGradient
-        colors={["rgba(0,200,83,0.09)", "rgba(0,0,0,0)"]}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 280 }}
-      />
-      <Svg width={width} height={500} style={{ position: "absolute", top: 0 }}>
-        <Line x1={cx - 18} y1={6} x2={cx + 18} y2={6} stroke={stroke} strokeWidth={2} opacity={op * 1.4} />
-        <Circle cx={cx} cy={18} r={11} fill="none" stroke={stroke} strokeWidth={1.5} opacity={op * 1.4} />
-        <Path d={`M ${keyX} 10 L ${keyX} ${keyH} L ${keyX + keyW} ${keyH} L ${keyX + keyW} 10`}
-          fill="none" stroke={stroke} strokeWidth={1} opacity={op} />
-        <Circle cx={cx} cy={ftCY} r={ftRadius} fill="none" stroke={stroke} strokeWidth={1} opacity={op} />
-        <Path
-          d={`M ${arcStartX} ${ftCY} Q ${cx} ${arcY + arcR * 0.55} ${arcEndX} ${ftCY}`}
-          fill="none" stroke={stroke} strokeWidth={1} opacity={op} />
-      </Svg>
-    </View>
-  );
-}
 
 export default function HomeScreen() {
   const colors = useColors();

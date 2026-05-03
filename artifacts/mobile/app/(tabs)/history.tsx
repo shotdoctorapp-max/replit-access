@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useSessions, type Session } from "@/context/SessionContext";
 import { scoreToGrade, gradeColor } from "@/utils/grading";
+import { CourtBackground } from "@/components/CourtBackground";
 
 function SessionItem({ session, onPress, onDelete }: {
   session: Session;
@@ -110,6 +111,7 @@ export default function HistoryScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <CourtBackground />
       <FlatList
         data={sessions}
         keyExtractor={(item) => item.id}

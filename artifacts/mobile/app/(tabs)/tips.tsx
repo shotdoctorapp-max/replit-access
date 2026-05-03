@@ -12,6 +12,7 @@ import {
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
+import { CourtBackground } from "@/components/CourtBackground";
 import { useSessions } from "@/context/SessionContext";
 import { DrillCard } from "@/components/DrillCard";
 import type { DrillRecommendation } from "@/context/SessionContext";
@@ -149,8 +150,10 @@ export default function TipsScreen() {
       : null;
 
   return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <CourtBackground />
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={styles.fill}
       contentContainerStyle={[
         styles.content,
         {
@@ -278,11 +281,13 @@ export default function TipsScreen() {
         </View>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  fill: { flex: 1 },
   content: { paddingHorizontal: 20 },
   pageTitle: {
     fontSize: 28,
