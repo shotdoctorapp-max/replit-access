@@ -97,6 +97,8 @@ export default function HomeScreen() {
   const [showTipsSheet, setShowTipsSheet] = useState(false);
 
   const progressAnim = useRef(new RNAnimated.Value(0)).current;
+  const cardOpacity = useRef(new RNAnimated.Value(0)).current;
+  const [isCardVisible, setIsCardVisible] = useState(false);
   const activeAnimRef = useRef<RNAnimated.CompositeAnimation | null>(null);
   const stageRef = useRef<AnalyzingStage>("idle");
   const [progressPct, setProgressPct] = useState(0);
@@ -237,6 +239,13 @@ export default function HomeScreen() {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
+      cardOpacity.setValue(0);
+      setIsCardVisible(true);
+      RNAnimated.timing(cardOpacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
       setStage("extracting");
       const { base64Frames, thumbnailUris, timestamps } = await extractFrames(videoUri, durationMs);
 
@@ -368,18 +377,32 @@ export default function HomeScreen() {
         duration: 450,
         useNativeDriver: false,
       }).start(() => {
-        setIsCompleting(false);
-        progressAnim.setValue(0);
-        router.push({ pathname: "/analysis/[id]", params: { id: session.id } });
+        RNAnimated.timing(cardOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setIsCompleting(false);
+          setIsCardVisible(false);
+          progressAnim.setValue(0);
+          router.push({ pathname: "/analysis/[id]", params: { id: session.id } });
+        });
       });
     } catch (err) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = err instanceof Error ? err.message : "Something went wrong";
       Alert.alert("Video Analysis Failed", message);
       activeAnimRef.current?.stop();
-      progressAnim.setValue(0);
-      setIsCompleting(false);
-      setStage("idle");
+      RNAnimated.timing(cardOpacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsCardVisible(false);
+        progressAnim.setValue(0);
+        setIsCompleting(false);
+        setStage("idle");
+      });
     }
   };
 
@@ -508,7 +531,8 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      {isAnalyzing && (
+      {isCardVisible && (
+        <RNAnimated.View style={{ opacity: cardOpacity }}>
         <View
           style={[
             styles.analyzingCard,
@@ -578,6 +602,7 @@ export default function HomeScreen() {
             )}
           </View>
         </View>
+        </RNAnimated.View>
       )}
 
       {recentSessions.length > 0 && (
