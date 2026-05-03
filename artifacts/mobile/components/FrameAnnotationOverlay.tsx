@@ -53,6 +53,53 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
 }
 
+const MIN_GAP = 44;
+const MAX_REPULSION_ITERS = 30;
+
+function applyRepulsion(
+  positions: Array<{ cx: number; cy: number }>,
+  rect: RenderedRect
+): Array<{ cx: number; cy: number }> {
+  const pts = positions.map((p) => ({ cx: p.cx, cy: p.cy }));
+  const minX = rect.offsetX;
+  const maxX = rect.offsetX + rect.renderedW;
+  const minY = rect.offsetY;
+  const maxY = rect.offsetY + rect.renderedH;
+
+  for (let iter = 0; iter < MAX_REPULSION_ITERS; iter++) {
+    let moved = false;
+    for (let i = 0; i < pts.length; i++) {
+      for (let j = i + 1; j < pts.length; j++) {
+        const dx = pts[j].cx - pts[i].cx;
+        const dy = pts[j].cy - pts[i].cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MIN_GAP && dist > 0) {
+          const overlap = MIN_GAP - dist;
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const nudge = overlap / 2;
+          pts[i].cx -= nx * nudge;
+          pts[i].cy -= ny * nudge;
+          pts[j].cx += nx * nudge;
+          pts[j].cy += ny * nudge;
+          moved = true;
+        } else if (dist === 0) {
+          pts[i].cx -= MIN_GAP / 2;
+          pts[j].cx += MIN_GAP / 2;
+          moved = true;
+        }
+      }
+    }
+    for (let i = 0; i < pts.length; i++) {
+      pts[i].cx = clamp(pts[i].cx, minX, maxX);
+      pts[i].cy = clamp(pts[i].cy, minY, maxY);
+    }
+    if (!moved) break;
+  }
+
+  return pts;
+}
+
 function severityColor(
   severity: FrameAnnotation["severity"],
   colors: ReturnType<typeof useColors>
@@ -160,10 +207,20 @@ export function FrameAnnotationOverlay({
     return rect.offsetY + clamp(normY, 0, 1) * rect.renderedH;
   }
 
+  const rawPositions = annotations.map((ann) => ({
+    cx: toPixelX(ann.x),
+    cy: toPixelY(ann.y),
+  }));
+
+  const adjustedPositions = applyRepulsion(rawPositions, rect);
+
   const selectedAnnotation = annotations.find((a) => a.zone === selectedZone);
   const selectedColor = selectedAnnotation
     ? severityColor(selectedAnnotation.severity, colors)
     : colors.primary;
+  const selectedIdx = selectedAnnotation
+    ? annotations.findIndex((a) => a.zone === selectedZone)
+    : -1;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -178,20 +235,19 @@ export function FrameAnnotationOverlay({
 
       {/* 2. Dot markers — rendered above the backdrop so they intercept their own taps */}
       {annotations.map((ann, idx) => {
-        const cx = toPixelX(ann.x);
-        const cy = toPixelY(ann.y);
+        const { cx, cy } = adjustedPositions[idx];
         const color = severityColor(ann.severity, colors);
         const isSelected = selectedZone === ann.zone;
 
         return (
           <Pressable
             key={`${ann.zone}-${idx}`}
-            style={[styles.markerHitArea, { left: cx - 20, top: cy - 20 }]}
+            style={[styles.markerHitArea, { left: cx - 24, top: cy - 24 }]}
             onPress={() =>
               setSelectedZone((prev) => (prev === ann.zone ? null : ann.zone))
             }
           >
-            <View style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
+            <View style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}>
               <PulsingDot color={color} selected={isSelected} />
             </View>
           </Pressable>
@@ -199,14 +255,14 @@ export function FrameAnnotationOverlay({
       })}
 
       {/* 3. Callout card — rendered on top of everything */}
-      {selectedAnnotation && (
+      {selectedAnnotation && selectedIdx !== -1 && (
         <CalloutCard
           annotation={selectedAnnotation}
+          cx={adjustedPositions[selectedIdx].cx}
+          cy={adjustedPositions[selectedIdx].cy}
           color={selectedColor}
           containerWidth={containerWidth}
           containerHeight={containerHeight}
-          toPixelX={toPixelX}
-          toPixelY={toPixelY}
           feedback={componentFeedback?.[selectedAnnotation.zone]?.feedback}
           firstAdjustment={componentFeedback?.[selectedAnnotation.zone]?.adjustments?.[0]}
           colors={colors}
@@ -218,28 +274,25 @@ export function FrameAnnotationOverlay({
 
 function CalloutCard({
   annotation,
+  cx,
+  cy,
   color,
   containerWidth,
   containerHeight,
-  toPixelX,
-  toPixelY,
   feedback,
   firstAdjustment,
   colors,
 }: {
   annotation: FrameAnnotation;
+  cx: number;
+  cy: number;
   color: string;
   containerWidth: number;
   containerHeight: number;
-  toPixelX: (n: number) => number;
-  toPixelY: (n: number) => number;
   feedback?: string;
   firstAdjustment?: string;
   colors: ReturnType<typeof useColors>;
 }) {
-  const cx = toPixelX(annotation.x);
-  const cy = toPixelY(annotation.y);
-
   const cardWidth = 210;
   const cardHeight = firstAdjustment ? 110 : 80;
 
