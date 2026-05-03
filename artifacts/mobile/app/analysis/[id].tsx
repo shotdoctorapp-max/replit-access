@@ -191,6 +191,11 @@ export default function AnalysisScreen() {
     });
   }, [seenZonesKey]);
 
+  const resetSeenZones = useCallback(() => {
+    setSeenZones(new Set());
+    AsyncStorage.removeItem(seenZonesKey).catch(() => {});
+  }, [seenZonesKey]);
+
   const toggleStep = useCallback((key: string) => {
     setDoneSteps((prev) => {
       const next = new Set(prev);
@@ -411,6 +416,11 @@ export default function AnalysisScreen() {
           <View style={styles.sectionHeaderRow}>
             <MaterialCommunityIcons name="human" size={16} color={colors.primary} />
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>BODY MAP</Text>
+            {seenZones.size > 0 && (
+              <Pressable onPress={resetSeenZones} style={styles.resetHintsButton} hitSlop={8}>
+                <Text style={[styles.resetHintsText, { color: colors.mutedForeground }]}>reset hints</Text>
+              </Pressable>
+            )}
           </View>
           <View style={styles.bodyMapGrid}>
             {BODY_ZONES.map(({ key, label, icon }) => {
@@ -875,6 +885,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     marginBottom: 12,
+  },
+  resetHintsButton: {
+    marginLeft: "auto",
+  },
+  resetHintsText: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    letterSpacing: 0.5,
+    opacity: 0.6,
   },
   sectionTitle: {
     fontSize: 11,
