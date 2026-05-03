@@ -1,6 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Image,
   LayoutChangeEvent,
@@ -120,6 +121,33 @@ export default function AnalysisScreen() {
   const [expandedBodyZone, setExpandedBodyZone] = useState<string | null>(null);
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
+  const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set());
+
+  const adjStorageKey = `hoopform_adj_done_${session.id}`;
+
+  useEffect(() => {
+    AsyncStorage.getItem(adjStorageKey)
+      .then((raw) => {
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setDoneSteps(new Set(parsed));
+        }
+      })
+      .catch(() => {});
+  }, [adjStorageKey]);
+
+  const toggleStep = useCallback((key: string) => {
+    setDoneSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      AsyncStorage.setItem(adjStorageKey, JSON.stringify([...next])).catch(() => {});
+      return next;
+    });
+  }, [adjStorageKey]);
 
   const hasKeyFrames =
     session.isVideo &&
@@ -402,12 +430,40 @@ export default function AnalysisScreen() {
                     </View>
                   );
                 })}
-                {adjustments.length > 0 && adjustments.map((step, i) => (
-                  <View key={`adj-${i}`} style={styles.adjustmentStep}>
-                    <Text style={[styles.adjustmentNumber, { color }]}>{i + 1}</Text>
-                    <Text style={[styles.adjustmentText, { color: colors.foreground }]}>{step}</Text>
-                  </View>
-                ))}
+                {adjustments.length > 0 && adjustments.map((step, i) => {
+                  const stepKey = `${expandedBodyZone}:${i}`;
+                  const isDone = doneSteps.has(stepKey);
+                  return (
+                    <Pressable
+                      key={`adj-${i}`}
+                      style={styles.adjustmentStep}
+                      onPress={() => toggleStep(stepKey)}
+                    >
+                      <View style={[
+                        styles.adjustmentCheckbox,
+                        isDone
+                          ? { backgroundColor: color, borderColor: color }
+                          : { borderColor: color },
+                      ]}>
+                        {isDone && (
+                          <Feather name="check" size={9} color="#fff" />
+                        )}
+                      </View>
+                      <Text style={[
+                        styles.adjustmentNumber,
+                        { color: isDone ? colors.mutedForeground : color },
+                      ]}>{i + 1}</Text>
+                      <Text style={[
+                        styles.adjustmentText,
+                        {
+                          color: isDone ? colors.mutedForeground : colors.foreground,
+                          textDecorationLine: isDone ? "line-through" : "none",
+                          opacity: isDone ? 0.5 : 0.88,
+                        },
+                      ]}>{step}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             );
           })()}
@@ -914,9 +970,19 @@ const styles = StyleSheet.create({
   adjustmentStep: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 8,
+    gap: 6,
     paddingLeft: 4,
     marginTop: 5,
+  },
+  adjustmentCheckbox: {
+    width: 14,
+    height: 14,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1.5,
+    flexShrink: 0,
   },
   adjustmentNumber: {
     fontSize: 11,
