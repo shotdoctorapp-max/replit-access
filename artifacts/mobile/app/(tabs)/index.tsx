@@ -33,12 +33,14 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 
 type AnalyzingStage =
   | "idle"
+  | "preparing"
   | "extracting"
   | "selecting"
   | "analyzing";
 
 const STAGE_LABELS: Record<AnalyzingStage, string> = {
   idle: "",
+  preparing: "Preparing video…",
   extracting: "Extracting key frames…",
   selecting: "AI selecting best moment…",
   analyzing: "Analyzing biomechanics…",
@@ -48,6 +50,7 @@ const STAGE_ORDER: AnalyzingStage[] = ["extracting", "selecting", "analyzing"];
 
 const STAGE_FLOORS: Record<AnalyzingStage, number> = {
   idle: 0,
+  preparing: 0,
   extracting: 0,
   selecting: 25,
   analyzing: 45,
@@ -55,6 +58,7 @@ const STAGE_FLOORS: Record<AnalyzingStage, number> = {
 
 const STAGE_CEILINGS: Record<AnalyzingStage, number> = {
   idle: 0,
+  preparing: 5,
   extracting: 25,
   selecting: 45,
   analyzing: 92,
@@ -215,7 +219,15 @@ export default function HomeScreen() {
         quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
       });
     } catch (e: any) {
-      Alert.alert("Camera error", "Couldn't access the camera. Please try again.");
+      const msg = String(e?.message ?? "");
+      if (msg.includes("PHPhotosErrorDomain") || msg.includes("3164")) {
+        Alert.alert(
+          "Video unavailable",
+          "This video is stored in iCloud. Open the Photos app, download it to your device, then try again."
+        );
+      } else {
+        Alert.alert("Camera error", msg || "Something went wrong opening the camera.");
+      }
       return;
     }
 
@@ -290,8 +302,28 @@ export default function HomeScreen() {
         duration: 250,
         useNativeDriver: true,
       }).start();
+
+      let resolvedUri = videoUri;
+      if (videoUri.startsWith("ph://")) {
+        setStage("preparing");
+        try {
+          const FileSystemEarly = await import("expo-file-system/legacy");
+          const dest = `${FileSystemEarly.cacheDirectory}shot_${Date.now()}.mov`;
+          await FileSystemEarly.copyAsync({ from: videoUri, to: dest });
+          resolvedUri = dest;
+        } catch (copyErr) {
+          const copyMsg = copyErr instanceof Error ? copyErr.message : "";
+          if (copyMsg.includes("PHPhotosErrorDomain") || copyMsg.includes("3164")) {
+            throw new Error(
+              "This video is stored in iCloud. Open the Photos app, download it to your device, then try again."
+            );
+          }
+          throw copyErr;
+        }
+      }
+
       setStage("extracting");
-      const { base64Frames, thumbnailUris, timestamps } = await extractFrames(videoUri, durationMs);
+      const { base64Frames, thumbnailUris, timestamps } = await extractFrames(resolvedUri, durationMs);
 
       setStage("selecting");
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -324,7 +356,7 @@ export default function HomeScreen() {
       const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
       // Save the best frame thumbnail as a stable file for the analysis screen
-      let capturedFrameUri = videoUri;
+      let capturedFrameUri = resolvedUri;
       const bestThumbUri = thumbnailUris[data.bestFrameIndex] ?? thumbnailUris[0];
       if (bestThumbUri) {
         try {
@@ -390,7 +422,7 @@ export default function HomeScreen() {
       let cachedVideoUri: string | undefined;
       try {
         const videoDestUri = `${FileSystem.cacheDirectory}shotdoc_video_${sessionId}.mp4`;
-        await FileSystem.copyAsync({ from: videoUri, to: videoDestUri });
+        await FileSystem.copyAsync({ from: resolvedUri, to: videoDestUri });
         cachedVideoUri = videoDestUri;
       } catch {
         // non-fatal — video playback simply won't appear for this session
@@ -435,7 +467,8 @@ export default function HomeScreen() {
     } catch (err) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = err instanceof Error ? err.message : "Something went wrong";
-      Alert.alert("Video Analysis Failed", message);
+      const isICloudError = message.includes("iCloud") || message.includes("PHPhotosErrorDomain") || message.includes("3164");
+      Alert.alert(isICloudError ? "Video unavailable" : "Video Analysis Failed", message);
       activeAnimRef.current?.stop();
       RNAnimated.timing(cardOpacity, {
         toValue: 0,
