@@ -10,7 +10,7 @@
     "backgroundColor": "#000000",
     "splash": {
       "image": "./assets/images/splash-bg.png",
-      "resizeMode": "cover",
+      "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "ios": {
