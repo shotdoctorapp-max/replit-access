@@ -596,6 +596,10 @@ export default function HomeScreen() {
           </View>
         </Pressable>
 
+        <Text style={[styles.iCloudHint, { color: colors.mutedForeground }]}>
+          Tip: Make sure your video is downloaded from iCloud before uploading to avoid delays.
+        </Text>
+
         <Pressable
           style={[styles.filmingHintRow, { borderColor: colors.border }]}
           onPress={() => setShowTipsSheet(true)}
@@ -924,6 +928,14 @@ const styles = StyleSheet.create({
   filmingHintText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
+  },
+  iCloudHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
+    marginTop: 8,
+    paddingHorizontal: 8,
+    opacity: 0.7,
   },
   uploadBtn: {
     flexDirection: "row",
