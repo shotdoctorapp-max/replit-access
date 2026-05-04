@@ -2,6 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/expo";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -170,6 +171,27 @@ export default function HomeScreen() {
     return true;
   };
 
+  const resolveVideoUri = async (uri: string): Promise<string | null> => {
+    if (!uri.startsWith("ph://")) return uri;
+    try {
+      const dest = new FileSystem.File(FileSystem.Paths.cache, `shot_${Date.now()}.mov`);
+      const src = new FileSystem.File(uri);
+      src.copy(dest);
+      return dest.uri;
+    } catch (e: any) {
+      const msg = String(e?.message ?? "");
+      if (msg.includes("PHPhotosErrorDomain") || msg.includes("3164")) {
+        Alert.alert(
+          "Video unavailable",
+          "This video is stored in iCloud and isn't downloaded to your device yet. Open the Photos app, tap the video to download it, then try again."
+        );
+      } else {
+        Alert.alert("Couldn't load video", "Please try again with a different video.");
+      }
+      return null;
+    }
+  };
+
   const openCamera = async () => {
     if (Platform.OS === "web") {
       Alert.alert(
@@ -185,15 +207,22 @@ export default function HomeScreen() {
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["videos"],
-      videoMaxDuration: 10,
-      quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
-    });
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["videos"],
+        videoMaxDuration: 10,
+        quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
+      });
+    } catch (e: any) {
+      Alert.alert("Camera error", "Couldn't access the camera. Please try again.");
+      return;
+    }
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      await analyzeVideo(asset.uri, asset.duration ?? undefined);
+      const uri = await resolveVideoUri(asset.uri);
+      if (uri) await analyzeVideo(uri, asset.duration ?? undefined);
     }
   };
 
@@ -223,14 +252,29 @@ export default function HomeScreen() {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["videos"],
-      quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
-    });
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["videos"],
+        quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
+      });
+    } catch (e: any) {
+      const msg = String(e?.message ?? "");
+      if (msg.includes("PHPhotosErrorDomain") || msg.includes("3164")) {
+        Alert.alert(
+          "Video unavailable",
+          "This video is stored in iCloud and isn't downloaded to your device yet. Open the Photos app, tap the video to download it, then try again."
+        );
+      } else {
+        Alert.alert("Couldn't open library", "Please try again.");
+      }
+      return;
+    }
 
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
-      await analyzeVideo(asset.uri, asset.duration ?? undefined);
+      const uri = await resolveVideoUri(asset.uri);
+      if (uri) await analyzeVideo(uri, asset.duration ?? undefined);
     }
   };
 
