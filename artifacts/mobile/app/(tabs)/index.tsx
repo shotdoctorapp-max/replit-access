@@ -291,6 +291,34 @@ export default function HomeScreen() {
   };
 
   const analyzeVideo = async (videoUri: string, durationMs?: number) => {
+    const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+    const MAX_DURATION_SECONDS = 60;
+
+    try {
+      const info = await FileSystem.getInfoAsync(videoUri);
+      if (info.exists && info.size !== undefined && info.size > MAX_FILE_SIZE_BYTES) {
+        Alert.alert(
+          "Video too large",
+          "Please use a video under 100 MB. Try trimming the clip or recording a shorter shot."
+        );
+        return;
+      }
+    } catch {
+      Alert.alert(
+        "Couldn't read video",
+        "Unable to check the video file. Please try a different clip."
+      );
+      return;
+    }
+
+    if (durationMs !== undefined && durationMs > MAX_DURATION_SECONDS * 1000) {
+      Alert.alert(
+        "Video too long",
+        `Please use a video under ${MAX_DURATION_SECONDS} seconds. Trim the clip to just the shot you want analyzed.`
+      );
+      return;
+    }
+
     setBestFrameInfo(null);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
