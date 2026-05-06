@@ -9,6 +9,22 @@ export interface HealthStatus {
   status: string;
 }
 
+export type CreateBugReportRequestDeviceInfo = { [key: string]: unknown };
+
+export interface CreateBugReportRequest {
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  message: string;
+  deviceInfo?: CreateBugReportRequestDeviceInfo;
+}
+
+export interface CreateBugReportResponse {
+  id: number;
+  createdAt: string;
+}
+
 export interface AnalyzeRequest {
   imageBase64: string;
   mimeType?: string;

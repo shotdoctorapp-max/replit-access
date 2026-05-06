@@ -17,6 +17,7 @@ import { useSessions } from "@/context/SessionContext";
 import { DrillCard } from "@/components/DrillCard";
 import type { DrillRecommendation } from "@/context/SessionContext";
 import { isFilmingTipsSuppressed, resetFilmingTips } from "@/components/FilmingTipsSheet";
+import { BugReportSheet } from "@/components/BugReportSheet";
 
 const DEFAULT_DRILLS: DrillRecommendation[] = [
   {
@@ -100,6 +101,7 @@ export default function TipsScreen() {
   const insets = useSafeAreaInsets();
   const { sessions } = useSessions();
   const [tipsHidden, setTipsHidden] = useState(false);
+  const [bugReportVisible, setBugReportVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -279,7 +281,30 @@ export default function TipsScreen() {
             </View>
           )}
         </View>
+
+        <View style={[styles.prefDivider, { backgroundColor: colors.border }]} />
+
+        <Pressable
+          style={({ pressed }) => [styles.prefRow, { opacity: pressed ? 0.7 : 1 }]}
+          onPress={() => setBugReportVisible(true)}
+        >
+          <View style={[styles.prefIconWrap, { backgroundColor: colors.mutedForeground + "20" }]}>
+            <Feather name="alert-circle" size={18} color={colors.mutedForeground} />
+          </View>
+          <View style={styles.prefText}>
+            <Text style={[styles.prefTitle, { color: colors.foreground }]}>Report a Bug</Text>
+            <Text style={[styles.prefSubtitle, { color: colors.mutedForeground }]}>
+              Something not working? Let us know
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        </Pressable>
       </View>
+
+      <BugReportSheet
+        visible={bugReportVisible}
+        onClose={() => setBugReportVisible(false)}
+      />
     </ScrollView>
     </View>
   );
@@ -423,5 +448,9 @@ const styles = StyleSheet.create({
   prefBadgeText: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+  },
+  prefDivider: {
+    height: 1,
+    marginVertical: 12,
   },
 });

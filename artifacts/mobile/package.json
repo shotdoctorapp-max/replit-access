@@ -62,6 +62,8 @@
     "zod-validation-error": "^3.4.0"
   },
   "dependencies": {
+    "expo-application": "^55.0.14",
+    "expo-device": "^55.0.15",
     "expo-video": "^55.0.15"
   }
 }

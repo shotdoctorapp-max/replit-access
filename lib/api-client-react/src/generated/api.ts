@@ -22,6 +22,8 @@ import type {
 import type {
   AnalyzeRequest,
   AnalyzeResponse,
+  CreateBugReportRequest,
+  CreateBugReportResponse,
   HealthStatus
 } from './api.schemas';
 
@@ -114,6 +116,78 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+/**
+ * Stores a user-submitted bug report enriched with device information
+ * @summary Submit a bug report
+ */
+export const getCreateBugReportUrl = () => {
+
+
+
+
+  return `/api/bug-reports`
+}
+
+export const createBugReport = async (createBugReportRequest: CreateBugReportRequest, options?: RequestInit): Promise<CreateBugReportResponse> => {
+
+  return customFetch<CreateBugReportResponse>(getCreateBugReportUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createBugReportRequest,)
+  }
+);}
+
+
+
+
+export const getCreateBugReportMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBugReport>>, TError,{data: BodyType<CreateBugReportRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBugReport>>, TError,{data: BodyType<CreateBugReportRequest>}, TContext> => {
+
+const mutationKey = ['createBugReport'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBugReport>>, {data: BodyType<CreateBugReportRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createBugReport(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBugReportMutationResult = NonNullable<Awaited<ReturnType<typeof createBugReport>>>
+    export type CreateBugReportMutationBody = BodyType<CreateBugReportRequest>
+    export type CreateBugReportMutationError = ErrorType<void>
+
+    /**
+ * @summary Submit a bug report
+ */
+export const useCreateBugReport = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBugReport>>, TError,{data: BodyType<CreateBugReportRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBugReport>>,
+        TError,
+        {data: BodyType<CreateBugReportRequest>},
+        TContext
+      > => {
+      return useMutation(getCreateBugReportMutationOptions(options));
+    }
 
 /**
  * Analyzes a basketball shooting form image and returns biomechanical feedback

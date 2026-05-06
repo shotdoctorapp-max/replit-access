@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: analysis
     description: Shooting form analysis operations
+  - name: bug-reports
+    description: In-app bug reporting
 paths:
   /healthz:
     get:
@@ -26,6 +28,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /bug-reports:
+    post:
+      operationId: createBugReport
+      tags: [bug-reports]
+      summary: Submit a bug report
+      description: Stores a user-submitted bug report enriched with device information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBugReportRequest"
+      responses:
+        "201":
+          description: Bug report created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateBugReportResponse"
+        "400":
+          description: Bad request
+        "500":
+          description: Server error
   /analyze:
     post:
       operationId: analyzeForm
@@ -58,6 +83,30 @@ components:
           type: string
       required:
         - status
+
+    CreateBugReportRequest:
+      type: object
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        deviceInfo:
+          type: object
+          additionalProperties: true
+      required:
+        - message
+
+    CreateBugReportResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - createdAt
 
     AnalyzeRequest:
       type: object

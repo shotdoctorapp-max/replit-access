@@ -18,6 +18,20 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Stores a user-submitted bug report enriched with device information
+ * @summary Submit a bug report
+ */
+export const createBugReportBodyMessageMax = 2000;
+
+
+
+export const CreateBugReportBody = zod.object({
+  "message": zod.string().min(1).max(createBugReportBodyMessageMax),
+  "deviceInfo": zod.record(zod.string(), zod.unknown()).optional()
+})
+
+
+/**
  * Analyzes a basketball shooting form image and returns biomechanical feedback
  * @summary Analyze shooting form
  */
