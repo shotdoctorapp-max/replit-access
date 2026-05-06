@@ -628,6 +628,13 @@ export default function HomeScreen() {
           Tip: Make sure your video is downloaded from iCloud before uploading to avoid delays.
         </Text>
 
+        <View style={styles.privacyRow}>
+          <MaterialCommunityIcons name="shield-check-outline" size={12} color={colors.mutedForeground} />
+          <Text style={[styles.privacyText, { color: colors.mutedForeground }]}>
+            Your video is deleted from our servers after analysis
+          </Text>
+        </View>
+
         <Pressable
           style={[styles.filmingHintRow, { borderColor: colors.border }]}
           onPress={() => setShowTipsSheet(true)}
@@ -709,6 +716,16 @@ export default function HomeScreen() {
               <Text style={[styles.progressTimeHint, { color: colors.mutedForeground }]}>
                 Usually 15–25 seconds
               </Text>
+            )}
+
+            {/* Privacy reassurance during upload/analysis */}
+            {!isCompleting && stage !== "idle" && (
+              <View style={styles.progressPrivacyRow}>
+                <MaterialCommunityIcons name="shield-check-outline" size={11} color={colors.mutedForeground} />
+                <Text style={[styles.progressPrivacyText, { color: colors.mutedForeground }]}>
+                  Video deleted after analysis
+                </Text>
+              </View>
             )}
           </View>
         </View>
@@ -965,6 +982,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     opacity: 0.7,
   },
+  privacyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    marginTop: 6,
+    opacity: 0.6,
+  },
+  privacyText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
   uploadBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1074,6 +1103,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     marginTop: -4,
+  },
+  progressPrivacyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 10,
+    opacity: 0.55,
+  },
+  progressPrivacyText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
   },
   recentSection: { marginBottom: 20 },
   sectionHeader: {
