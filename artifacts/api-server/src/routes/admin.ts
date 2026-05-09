@@ -214,7 +214,6 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 </div>
 
 <script>
-const BASE = window.location.pathname.replace(/\\/admin\\/?$/, '');
 const LIMIT = 25;
 let secret = '';
 let currentPage = 1;
@@ -234,7 +233,7 @@ function esc(s) {
 }
 
 async function fetchReports(page) {
-  const url = BASE + '/api/admin/bug-reports?page=' + page + '&limit=' + LIMIT;
+  const url = '/api/admin/bug-reports?page=' + page + '&limit=' + LIMIT;
   const res = await fetch(url, { headers: { 'x-admin-secret': secret } });
   if (res.status === 401) throw new Error('invalid_secret');
   if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Request failed'); }
@@ -243,7 +242,7 @@ async function fetchReports(page) {
 
 async function deleteReport(id) {
   if (!confirm('Delete report #' + id + '? This cannot be undone.')) return;
-  const url = BASE + '/api/admin/bug-reports/' + id;
+  const url = '/api/admin/bug-reports/' + id;
   const res = await fetch(url, { method: 'DELETE', headers: { 'x-admin-secret': secret } });
   if (!res.ok && res.status !== 204) { alert('Failed to delete'); return; }
   await load(currentPage);
