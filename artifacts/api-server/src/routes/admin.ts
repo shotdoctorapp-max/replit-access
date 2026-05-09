@@ -6,10 +6,15 @@ import { logger } from "../lib/logger";
 
 const router = Router();
 
+let _adminSecretMissingLogged = false;
+
 function adminAuth(req: import("express").Request, res: import("express").Response): boolean {
   const secret = process.env.ADMIN_SECRET;
   if (!secret) {
-    logger.warn("ADMIN_SECRET env var is not set — admin routes are disabled");
+    if (!_adminSecretMissingLogged) {
+      logger.warn("ADMIN_SECRET env var is not set — admin routes are disabled");
+      _adminSecretMissingLogged = true;
+    }
     res.status(503).json({ error: "Admin access not configured. Set the ADMIN_SECRET env var." });
     return false;
   }
@@ -69,8 +74,7 @@ router.get("/admin/bug-reports", async (req, res): Promise<void> => {
 router.delete("/admin/bug-reports/:id", async (req, res): Promise<void> => {
   if (!adminAuth(req, res)) return;
 
-  const raw = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(raw ?? "", 10);
+  const id = parseInt(req.params.id, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid id" });
     return;
