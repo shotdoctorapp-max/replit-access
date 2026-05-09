@@ -98,8 +98,7 @@ router.delete("/admin/bug-reports/:id", async (req, res): Promise<void> => {
   }
 });
 
-router.get("/admin", (req, res): void => {
-  if (!adminAuth(req, res)) return;
+router.get("/admin", (_req, res): void => {
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(DASHBOARD_HTML);
 });
