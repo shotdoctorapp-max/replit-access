@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { timingSafeEqual } from "crypto";
 import { desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db, bugReports } from "@workspace/db";
@@ -19,7 +20,12 @@ function adminAuth(req: import("express").Request, res: import("express").Respon
     return false;
   }
   const provided = req.headers["x-admin-secret"];
-  if (!provided || provided !== secret) {
+  const providedStr = Array.isArray(provided) ? provided[0] : provided;
+  const isValid =
+    !!providedStr &&
+    providedStr.length === secret.length &&
+    timingSafeEqual(Buffer.from(providedStr), Buffer.from(secret));
+  if (!isValid) {
     res.status(401).json({ error: "Unauthorized" });
     return false;
   }
