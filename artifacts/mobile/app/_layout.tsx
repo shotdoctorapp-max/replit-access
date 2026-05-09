@@ -11,7 +11,7 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -34,18 +34,14 @@ const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
 function RootLayoutNav() {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem("@shotdoc_onboarding_done").then((val) => {
       if (!val) {
         router.replace("/onboarding");
       }
-      setReady(true);
     });
   }, []);
-
-  if (!ready) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
