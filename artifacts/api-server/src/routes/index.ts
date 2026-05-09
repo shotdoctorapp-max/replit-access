@@ -4,6 +4,7 @@ import analyzeRouter from "./analyze";
 import analyzeVideoRouter from "./analyze-video";
 import bugReportsRouter from "./bug-reports";
 import adminRouter from "./admin";
+import waitlistRouter from "./waitlist";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(analyzeRouter);
 router.use(analyzeVideoRouter);
 router.use(bugReportsRouter);
 router.use(adminRouter);
+router.use(waitlistRouter);
 
 export default router;

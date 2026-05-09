@@ -18,3 +18,5 @@ export * from './drillRecommendation';
 export * from './frameAnnotation';
 export * from './frameAnnotationSeverity';
 export * from './healthStatus';
+export * from './waitlistResult';
+export * from './waitlistSignup';

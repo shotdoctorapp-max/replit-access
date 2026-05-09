@@ -14,6 +14,8 @@ tags:
     description: Shooting form analysis operations
   - name: bug-reports
     description: In-app bug reporting
+  - name: waitlist
+    description: Beta waitlist signups
 paths:
   /healthz:
     get:
@@ -28,6 +30,29 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /waitlist:
+    post:
+      operationId: joinWaitlist
+      tags: [waitlist]
+      summary: Join the beta waitlist
+      description: Stores an email address for the beta waitlist. Duplicate emails are silently ignored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WaitlistSignup"
+      responses:
+        "200":
+          description: Email stored (or already exists)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WaitlistResult"
+        "400":
+          description: Bad request
+        "500":
+          description: Server error
   /bug-reports:
     post:
       operationId: createBugReport
@@ -248,3 +273,25 @@ components:
       required:
         - analysis
         - timestamp
+
+    WaitlistSignup:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        source:
+          type: string
+      required:
+        - email
+
+    WaitlistResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        alreadyRegistered:
+          type: boolean
+      required:
+        - success
+        - alreadyRegistered

@@ -95,3 +95,13 @@ export interface AnalyzeResponse {
   timestamp: string;
 }
 
+export interface WaitlistSignup {
+  email: string;
+  source?: string;
+}
+
+export interface WaitlistResult {
+  success: boolean;
+  alreadyRegistered: boolean;
+}
+

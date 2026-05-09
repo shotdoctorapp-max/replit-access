@@ -18,6 +18,21 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Stores an email address for the beta waitlist. Duplicate emails are silently ignored.
+ * @summary Join the beta waitlist
+ */
+export const JoinWaitlistBody = zod.object({
+  "email": zod.string().email(),
+  "source": zod.string().optional()
+})
+
+export const JoinWaitlistResponse = zod.object({
+  "success": zod.boolean(),
+  "alreadyRegistered": zod.boolean()
+})
+
+
+/**
  * Stores a user-submitted bug report enriched with device information
  * @summary Submit a bug report
  */
