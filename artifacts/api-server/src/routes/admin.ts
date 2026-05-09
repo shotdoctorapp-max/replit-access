@@ -38,27 +38,32 @@ router.get("/admin/bug-reports", async (req, res): Promise<void> => {
   const { page, limit } = parsed.data;
   const offset = (page - 1) * limit;
 
-  const rows = await db
-    .select()
-    .from(bugReports)
-    .orderBy(desc(bugReports.createdAt))
-    .limit(limit)
-    .offset(offset);
+  try {
+    const rows = await db
+      .select()
+      .from(bugReports)
+      .orderBy(desc(bugReports.createdAt))
+      .limit(limit)
+      .offset(offset);
 
-  const [{ count }] = await db
-    .select({ count: sql<number>`cast(count(*) as integer)` })
-    .from(bugReports);
+    const [{ count }] = await db
+      .select({ count: sql<number>`cast(count(*) as integer)` })
+      .from(bugReports);
 
-  res.json({
-    data: rows.map((r) => ({
-      id: r.id,
-      userId: r.userId,
-      message: r.message,
-      deviceInfo: r.deviceInfo,
-      createdAt: r.createdAt,
-    })),
-    meta: { page, limit, total: count ?? null },
-  });
+    res.json({
+      data: rows.map((r) => ({
+        id: r.id,
+        userId: r.userId,
+        message: r.message,
+        deviceInfo: r.deviceInfo,
+        createdAt: r.createdAt,
+      })),
+      meta: { page, limit, total: count ?? null },
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch bug reports");
+    res.status(500).json({ error: "Failed to fetch reports" });
+  }
 });
 
 router.delete("/admin/bug-reports/:id", async (req, res): Promise<void> => {
@@ -71,20 +76,26 @@ router.delete("/admin/bug-reports/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [deleted] = await db
-    .delete(bugReports)
-    .where(eq(bugReports.id, id))
-    .returning({ id: bugReports.id });
+  try {
+    const [deleted] = await db
+      .delete(bugReports)
+      .where(eq(bugReports.id, id))
+      .returning({ id: bugReports.id });
 
-  if (!deleted) {
-    res.status(404).json({ error: "Report not found" });
-    return;
+    if (!deleted) {
+      res.status(404).json({ error: "Report not found" });
+      return;
+    }
+
+    res.sendStatus(204);
+  } catch (err) {
+    req.log.error({ err }, "Failed to delete bug report");
+    res.status(500).json({ error: "Failed to delete report" });
   }
-
-  res.sendStatus(204);
 });
 
-router.get("/admin", (_req, res): void => {
+router.get("/admin", (req, res): void => {
+  if (!adminAuth(req, res)) return;
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.send(DASHBOARD_HTML);
 });
