@@ -268,11 +268,11 @@ export default function TipsScreen() {
       <Pressable
         style={({ pressed }) => [
           styles.shareCard,
-          { backgroundColor: colors.primary, opacity: pressed ? 0.88 : 1 },
+          { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1 },
         ]}
         onPress={handleShare}
       >
-        <MaterialCommunityIcons name="share-variant" size={26} color={colors.primaryForeground} />
+        <MaterialCommunityIcons name="share-variant" size={24} color={colors.primaryForeground} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.shareCardTitle, { color: colors.primaryForeground }]}>
             Share Shot Doctor
@@ -281,7 +281,7 @@ export default function TipsScreen() {
             Know a baller who needs this? Send it.
           </Text>
         </View>
-        <Feather name="arrow-right" size={20} color={colors.primaryForeground} />
+        <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
       </Pressable>
 
       <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginTop: 8 }]}>
