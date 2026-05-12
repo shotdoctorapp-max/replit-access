@@ -36,6 +36,7 @@ export function VideoPickerSheet({ visible, onSelect, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [downloadStatus, setDownloadStatus] = useState<string | null>(null);
 
   const screenW = Dimensions.get("window").width;
   const cellW = (screenW - 40 - 8) / 2;
@@ -53,12 +54,6 @@ export function VideoPickerSheet({ visible, onSelect, onClose }: Props) {
   const loadVideos = async () => {
     setLoading(true);
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== "granted") {
-        setErrorMsg("Allow photo library access so we can browse your videos.");
-        setLoading(false);
-        return;
-      }
       const result = await MediaLibrary.getAssetsAsync({
         mediaType: MediaLibrary.MediaType.video,
         first: 30,
@@ -93,10 +88,16 @@ export function VideoPickerSheet({ visible, onSelect, onClose }: Props) {
     if (loadingId) return;
     setLoadingId(asset.id);
     setErrorMsg(null);
+    setDownloadStatus("Loading video…");
+    const slowTimer = setTimeout(() => {
+      setDownloadStatus("Downloading from iCloud…");
+    }, 2500);
     try {
       const info = await MediaLibrary.getAssetInfoAsync(asset.id, {
         shouldDownloadFromNetwork: true,
       });
+      clearTimeout(slowTimer);
+      setDownloadStatus(null);
       if (!info.localUri) {
         setErrorMsg("Couldn't load that video — please try another one.");
         setLoadingId(null);
@@ -104,6 +105,8 @@ export function VideoPickerSheet({ visible, onSelect, onClose }: Props) {
       }
       onSelect(info.localUri, asset.duration);
     } catch {
+      clearTimeout(slowTimer);
+      setDownloadStatus(null);
       setErrorMsg("Couldn't load that video — please try another one.");
       setLoadingId(null);
     }
@@ -163,6 +166,12 @@ export function VideoPickerSheet({ visible, onSelect, onClose }: Props) {
           iCloud videos download automatically when selected
         </Text>
 
+        {downloadStatus && (
+          <View style={styles.downloadStatusRow}>
+            <ActivityIndicator color="#00C853" size="small" />
+            <Text style={styles.downloadStatusText}>{downloadStatus}</Text>
+          </View>
+        )}
         {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
 
         {loading ? (
@@ -291,5 +300,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.55)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  downloadStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  downloadStatusText: {
+    color: "#00C853",
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
 });
