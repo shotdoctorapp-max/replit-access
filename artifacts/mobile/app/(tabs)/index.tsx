@@ -101,7 +101,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { sessions, addSession } = useSessions();
-  const { signOut } = useAuth();
+  const { signOut, getToken } = useAuth();
   const { user } = useUser();
   const { shotsRemaining, totalFreeShots, isPro, consumeShot } = useShots();
   const [stage, setStage] = useState<AnalyzingStage>("idle");
@@ -417,9 +417,13 @@ export default function HomeScreen() {
       setStage("selecting");
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+      const token = await getToken();
       const response = await fetch(`${API_BASE}/api/analyze-video`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ frames: base64Frames, timestamps, mimeType: "image/jpeg" }),
       });
 

@@ -1,6 +1,8 @@
 import { Router } from "express";
+import { requireAuth } from "@clerk/express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { BIOMECHANICS_SYSTEM_PROMPT, RHYTHM_SYSTEM_PROMPT } from "../lib/prompts";
+import { analysisRateLimit } from "../middlewares/analysisRateLimit";
 
 const router = Router();
 
@@ -52,7 +54,7 @@ function selectKeyFrameIndices(
   return { dipIdx, setPointIdx, releaseIdx };
 }
 
-router.post("/analyze-video", async (req, res) => {
+router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res) => {
   try {
     const { frames, timestamps, mimeType = "image/jpeg" } = req.body as {
       frames: string[];

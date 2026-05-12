@@ -35,7 +35,25 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(cors({ credentials: true, origin: true }));
+const allowedOrigins = (() => {
+  const domains = process.env.REPLIT_DOMAINS ?? "";
+  const origins = domains
+    .split(",")
+    .map((d) => d.trim())
+    .filter(Boolean)
+    .flatMap((d) => [`https://${d}`, `http://${d}`]);
+  if (process.env.NODE_ENV !== "production") {
+    origins.push("http://localhost", "http://localhost:3000", "http://localhost:19006");
+  }
+  return origins;
+})();
+
+app.use(
+  cors({
+    credentials: true,
+    origin: allowedOrigins.length > 0 ? allowedOrigins : false,
+  }),
+);
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 

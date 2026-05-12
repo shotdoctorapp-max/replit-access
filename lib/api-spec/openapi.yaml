@@ -76,12 +76,43 @@ paths:
           description: Bad request
         "500":
           description: Server error
+  /analyze-video:
+    post:
+      operationId: analyzeVideo
+      tags: [analysis]
+      summary: Analyze shooting form from video frames
+      description: Accepts extracted video frames, performs frame selection and rhythm analysis, then returns full biomechanics feedback. Requires authentication.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeVideoRequest"
+      responses:
+        "200":
+          description: Video analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeVideoResponse"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized — valid Clerk session required
+        "429":
+          description: Rate limit exceeded — too many analysis requests
+        "500":
+          description: Server error
   /analyze:
     post:
       operationId: analyzeForm
       tags: [analysis]
       summary: Analyze shooting form
-      description: Analyzes a basketball shooting form image and returns biomechanical feedback
+      description: Analyzes a basketball shooting form image and returns biomechanical feedback. Requires authentication.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -97,10 +128,68 @@ paths:
                 $ref: "#/components/schemas/AnalyzeResponse"
         "400":
           description: Bad request
+        "401":
+          description: Unauthorized — valid Clerk session required
+        "429":
+          description: Rate limit exceeded — too many analysis requests
         "500":
           description: Server error
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk session token
   schemas:
+    AnalyzeVideoRequest:
+      type: object
+      properties:
+        frames:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 12
+          description: Base64-encoded JPEG frames extracted from the video
+        timestamps:
+          type: array
+          items:
+            type: number
+          description: Millisecond timestamps corresponding to each frame
+        mimeType:
+          type: string
+          default: image/jpeg
+      required:
+        - frames
+
+    AnalyzeVideoResponse:
+      type: object
+      properties:
+        analysis:
+          $ref: "#/components/schemas/AnalysisResult"
+        rhythm:
+          type: object
+          description: Rhythm analysis result (present when 3+ frames provided)
+          additionalProperties: true
+        bestFrameIndex:
+          type: integer
+          description: 0-based index of the frame selected for primary analysis
+        totalFrames:
+          type: integer
+        timestamp:
+          type: string
+        keyFrameIndices:
+          type: array
+          items:
+            type: integer
+          description: Indices of the dip, set-point, and release frames
+      required:
+        - analysis
+        - bestFrameIndex
+        - totalFrames
+        - timestamp
+
     HealthStatus:
       type: object
       properties:

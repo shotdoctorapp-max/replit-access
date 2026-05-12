@@ -1,11 +1,13 @@
 import { Router } from "express";
+import { requireAuth } from "@clerk/express";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { BIOMECHANICS_SYSTEM_PROMPT } from "../lib/prompts";
 import { AnalyzeFormResponse } from "@workspace/api-zod";
+import { analysisRateLimit } from "../middlewares/analysisRateLimit";
 
 const router = Router();
 
-router.post("/analyze", async (req, res) => {
+router.post("/analyze", requireAuth(), analysisRateLimit, async (req, res) => {
   try {
     const { imageBase64, mimeType = "image/jpeg" } = req.body;
 
