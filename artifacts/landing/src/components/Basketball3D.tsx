@@ -72,50 +72,84 @@ function CSSBasketball() {
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
       <div
         style={{
-          width: "min(70vw, 70vh)",
-          height: "min(70vw, 70vh)",
+          width: "min(72vw, 72vh)",
+          height: "min(72vw, 72vh)",
           borderRadius: "50%",
-          background: "radial-gradient(circle at 35% 32%, #1aff7a 0%, #00C853 38%, #007a32 80%, #004d20 100%)",
-          boxShadow: "0 0 80px 20px rgba(0,200,83,0.18), inset -18px -18px 40px rgba(0,0,0,0.35)",
           position: "relative",
-          overflow: "hidden",
-          animation: "spin3d 12s linear infinite",
+          animation: "ballSpin 18s linear infinite",
         }}
       >
-        {/* SVG seam lines */}
+        {/* Ball body with 3D shading */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            background: [
+              "radial-gradient(circle at 38% 30%,",
+              "  #5dff9a 0%,",
+              "  #00C853 22%,",
+              "  #009940 55%,",
+              "  #005a24 80%,",
+              "  #002d12 100%",
+              ")",
+            ].join(" "),
+            boxShadow: [
+              "0 0 100px 30px rgba(0,200,83,0.22)",
+              "0 30px 80px rgba(0,0,0,0.6)",
+            ].join(", "),
+          }}
+        />
+
+        {/* Seam SVG — proper basketball arc pattern */}
         <svg
           viewBox="0 0 200 200"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.7 }}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", borderRadius: "50%", overflow: "hidden" }}
         >
-          {/* Equatorial seam */}
-          <ellipse cx="100" cy="100" rx="98" ry="28" fill="none" stroke="#005a24" strokeWidth="2.5" />
-          {/* Vertical seam */}
-          <ellipse cx="100" cy="100" rx="28" ry="98" fill="none" stroke="#005a24" strokeWidth="2.5" />
-          {/* Diagonal seam 1 */}
-          <ellipse cx="100" cy="100" rx="98" ry="28" fill="none" stroke="#005a24" strokeWidth="2.5"
-            transform="rotate(60 100 100)" />
-          {/* Diagonal seam 2 */}
-          <ellipse cx="100" cy="100" rx="98" ry="28" fill="none" stroke="#005a24" strokeWidth="2.5"
-            transform="rotate(-60 100 100)" />
+          <defs>
+            <clipPath id="ballClip">
+              <circle cx="100" cy="100" r="96" />
+            </clipPath>
+          </defs>
+          <g clipPath="url(#ballClip)" fill="none" stroke="#004d1e" strokeWidth="3.5" strokeLinecap="round">
+            {/* Left arc — curves left (C-shape) */}
+            <path d="M 100 4 C 52 32, 52 168, 100 196" />
+            {/* Right arc — curves right (reverse C) */}
+            <path d="M 100 4 C 148 32, 148 168, 100 196" />
+            {/* Top arc — curves up (∪ inverted) */}
+            <path d="M 4 100 C 32 52, 168 52, 196 100" />
+            {/* Bottom arc — curves down (∪ shape) */}
+            <path d="M 4 100 C 32 148, 168 148, 196 100" />
+          </g>
         </svg>
+
         {/* Specular highlight */}
         <div
           style={{
             position: "absolute",
-            top: "12%",
-            left: "22%",
-            width: "28%",
-            height: "18%",
+            top: "10%",
+            left: "20%",
+            width: "32%",
+            height: "22%",
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 100%)",
-            filter: "blur(4px)",
+            background: "radial-gradient(circle, rgba(255,255,255,0.40) 0%, transparent 100%)",
+            filter: "blur(6px)",
+          }}
+        />
+        {/* Rim shadow */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            boxShadow: "inset -20px -20px 50px rgba(0,0,0,0.45)",
           }}
         />
       </div>
       <style>{`
-        @keyframes spin3d {
-          from { transform: rotate3d(0.2, 1, 0.1, 0deg); }
-          to   { transform: rotate3d(0.2, 1, 0.1, 360deg); }
+        @keyframes ballSpin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
         }
       `}</style>
     </div>
