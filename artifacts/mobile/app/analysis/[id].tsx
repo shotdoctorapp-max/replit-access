@@ -199,14 +199,18 @@ export default function AnalysisScreen() {
   }, [seenZonesKey]);
 
   useEffect(() => {
+    let active = true;
     let timer: ReturnType<typeof setTimeout>;
     AsyncStorage.getItem(FEEDBACK_SUPPRESSED_KEY)
       .then((val) => {
-        if (val === "1") return;
-        timer = setTimeout(() => setFeedbackVisible(true), 2000);
+        if (!active || val === "1") return;
+        timer = setTimeout(() => { if (active) setFeedbackVisible(true); }, 2000);
       })
       .catch(() => {});
-    return () => clearTimeout(timer);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, []);
 
   const handleNeverShowFeedback = useCallback(() => {

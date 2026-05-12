@@ -20,9 +20,7 @@ import { DrillCard } from "@/components/DrillCard";
 import type { DrillRecommendation } from "@/context/SessionContext";
 import { isFilmingTipsSuppressed, resetFilmingTips } from "@/components/FilmingTipsSheet";
 import { BugReportSheet } from "@/components/BugReportSheet";
-
-const FEEDBACK_FORM_URL =
-  "https://docs.google.com/forms/d/e/1FAIpQLSd2uxUHZsvlQpCCCt_ix76NkO-pbqNRoVIzWX2qUzmgG2_rrQ/viewform?usp=dialog";
+import { FEEDBACK_FORM_URL } from "@/components/FeedbackSheet";
 
 const DEFAULT_DRILLS: DrillRecommendation[] = [
   {
