@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "wouter";
 import { WaitlistForm } from "./WaitlistForm";
+import { Basketball3D } from "./Basketball3D";
 
 const FEEDBACK_FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLSd2uxUHZsvlQpCCCt_ix76NkO-pbqNRoVIzWX2qUzmgG2_rrQ/viewform?usp=dialog";
@@ -92,25 +93,6 @@ function BetaTesterSection() {
   );
 }
 
-function CourtVisual() {
-  return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-20 flex items-center justify-center z-0">
-      <div className="relative w-full max-w-4xl aspect-[2/1] border border-primary/30 rounded-[100%] scale-150 transform translate-y-[20%] rotate-x-60 perspective-[1000px]">
-        <div className="absolute inset-x-0 top-1/2 h-px bg-primary/30"></div>
-        <div className="absolute inset-y-0 left-1/2 w-px bg-primary/30"></div>
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 border border-primary/40 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute top-1/2 left-1/2 w-96 h-96 border border-primary/20 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-        <div className="absolute top-1/2 left-1/2 w-[40rem] h-[40rem] border border-primary/10 rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-        
-        {/* Pulsing dots simulating analysis */}
-        <div className="absolute top-[40%] left-[45%] w-2 h-2 bg-primary rounded-full animate-[pulse-ring_2s_infinite]"></div>
-        <div className="absolute top-[60%] left-[55%] w-2 h-2 bg-primary rounded-full animate-[pulse-ring_2s_infinite_0.5s]"></div>
-        <div className="absolute top-[50%] left-[60%] w-2 h-2 bg-primary rounded-full animate-[pulse-ring_2s_infinite_1s]"></div>
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
-    </div>
-  );
-}
 
 function BodyMapPhone() {
   return (
@@ -235,7 +217,7 @@ export function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative pt-40 pb-20 md:pt-52 md:pb-32 px-6 overflow-hidden">
-        <CourtVisual />
+        <Basketball3D />
         <div className="max-w-5xl mx-auto relative z-10">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <div className="inline-flex items-center border border-primary/30 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-medium tracking-wide uppercase mb-6">
