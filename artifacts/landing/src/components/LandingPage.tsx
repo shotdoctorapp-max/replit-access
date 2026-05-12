@@ -1,5 +1,96 @@
-import React from "react";
+import React, { useState } from "react";
+import { Link } from "wouter";
 import { WaitlistForm } from "./WaitlistForm";
+
+const FEEDBACK_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLSd2uxUHZsvlQpCCCt_ix76NkO-pbqNRoVIzWX2qUzmgG2_rrQ/viewform?usp=dialog";
+
+function BetaTesterSection() {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  };
+
+  const cards = [
+    {
+      emoji: "🐛",
+      heading: "Found a bug?",
+      body: "Tap the bug icon inside the app to report it instantly — we get it right away.",
+      action: null,
+      actionLabel: null,
+    },
+    {
+      emoji: "💬",
+      heading: "Have feedback?",
+      body: "Tell us what's working and what's not. Your input shapes every update.",
+      action: () => window.open(FEEDBACK_FORM_URL, "_blank"),
+      actionLabel: "Open Feedback Form →",
+    },
+    {
+      emoji: "🏀",
+      heading: "Love it? Spread the word.",
+      body: "Send this page to a teammate who needs to fix their shot.",
+      action: handleCopy,
+      actionLabel: copied ? "✓ Copied!" : "Copy Link",
+    },
+  ];
+
+  return (
+    <section className="py-20 px-6 border-t border-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center border border-primary/30 bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-medium tracking-wide uppercase mb-5">
+            <span className="w-1.5 h-1.5 bg-primary rounded-full mr-2 animate-pulse" />
+            For Beta Testers
+          </div>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">
+            Already have the app?{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-300">
+              Here's how to help.
+            </span>
+          </h2>
+          <p className="text-white/50 text-base max-w-xl mx-auto">
+            You're not just a user — you're shaping what Shot Doctor becomes. Three things make a huge difference:
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-5">
+          {cards.map((card) => (
+            <div
+              key={card.heading}
+              className="relative p-7 rounded-2xl border border-primary/25 bg-primary/5 hover:border-primary/50 hover:bg-primary/10 transition-all duration-300 flex flex-col gap-4"
+            >
+              <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center text-2xl">
+                {card.emoji}
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-white mb-2">{card.heading}</h3>
+                <p className="text-white/55 text-sm leading-relaxed">{card.body}</p>
+              </div>
+              {card.action && card.actionLabel && (
+                <button
+                  onClick={card.action}
+                  className="self-start text-primary text-sm font-semibold hover:text-emerald-300 transition-colors duration-200 underline underline-offset-4"
+                >
+                  {card.actionLabel}
+                </button>
+              )}
+              {!card.action && (
+                <p className="self-start text-white/25 text-xs font-medium tracking-wide uppercase">
+                  In-app only
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function CourtVisual() {
   return (
@@ -177,6 +268,8 @@ export function LandingPage() {
         </div>
       </section>
 
+      <BetaTesterSection />
+
       {/* How it works */}
       <section className="py-24 md:py-32 px-6">
         <div className="max-w-5xl mx-auto">
@@ -211,8 +304,13 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-white/10 text-center text-white/30 text-sm">
+      <footer className="py-8 border-t border-white/10 text-center text-white/30 text-sm space-y-2">
         <p>&copy; {new Date().getFullYear()} Shot Doc. All rights reserved.</p>
+        <p>
+          <Link href="/privacy" className="hover:text-white/60 underline underline-offset-4 transition-colors duration-200">
+            Privacy Policy
+          </Link>
+        </p>
       </footer>
     </div>
   );
