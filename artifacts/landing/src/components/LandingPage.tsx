@@ -27,7 +27,7 @@ function BetaTesterSection() {
       emoji: "💬",
       heading: "Have feedback?",
       body: "Tell us what's working and what's not. Your input shapes every update.",
-      action: () => window.open(FEEDBACK_FORM_URL, "_blank"),
+      action: () => window.open(FEEDBACK_FORM_URL, "_blank", "noopener,noreferrer"),
       actionLabel: "Open Feedback Form →",
     },
     {

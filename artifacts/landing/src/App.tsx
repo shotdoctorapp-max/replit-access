@@ -14,7 +14,7 @@ function App() {
         <Router>
           <Switch>
             <Route path="/privacy" component={PrivacyPage} />
-            <Route component={LandingPage} />
+            <Route path="/" component={LandingPage} />
           </Switch>
         </Router>
         <Toaster />
