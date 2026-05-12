@@ -11,7 +11,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router>
+        <Router base="/landing">
           <Switch>
             <Route path="/privacy" component={PrivacyPage} />
             <Route path="/" component={LandingPage} />
