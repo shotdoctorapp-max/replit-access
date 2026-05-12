@@ -315,12 +315,14 @@ export default function HomeScreen() {
     const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
     const MAX_DURATION_SECONDS = 60;
 
-    // ph:// URIs are Photos-framework references — getInfoAsync doesn't support
-    // them; skip the size check and let the ph:// download block below handle them.
+    // Size check using the new FileSystem.File API (v19+). getInfoAsync only
+    // exists in expo-file-system/legacy — calling it from the new API import
+    // throws TypeError (undefined is not a function). ph:// URIs are handled
+    // later in the ph:// download block, skip size check for them here.
     if (!videoUri.startsWith("ph://")) {
       try {
-        const info = await FileSystem.getInfoAsync(videoUri);
-        if (info.exists && info.size !== undefined && info.size > MAX_FILE_SIZE_BYTES) {
+        const f = new FileSystem.File(videoUri);
+        if (f.size > MAX_FILE_SIZE_BYTES) {
           Alert.alert(
             "Video too large",
             "Please use a video under 100 MB. Try trimming the clip or recording a shorter shot."
@@ -328,11 +330,8 @@ export default function HomeScreen() {
           return;
         }
       } catch {
-        Alert.alert(
-          "Couldn't read video",
-          "Unable to check the video file. Please try a different clip."
-        );
-        return;
+        // Size check failed (e.g. temp file not yet accessible) — proceed anyway.
+        // Frame extraction will surface a real error if the file is truly unreadable.
       }
     }
 
