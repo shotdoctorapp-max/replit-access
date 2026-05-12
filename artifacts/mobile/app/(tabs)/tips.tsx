@@ -23,9 +23,7 @@ import { isFilmingTipsSuppressed, resetFilmingTips } from "@/components/FilmingT
 import { BugReportSheet } from "@/components/BugReportSheet";
 import { FEEDBACK_FORM_URL } from "@/components/FeedbackSheet";
 
-const SHARE_URL = process.env.EXPO_PUBLIC_DOMAIN
-  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
-  : "https://shotdoc.replit.app";
+const SHARE_URL = process.env.EXPO_PUBLIC_LANDING_URL ?? "https://shotdoc.app";
 
 const DEFAULT_DRILLS: DrillRecommendation[] = [
   {

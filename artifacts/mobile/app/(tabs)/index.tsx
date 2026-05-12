@@ -13,10 +13,12 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useSessions } from "@/context/SessionContext";
@@ -27,6 +29,8 @@ import { scoreToGrade, gradeColor } from "@/utils/grading";
 import { extractFrames } from "@/utils/videoFrames";
 import { FilmingTipsSheet, shouldShowFilmingTips } from "@/components/FilmingTipsSheet";
 import { CourtBackground } from "@/components/CourtBackground";
+
+const SHARE_URL = process.env.EXPO_PUBLIC_LANDING_URL ?? "https://shotdoc.app";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
   ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
@@ -170,6 +174,17 @@ export default function HomeScreen() {
             sessions.length
         )
       : 0;
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Check out Shot Doctor — AI that analyzes your basketball shooting form and tells you exactly how to fix it. 🏀\n${SHARE_URL}`,
+        url: SHARE_URL,
+      });
+    } catch {
+      // user cancelled or error — no-op
+    }
+  };
 
   const checkShotsOrPaywall = (): boolean => {
     if (isPro) return true;
@@ -872,6 +887,25 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.shareCard,
+          { backgroundColor: colors.primary, opacity: pressed ? 0.9 : 1 },
+        ]}
+        onPress={handleShare}
+      >
+        <MaterialCommunityIcons name="share-variant" size={24} color={colors.primaryForeground} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.shareCardTitle, { color: colors.primaryForeground }]}>
+            Share Shot Doctor
+          </Text>
+          <Text style={[styles.shareCardSub, { color: colors.primaryForeground }]}>
+            Know a baller who needs this? Send it.
+          </Text>
+        </View>
+        <Feather name="arrow-right" size={18} color={colors.primaryForeground} />
+      </Pressable>
     </ScrollView>
 
     <FilmingTipsSheet
@@ -1211,5 +1245,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 20,
+  },
+  shareCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 18,
+    borderRadius: 16,
+    marginTop: 20,
+  },
+  shareCardTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 2,
+  },
+  shareCardSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    opacity: 0.85,
   },
 });
