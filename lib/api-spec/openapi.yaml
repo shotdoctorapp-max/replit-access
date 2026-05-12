@@ -35,7 +35,7 @@ paths:
       operationId: joinWaitlist
       tags: [waitlist]
       summary: Join the beta waitlist
-      description: Stores an email address for the beta waitlist. Duplicate emails are silently ignored.
+      description: Stores an email address for the beta waitlist and sends a confirmation email to verify ownership. Duplicate emails are silently ignored. Requires the user to click the confirmation link before a welcome email is sent.
       requestBody:
         required: true
         content:
@@ -44,15 +44,55 @@ paths:
               $ref: "#/components/schemas/WaitlistSignup"
       responses:
         "200":
-          description: Email stored (or already exists)
+          description: Email stored (or already exists) — confirmation email sent to new addresses
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/WaitlistResult"
         "400":
           description: Bad request
+        "429":
+          description: Rate limit exceeded — too many signup attempts from this IP
         "500":
           description: Server error
+  /waitlist/confirm:
+    get:
+      operationId: confirmWaitlist
+      tags: [waitlist]
+      summary: Confirm waitlist email address
+      description: Verifies the confirmation token sent by email. On success, marks the address as confirmed and sends the welcome email. Returns an HTML page in all cases.
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Confirmation token from the verification email
+      responses:
+        "200":
+          description: Confirmation result HTML page (success or already confirmed)
+          content:
+            text/html:
+              schema:
+                type: string
+        "400":
+          description: Missing or malformed token — HTML error page
+          content:
+            text/html:
+              schema:
+                type: string
+        "404":
+          description: Token not found or already used — HTML error page
+          content:
+            text/html:
+              schema:
+                type: string
+        "500":
+          description: Server error — HTML error page
+          content:
+            text/html:
+              schema:
+                type: string
   /bug-reports:
     post:
       operationId: createBugReport

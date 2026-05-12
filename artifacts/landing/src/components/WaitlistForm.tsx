@@ -72,7 +72,7 @@ export function WaitlistForm() {
     return (
       <div className="w-full max-w-md mx-auto animate-in fade-in zoom-in duration-300">
         <div className="bg-primary/10 border border-primary/20 text-primary px-4 py-3 rounded-md text-sm font-medium flex items-center justify-center">
-          <span data-testid="text-success">You're on the list. We'll be in touch.</span>
+          <span data-testid="text-success">Check your email to confirm your spot.</span>
         </div>
         <SharePrompt />
       </div>

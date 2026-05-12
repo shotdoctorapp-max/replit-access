@@ -5,6 +5,15 @@ import { z } from "zod";
 import { db, bugReports, waitlist } from "@workspace/db";
 import { logger } from "../lib/logger";
 
+const CSV_FORMULA_CHARS = /^[=+\-@\t\r]/;
+
+function sanitizeCsvCell(value: string): string {
+  if (CSV_FORMULA_CHARS.test(value)) {
+    return "\t" + value;
+  }
+  return value;
+}
+
 const router = Router();
 
 let _adminSecretMissingLogged = false;
@@ -167,12 +176,13 @@ router.get("/admin/waitlist/export.csv", async (req, res): Promise<void> => {
       .orderBy(asc(waitlist.createdAt));
 
     const lines = [
-      "id,email,source,signed_up_at",
+      "id,email,source,confirmed,signed_up_at",
       ...rows.map((r) =>
         [
           r.id,
-          `"${r.email.replace(/"/g, '""')}"`,
-          `"${(r.source ?? "").replace(/"/g, '""')}"`,
+          `"${sanitizeCsvCell(r.email).replace(/"/g, '""')}"`,
+          `"${sanitizeCsvCell(r.source ?? "").replace(/"/g, '""')}"`,
+          r.confirmedAt ? "yes" : "no",
           r.createdAt.toISOString(),
         ].join(",")
       ),
