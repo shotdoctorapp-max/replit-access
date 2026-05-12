@@ -227,8 +227,12 @@ export default function HomeScreen() {
       const msg = String(e?.message ?? "");
       if (msg.includes("PHPhotosErrorDomain") || msg.includes("3164")) {
         Alert.alert(
-          "Video unavailable",
-          "This video is stored in iCloud. Open the Photos app, download it to your device, then try again."
+          "Video still downloading",
+          "This video is being fetched from iCloud. Please try again in a moment.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Try Again", onPress: () => openCamera() },
+          ]
         );
       } else {
         Alert.alert("Camera error", msg || "Something went wrong opening the camera.");
@@ -282,8 +286,12 @@ export default function HomeScreen() {
       const msg = String(e?.message ?? "");
       if (msg.includes("PHPhotosErrorDomain") || msg.includes("3164")) {
         Alert.alert(
-          "Video unavailable",
-          "This video is stored in iCloud and isn't downloaded to your device yet. Open the Photos app, tap the video to download it, then try again."
+          "Video still downloading",
+          "This video is being fetched from iCloud. It may take a moment — try selecting it again.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Try Again", onPress: () => pickVideo() },
+          ]
         );
       } else {
         Alert.alert("Couldn't open library", "Please try again.");
@@ -657,10 +665,6 @@ export default function HomeScreen() {
           </View>
         </Pressable>
 
-        <Text style={[styles.iCloudHint, { color: colors.mutedForeground }]}>
-          Tip: Make sure your video is downloaded from iCloud before uploading to avoid delays.
-        </Text>
-
         <View style={styles.privacyRow}>
           <MaterialCommunityIcons name="shield-check-outline" size={12} color={colors.mutedForeground} />
           <Text style={[styles.privacyText, { color: colors.mutedForeground }]}>
@@ -1006,14 +1010,6 @@ const styles = StyleSheet.create({
   filmingHintText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
-  },
-  iCloudHint: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    marginTop: 8,
-    paddingHorizontal: 8,
-    opacity: 0.7,
   },
   privacyRow: {
     flexDirection: "row",
