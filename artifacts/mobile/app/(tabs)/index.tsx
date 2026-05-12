@@ -26,7 +26,6 @@ import { ScoreRing } from "@/components/ScoreRing";
 import { scoreToGrade, gradeColor } from "@/utils/grading";
 import { extractFrames } from "@/utils/videoFrames";
 import { FilmingTipsSheet, shouldShowFilmingTips } from "@/components/FilmingTipsSheet";
-import { VideoPickerSheet } from "@/components/VideoPickerSheet";
 import { CourtBackground } from "@/components/CourtBackground";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -108,7 +107,6 @@ export default function HomeScreen() {
     total: number;
   } | null>(null);
   const [showTipsSheet, setShowTipsSheet] = useState(false);
-  const [showVideoPicker, setShowVideoPicker] = useState(false);
 
   const progressAnim = useRef(new RNAnimated.Value(0)).current;
   const cardOpacity = useRef(new RNAnimated.Value(0)).current;
@@ -271,12 +269,46 @@ export default function HomeScreen() {
       );
       return;
     }
-    const { status } = await MediaLibrary.requestPermissionsAsync();
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("Permission needed", "Please allow access to your video library.");
       return;
     }
-    setShowVideoPicker(true);
+
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      // No quality param — without it, iOS 14+ uses PHPickerViewController which
+      // handles iCloud downloads transparently and returns a real file:// path.
+      // This is how Instagram, TikTok, and every other major app works.
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["videos"],
+      });
+    } catch {
+      Alert.alert("Couldn't open library", "Please try again.");
+      return;
+    }
+
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    let uri = asset.uri;
+
+    // PHPickerViewController returns a file:// temp path. Copy to a stable cache
+    // path so iOS doesn't clean it up before frame extraction finishes.
+    if (uri.startsWith("file://")) {
+      try {
+        const FileSystemLegacy = await import("expo-file-system/legacy");
+        const dest = `${FileSystemLegacy.cacheDirectory}shot_pick_${Date.now()}.mov`;
+        await FileSystemLegacy.copyAsync({ from: uri, to: dest });
+        uri = dest;
+      } catch {
+        // Copy failed — proceed with original temp URI (usually still readable)
+      }
+    }
+
+    // asset.duration from expo-image-picker is in milliseconds (same as openCamera)
+    await analyzeVideo(uri, asset.duration ?? undefined);
   };
 
   const analyzeVideo = async (videoUri: string, durationMs?: number) => {
@@ -850,14 +882,6 @@ export default function HomeScreen() {
         pickVideo();
       }}
       onDismiss={() => setShowTipsSheet(false)}
-    />
-    <VideoPickerSheet
-      visible={showVideoPicker}
-      onSelect={async (uri, durationSeconds) => {
-        setShowVideoPicker(false);
-        await analyzeVideo(uri, durationSeconds !== undefined ? durationSeconds * 1000 : undefined);
-      }}
-      onClose={() => setShowVideoPicker(false)}
     />
     </View>
   );
