@@ -63,14 +63,24 @@ router.get("/admin/bug-reports", async (req, res): Promise<void> => {
       .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(bugReports);
 
+    const MAX_DEVICE_INFO_JSON_CHARS = 1000;
     res.json({
-      data: rows.map((r) => ({
-        id: r.id,
-        userId: r.userId,
-        message: r.message,
-        deviceInfo: r.deviceInfo,
-        createdAt: r.createdAt,
-      })),
+      data: rows.map((r) => {
+        let deviceInfo: unknown = r.deviceInfo;
+        if (deviceInfo !== null && deviceInfo !== undefined) {
+          const raw = JSON.stringify(deviceInfo);
+          if (raw.length > MAX_DEVICE_INFO_JSON_CHARS) {
+            deviceInfo = { _truncated: raw.slice(0, MAX_DEVICE_INFO_JSON_CHARS) + "…" };
+          }
+        }
+        return {
+          id: r.id,
+          userId: r.userId,
+          message: r.message,
+          deviceInfo,
+          createdAt: r.createdAt,
+        };
+      }),
       meta: { page, limit, total: count ?? null },
     });
   } catch (err) {
@@ -519,7 +529,9 @@ function renderBugsTable(rows) {
     return;
   }
   tbody.innerHTML = rows.map(r => {
-    const device = r.deviceInfo ? JSON.stringify(r.deviceInfo, null, 2) : '—';
+    const MAX_DEVICE_DISPLAY = 500;
+    const raw = r.deviceInfo ? JSON.stringify(r.deviceInfo, null, 2) : '—';
+    const device = raw.length > MAX_DEVICE_DISPLAY ? raw.slice(0, MAX_DEVICE_DISPLAY) + '\n…(truncated)' : raw;
     return \`<tr>
       <td class="cell-id">#\${r.id}</td>
       <td class="cell-message">\${esc(r.message)}</td>

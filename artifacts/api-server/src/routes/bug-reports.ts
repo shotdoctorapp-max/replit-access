@@ -5,9 +5,23 @@ import { db, bugReports } from "@workspace/db";
 
 const router = Router();
 
+const deviceInfoValueSchema = z.union([
+  z.string().max(200),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+
+const deviceInfoSchema = z
+  .record(z.string().max(50), deviceInfoValueSchema)
+  .refine((val) => Object.keys(val).length <= 20, {
+    message: "deviceInfo may have at most 20 keys",
+  })
+  .optional();
+
 const createBugReportSchema = z.object({
   message: z.string().min(1).max(2000),
-  deviceInfo: z.record(z.unknown()).optional(),
+  deviceInfo: deviceInfoSchema,
 });
 
 router.post("/bug-reports", async (req, res) => {

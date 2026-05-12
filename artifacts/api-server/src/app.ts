@@ -54,8 +54,16 @@ app.use(
     origin: allowedOrigins.length > 0 ? allowedOrigins : false,
   }),
 );
-app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+const BUG_REPORTS_PATH = "/api/bug-reports";
+const BUG_REPORTS_BODY_LIMIT = "10kb";
+const DEFAULT_BODY_LIMIT = "20mb";
+
+app.use((req, res, next) => {
+  const isBugReport =
+    req.method === "POST" && req.path === BUG_REPORTS_PATH;
+  express.json({ limit: isBugReport ? BUG_REPORTS_BODY_LIMIT : DEFAULT_BODY_LIMIT })(req, res, next);
+});
+app.use(express.urlencoded({ extended: true, limit: DEFAULT_BODY_LIMIT }));
 
 app.use(
   clerkMiddleware((req) => ({
