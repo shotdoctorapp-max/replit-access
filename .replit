@@ -59,4 +59,4 @@ externalPort = 6800
 
 [userenv.shared]
 VITE_CLERK_PUBLISHABLE_KEY = "pk_test_bWFnaWNhbC1mZXJyZXQtOTAuY2xlcmsuYWNjb3VudHMuZGV2JA"
-EXPO_PUBLIC_LANDING_URL = "https://shotdoctor.replit.app"
+EXPO_PUBLIC_LANDING_URL = "https://shotdoctor.replit.app/landing/"
