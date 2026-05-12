@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -21,6 +22,10 @@ import type { DrillRecommendation } from "@/context/SessionContext";
 import { isFilmingTipsSuppressed, resetFilmingTips } from "@/components/FilmingTipsSheet";
 import { BugReportSheet } from "@/components/BugReportSheet";
 import { FEEDBACK_FORM_URL } from "@/components/FeedbackSheet";
+
+const SHARE_URL = process.env.EXPO_PUBLIC_DOMAIN
+  ? `https://${process.env.EXPO_PUBLIC_DOMAIN}`
+  : "https://shotdoc.replit.app";
 
 const DEFAULT_DRILLS: DrillRecommendation[] = [
   {
@@ -120,6 +125,17 @@ export default function TipsScreen() {
     await resetFilmingTips();
     setTipsHidden(false);
     Alert.alert("Filming Tips Re-enabled", "You'll see the filming tips next time you record a shot.");
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Check out Shot Doctor — AI that analyzes your basketball shooting form and tells you exactly how to fix it. 🏀\n${SHARE_URL}`,
+        url: SHARE_URL,
+      });
+    } catch {
+      // user cancelled or error — no-op
+    }
   };
 
   const personalizedDrills = useMemo(() => {
@@ -249,6 +265,25 @@ export default function TipsScreen() {
         </View>
       ))}
 
+      <Pressable
+        style={({ pressed }) => [
+          styles.shareCard,
+          { backgroundColor: colors.primary, opacity: pressed ? 0.88 : 1 },
+        ]}
+        onPress={handleShare}
+      >
+        <MaterialCommunityIcons name="share-variant" size={26} color={colors.primaryForeground} />
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.shareCardTitle, { color: colors.primaryForeground }]}>
+            Share Shot Doctor
+          </Text>
+          <Text style={[styles.shareCardSub, { color: colors.primaryForeground }]}>
+            Know a baller who needs this? Send it.
+          </Text>
+        </View>
+        <Feather name="arrow-right" size={20} color={colors.primaryForeground} />
+      </Pressable>
+
       <Text style={[styles.sectionTitle, { color: colors.mutedForeground, marginTop: 8 }]}>
         PREFERENCES
       </Text>
@@ -319,6 +354,24 @@ export default function TipsScreen() {
             </Text>
           </View>
           <Feather name="external-link" size={18} color={colors.mutedForeground} />
+        </Pressable>
+
+        <View style={[styles.prefDivider, { backgroundColor: colors.border }]} />
+
+        <Pressable
+          style={({ pressed }) => [styles.prefRow, { opacity: pressed ? 0.7 : 1 }]}
+          onPress={handleShare}
+        >
+          <View style={[styles.prefIconWrap, { backgroundColor: colors.primary + "20" }]}>
+            <Feather name="share-2" size={18} color={colors.primary} />
+          </View>
+          <View style={styles.prefText}>
+            <Text style={[styles.prefTitle, { color: colors.foreground }]}>Share with Friends</Text>
+            <Text style={[styles.prefSubtitle, { color: colors.mutedForeground }]}>
+              Spread the word about Shot Doctor
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
         </Pressable>
       </View>
 
@@ -473,5 +526,23 @@ const styles = StyleSheet.create({
   prefDivider: {
     height: 1,
     marginVertical: 12,
+  },
+  shareCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 18,
+    borderRadius: 16,
+    marginBottom: 24,
+  },
+  shareCardTitle: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 2,
+  },
+  shareCardSub: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    opacity: 0.85,
   },
 });
