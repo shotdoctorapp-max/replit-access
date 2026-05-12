@@ -10,6 +10,7 @@ import {
   Text,
   View,
   ViewToken,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CourtBackground } from "@/components/CourtBackground";
@@ -56,6 +57,7 @@ const MUTED = "#666";
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { height: windowHeight } = useWindowDimensions();
   const flatListRef = useRef<FlatList<Slide>>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -87,7 +89,7 @@ export default function OnboardingScreen() {
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 60 }).current;
 
   const renderSlide = ({ item }: { item: Slide }) => (
-    <View style={styles.slide}>
+    <View style={[styles.slide, { height: windowHeight }]}>
       <View style={styles.iconWrap}>
         <MaterialCommunityIcons name={item.icon} size={80} color={GREEN} />
       </View>
@@ -177,12 +179,9 @@ const styles = StyleSheet.create({
   flatList: {
     flex: 1,
   },
-  flatListContent: {
-    alignItems: "center",
-  },
+  flatListContent: {},
   slide: {
     width: SCREEN_WIDTH,
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 36,

@@ -5,11 +5,10 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ClerkProvider, ClerkLoaded } from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -33,16 +32,6 @@ const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
 function RootLayoutNav() {
-  const router = useRouter();
-
-  useEffect(() => {
-    AsyncStorage.getItem("@shotdoc_onboarding_done").then((val) => {
-      if (!val) {
-        router.replace("/onboarding");
-      }
-    });
-  }, []);
-
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="onboarding" options={{ animation: "none" }} />
