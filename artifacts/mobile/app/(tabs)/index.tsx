@@ -26,6 +26,7 @@ import { ScoreRing } from "@/components/ScoreRing";
 import { scoreToGrade, gradeColor } from "@/utils/grading";
 import { extractFrames } from "@/utils/videoFrames";
 import { FilmingTipsSheet, shouldShowFilmingTips } from "@/components/FilmingTipsSheet";
+import { VideoPickerSheet } from "@/components/VideoPickerSheet";
 import { CourtBackground } from "@/components/CourtBackground";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
@@ -107,6 +108,7 @@ export default function HomeScreen() {
     total: number;
   } | null>(null);
   const [showTipsSheet, setShowTipsSheet] = useState(false);
+  const [showVideoPicker, setShowVideoPicker] = useState(false);
 
   const progressAnim = useRef(new RNAnimated.Value(0)).current;
   const cardOpacity = useRef(new RNAnimated.Value(0)).current;
@@ -269,44 +271,12 @@ export default function HomeScreen() {
       );
       return;
     }
-
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const { status } = await MediaLibrary.requestPermissionsAsync();
     if (status !== "granted") {
       Alert.alert("Permission needed", "Please allow access to your video library.");
       return;
     }
-
-    let result: ImagePicker.ImagePickerResult;
-    try {
-      result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["videos"],
-        quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
-      });
-    } catch (e: any) {
-      const msg = String(e?.message ?? "");
-      if (msg.includes("PHPhotosErrorDomain") || msg.includes("3164")) {
-        Alert.alert(
-          "Video still downloading",
-          "This video is being fetched from iCloud. It may take a moment — try selecting it again.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Try Again", onPress: () => pickVideo() },
-          ]
-        );
-      } else {
-        Alert.alert("Couldn't open library", "Please try again.");
-      }
-      return;
-    }
-
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const uri = await resolveVideoUri(asset.uri);
-      // If fast copy returned null for an iCloud video, pass the raw ph:// URI
-      // to analyzeVideo which will handle the in-app download with progress UI.
-      const finalUri = uri ?? (asset.uri.startsWith("ph://") ? asset.uri : null);
-      if (finalUri) await analyzeVideo(finalUri, asset.duration ?? undefined);
-    }
+    setShowVideoPicker(true);
   };
 
   const analyzeVideo = async (videoUri: string, durationMs?: number) => {
@@ -876,6 +846,14 @@ export default function HomeScreen() {
         pickVideo();
       }}
       onDismiss={() => setShowTipsSheet(false)}
+    />
+    <VideoPickerSheet
+      visible={showVideoPicker}
+      onSelect={async (uri, durationSeconds) => {
+        setShowVideoPicker(false);
+        await analyzeVideo(uri, durationSeconds !== undefined ? durationSeconds * 1000 : undefined);
+      }}
+      onClose={() => setShowVideoPicker(false)}
     />
     </View>
   );
