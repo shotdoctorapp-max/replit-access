@@ -2,6 +2,7 @@ import { MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import React, { useMemo, useState, useCallback } from "react";
 import {
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -9,6 +10,7 @@ import {
   Text,
   View,
 } from "react-native";
+
 import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
@@ -18,6 +20,9 @@ import { DrillCard } from "@/components/DrillCard";
 import type { DrillRecommendation } from "@/context/SessionContext";
 import { isFilmingTipsSuppressed, resetFilmingTips } from "@/components/FilmingTipsSheet";
 import { BugReportSheet } from "@/components/BugReportSheet";
+
+const FEEDBACK_FORM_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLSd2uxUHZsvlQpCCCt_ix76NkO-pbqNRoVIzWX2qUzmgG2_rrQ/viewform?usp=dialog";
 
 const DEFAULT_DRILLS: DrillRecommendation[] = [
   {
@@ -298,6 +303,24 @@ export default function TipsScreen() {
             </Text>
           </View>
           <Feather name="chevron-right" size={18} color={colors.mutedForeground} />
+        </Pressable>
+
+        <View style={[styles.prefDivider, { backgroundColor: colors.border }]} />
+
+        <Pressable
+          style={({ pressed }) => [styles.prefRow, { opacity: pressed ? 0.7 : 1 }]}
+          onPress={() => Linking.openURL(FEEDBACK_FORM_URL).catch(() => {})}
+        >
+          <View style={[styles.prefIconWrap, { backgroundColor: colors.primary + "20" }]}>
+            <Feather name="message-square" size={18} color={colors.primary} />
+          </View>
+          <View style={styles.prefText}>
+            <Text style={[styles.prefTitle, { color: colors.foreground }]}>Send Feedback</Text>
+            <Text style={[styles.prefSubtitle, { color: colors.mutedForeground }]}>
+              Share your thoughts on Shot Doctor
+            </Text>
+          </View>
+          <Feather name="external-link" size={18} color={colors.mutedForeground} />
         </Pressable>
       </View>
 

@@ -2,6 +2,7 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FeedbackSheet, FEEDBACK_SUPPRESSED_KEY } from "@/components/FeedbackSheet";
 import {
   Animated,
   Easing,
@@ -156,6 +157,7 @@ export default function AnalysisScreen() {
   const [imageLayout, setImageLayout] = useState({ width: 0, height: 0 });
   const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set());
   const [seenZones, setSeenZones] = useState<Set<string>>(new Set());
+  const [feedbackVisible, setFeedbackVisible] = useState(false);
   const adjStorageKey = `hoopform_adj_done_${session.id}`;
   const seenZonesKey = `hoopform_seen_zones_${session.id}`;
 
@@ -195,6 +197,21 @@ export default function AnalysisScreen() {
     setSeenZones(new Set());
     AsyncStorage.removeItem(seenZonesKey).catch(() => {});
   }, [seenZonesKey]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    AsyncStorage.getItem(FEEDBACK_SUPPRESSED_KEY)
+      .then((val) => {
+        if (val === "1") return;
+        timer = setTimeout(() => setFeedbackVisible(true), 2000);
+      })
+      .catch(() => {});
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleNeverShowFeedback = useCallback(() => {
+    AsyncStorage.setItem(FEEDBACK_SUPPRESSED_KEY, "1").catch(() => {});
+  }, []);
 
   const toggleStep = useCallback((key: string) => {
     setDoneSteps((prev) => {
@@ -242,8 +259,9 @@ export default function AnalysisScreen() {
   }
 
   return (
+    <View style={[styles.screenWrap, { backgroundColor: colors.background }]}>
     <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={styles.container}
       contentContainerStyle={[
         styles.content,
         {
@@ -608,10 +626,18 @@ export default function AnalysisScreen() {
         )}
       </View>
     </ScrollView>
+
+    <FeedbackSheet
+      visible={feedbackVisible}
+      onClose={() => setFeedbackVisible(false)}
+      onNeverShow={handleNeverShowFeedback}
+    />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenWrap: { flex: 1 },
   container: { flex: 1 },
   content: { paddingBottom: 40 },
   notFound: {
