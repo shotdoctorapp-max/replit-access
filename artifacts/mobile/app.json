@@ -37,6 +37,14 @@
           "photosPermission": "Allow Shot Doctor to access your videos to analyze your shooting form.",
           "cameraPermission": "Allow Shot Doctor to record video to analyze your shooting form."
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Shot Doctor to access your photo library to download iCloud videos for analysis.",
+          "savePhotosPermission": "Allow Shot Doctor to save videos to your photo library.",
+          "isAccessMediaLocationEnabled": true
+        }
       ]
     ],
     "experiments": {

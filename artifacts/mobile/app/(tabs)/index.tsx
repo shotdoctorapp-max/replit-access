@@ -3,6 +3,7 @@ import { useAuth, useUser } from "@clerk/expo";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
+import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -33,6 +34,7 @@ const API_BASE = process.env.EXPO_PUBLIC_DOMAIN
 
 type AnalyzingStage =
   | "idle"
+  | "icloud"
   | "preparing"
   | "extracting"
   | "selecting"
@@ -40,6 +42,7 @@ type AnalyzingStage =
 
 const STAGE_LABELS: Record<AnalyzingStage, string> = {
   idle: "",
+  icloud: "Downloading from iCloud…",
   preparing: "Preparing video…",
   extracting: "Extracting key frames…",
   selecting: "AI selecting best moment…",
@@ -50,6 +53,7 @@ const STAGE_ORDER: AnalyzingStage[] = ["extracting", "selecting", "analyzing"];
 
 const STAGE_FLOORS: Record<AnalyzingStage, number> = {
   idle: 0,
+  icloud: 0,
   preparing: 0,
   extracting: 0,
   selecting: 25,
@@ -58,6 +62,7 @@ const STAGE_FLOORS: Record<AnalyzingStage, number> = {
 
 const STAGE_CEILINGS: Record<AnalyzingStage, number> = {
   idle: 0,
+  icloud: 12,
   preparing: 5,
   extracting: 25,
   selecting: 45,
@@ -175,6 +180,9 @@ export default function HomeScreen() {
     return true;
   };
 
+  // Fast copy for already-downloaded ph:// assets. Returns null silently for
+  // iCloud-only videos so the caller can pass the original URI to analyzeVideo,
+  // which handles the download in-app with a progress stage.
   const resolveVideoUri = async (uri: string): Promise<string | null> => {
     if (!uri.startsWith("ph://")) return uri;
     try {
@@ -185,13 +193,10 @@ export default function HomeScreen() {
     } catch (e: any) {
       const msg = String(e?.message ?? "");
       if (msg.includes("PHPhotosErrorDomain") || msg.includes("3164")) {
-        Alert.alert(
-          "Video unavailable",
-          "This video is stored in iCloud and isn't downloaded to your device yet. Open the Photos app, tap the video to download it, then try again."
-        );
-      } else {
-        Alert.alert("Couldn't load video", "Please try again with a different video.");
+        // iCloud-only — return null so caller routes through analyzeVideo
+        return null;
       }
+      Alert.alert("Couldn't load video", "Please try again with a different video.");
       return null;
     }
   };
@@ -234,7 +239,10 @@ export default function HomeScreen() {
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       const uri = await resolveVideoUri(asset.uri);
-      if (uri) await analyzeVideo(uri, asset.duration ?? undefined);
+      // If fast copy returned null for an iCloud video, pass the raw ph:// URI
+      // to analyzeVideo which will handle the in-app download with progress UI.
+      const finalUri = uri ?? (asset.uri.startsWith("ph://") ? asset.uri : null);
+      if (finalUri) await analyzeVideo(finalUri, asset.duration ?? undefined);
     }
   };
 
@@ -286,7 +294,10 @@ export default function HomeScreen() {
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       const uri = await resolveVideoUri(asset.uri);
-      if (uri) await analyzeVideo(uri, asset.duration ?? undefined);
+      // If fast copy returned null for an iCloud video, pass the raw ph:// URI
+      // to analyzeVideo which will handle the in-app download with progress UI.
+      const finalUri = uri ?? (asset.uri.startsWith("ph://") ? asset.uri : null);
+      if (finalUri) await analyzeVideo(finalUri, asset.duration ?? undefined);
     }
   };
 
@@ -333,20 +344,42 @@ export default function HomeScreen() {
 
       let resolvedUri = videoUri;
       if (videoUri.startsWith("ph://")) {
-        setStage("preparing");
+        // Try MediaLibrary first — it triggers an iCloud download transparently.
+        setStage("icloud");
+        let mlResolved = false;
+        const assetId = videoUri.replace("ph://", "").split("/")[0];
         try {
-          const FileSystemEarly = await import("expo-file-system/legacy");
-          const dest = `${FileSystemEarly.cacheDirectory}shot_${Date.now()}.mov`;
-          await FileSystemEarly.copyAsync({ from: videoUri, to: dest });
-          resolvedUri = dest;
-        } catch (copyErr) {
-          const copyMsg = copyErr instanceof Error ? copyErr.message : "";
-          if (copyMsg.includes("PHPhotosErrorDomain") || copyMsg.includes("3164")) {
-            throw new Error(
-              "This video is stored in iCloud. Open the Photos app, download it to your device, then try again."
-            );
+          const { status } = await MediaLibrary.requestPermissionsAsync();
+          if (status === "granted") {
+            const info = await MediaLibrary.getAssetInfoAsync(assetId, {
+              shouldDownloadFromNetwork: true,
+            });
+            if (info.localUri) {
+              resolvedUri = info.localUri;
+              mlResolved = true;
+            }
           }
-          throw copyErr;
+        } catch {
+          // MediaLibrary path failed — fall through to legacy copy below
+        }
+
+        if (!mlResolved) {
+          // Legacy copy (works for already-downloaded assets, fails cleanly for iCloud)
+          setStage("preparing");
+          try {
+            const FileSystemEarly = await import("expo-file-system/legacy");
+            const dest = `${FileSystemEarly.cacheDirectory}shot_${Date.now()}.mov`;
+            await FileSystemEarly.copyAsync({ from: videoUri, to: dest });
+            resolvedUri = dest;
+          } catch (copyErr) {
+            const copyMsg = copyErr instanceof Error ? copyErr.message : "";
+            if (copyMsg.includes("PHPhotosErrorDomain") || copyMsg.includes("3164")) {
+              throw new Error(
+                "Couldn't download the video from iCloud. Make sure you have an internet connection and try again."
+              );
+            }
+            throw copyErr;
+          }
         }
       }
 

@@ -64,6 +64,7 @@
   "dependencies": {
     "expo-application": "^55.0.14",
     "expo-device": "^55.0.15",
+    "expo-media-library": "^55.0.16",
     "expo-video": "^55.0.15"
   }
 }
