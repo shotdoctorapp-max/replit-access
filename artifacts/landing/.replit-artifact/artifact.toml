@@ -1,6 +1,6 @@
 kind = "web"
 previewPath = "/landing/"
-title = "Shot Doc — Beta Waitlist"
+title = "Shot Doctor - Landing Page"
 version = "1.0.0"
 id = "artifacts/landing"
 router = "path"
