@@ -90,7 +90,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     const [selectionResult, rhythmResult] = await Promise.all([
       frames.length > 1
         ? openai.chat.completions.create({
-            model: "gpt-5-mini",
+            model: "gpt-4o-mini",
             max_completion_tokens: 128,
             messages: [
               { role: "system", content: BEST_FRAME_PROMPT },
@@ -112,7 +112,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         : Promise.resolve(null),
       frames.length >= 3
         ? openai.chat.completions.create({
-            model: "gpt-5.4",
+            model: "gpt-4o",
             max_completion_tokens: 512,
             messages: [
               { role: "system", content: RHYTHM_SYSTEM_PROMPT },
@@ -227,7 +227,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     }
 
     const analysisResponse = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-4o",
       max_completion_tokens: 2048,
       messages: [
         { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },

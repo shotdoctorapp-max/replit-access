@@ -289,7 +289,7 @@ export default function HomeScreen() {
     }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     // "limited" = iOS 14+ partial access — still allows the picker to open
-    if (status !== "granted" && status !== "limited") {
+    if (status !== "granted" && (status as string) !== "limited") {
       Alert.alert("Permission needed", "Please allow access to your video library.");
       return;
     }

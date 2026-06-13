@@ -33,7 +33,7 @@ export function ShotsProvider({ children }: { children: React.ReactNode }) {
   const { userId, isLoaded: authLoaded } = useAuth();
   const [shotsUsed, setShotsUsed] = useState(0);
   const [isLoaded, setIsLoaded] = useState(false);
-  const isPro = false;
+  const isPro = true; // Beta: unlimited access for all testers
 
   useEffect(() => {
     if (!authLoaded) return;
