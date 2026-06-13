@@ -1,0 +1,1 @@
+- [expo-router unstable-native-tabs crash](expo-router-native-tabs.md) — importing from `unstable-native-tabs` requires `react-native-bottom-tabs`; if that peer dep is absent the whole bundle crashes at load time.
