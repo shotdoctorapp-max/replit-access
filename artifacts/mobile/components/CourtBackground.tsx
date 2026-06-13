@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, StyleSheet, View, useWindowDimensions } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 
 export function CourtBackground() {
@@ -32,9 +31,8 @@ export function CourtBackground() {
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]} pointerEvents="none">
-      <LinearGradient
-        colors={["rgba(0,200,83,0.28)", "rgba(0,0,0,0)"]}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 280 }}
+      <View
+        style={{ position: "absolute", top: 0, left: 0, right: 0, height: 280, backgroundColor: "rgba(0,200,83,0.12)" }}
       />
       <Svg width={width} height={500} style={{ position: "absolute", top: 0 }}>
         <Line x1={cx - 18} y1={6} x2={cx + 18} y2={6} stroke={stroke} strokeWidth={2} opacity={op * 1.4} />
