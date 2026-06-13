@@ -2,11 +2,13 @@ import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth, useUser } from "@clerk/expo";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  ActionSheetIOS,
   Animated as RNAnimated,
   Alert,
   Image,
@@ -275,42 +277,35 @@ export default function HomeScreen() {
     }
   };
 
-  const pickVideo = async () => {
+  // METHOD 1: Photo Library via ImagePicker
+  // Uses the stable MediaTypeOptions.Videos enum (not the new array syntax which
+  // throws in Expo Go). PHPickerViewController on iOS 14+ gives a temporary
+  // file:// path which we copy to cache so iOS won't clean it up mid-analysis.
+  const pickFromLibrary = async () => {
     if (!checkShotsOrPaywall()) return;
     if (Platform.OS === "web") {
-      Alert.alert(
-        "Mobile Only",
-        "Video analysis requires the Expo Go app on your iPhone or Android device."
-      );
+      Alert.alert("Mobile Only", "Video analysis requires the Expo Go app.");
       return;
     }
-
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     // "limited" = iOS 14+ partial access — still allows the picker to open
     if (status !== "granted" && status !== "limited") {
       Alert.alert("Permission needed", "Please allow access to your video library.");
       return;
     }
-
     let result: ImagePicker.ImagePickerResult;
     try {
-      // MediaTypeOptions.Videos is more stable than the array syntax in Expo Go.
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       });
     } catch (err) {
-      console.error("launchImageLibraryAsync error:", err);
-      Alert.alert("Couldn't open library", "Please try again or record directly.");
+      console.error("pickFromLibrary error:", err);
+      Alert.alert("Couldn't open library", "Try 'Browse Files' or record a new shot.");
       return;
     }
-
     if (result.canceled || !result.assets[0]) return;
-
     const asset = result.assets[0];
     let uri = asset.uri;
-
-    // PHPickerViewController returns a file:// temp path. Copy to a stable cache
-    // path so iOS doesn't clean it up before frame extraction finishes.
     if (uri.startsWith("file://")) {
       try {
         const FileSystemLegacy = await import("expo-file-system/legacy");
@@ -318,12 +313,80 @@ export default function HomeScreen() {
         await FileSystemLegacy.copyAsync({ from: uri, to: dest });
         uri = dest;
       } catch {
-        // Copy failed — proceed with original temp URI (usually still readable)
+        // Copy failed — proceed with original temp URI
       }
     }
-
-    // asset.duration from expo-image-picker is in milliseconds (same as openCamera)
     await analyzeVideo(uri, asset.duration ?? undefined);
+  };
+
+  // METHOD 2: Files / iCloud Drive via DocumentPicker
+  // Bypasses the photo library permission entirely. Opens the iOS Files app
+  // which can access iCloud Drive, Downloads, and any cloud storage. Returns
+  // a direct file:// URI — no ph:// indirection, no iCloud download needed.
+  const pickFromFiles = async () => {
+    if (!checkShotsOrPaywall()) return;
+    if (Platform.OS === "web") {
+      Alert.alert("Mobile Only", "Video analysis requires the Expo Go app.");
+      return;
+    }
+    let docResult: DocumentPicker.DocumentPickerResult;
+    try {
+      docResult = await DocumentPicker.getDocumentAsync({
+        type: "video/*",
+        copyToCacheDirectory: true,
+      });
+    } catch (err) {
+      console.error("pickFromFiles error:", err);
+      Alert.alert("Couldn't open files", "Try 'Photo Library' or record a new shot.");
+      return;
+    }
+    if (docResult.canceled || !docResult.assets?.[0]) return;
+    const file = docResult.assets[0];
+    await analyzeVideo(file.uri, undefined);
+  };
+
+  // METHOD 3: Record New Shot via Camera
+  // No library or file permissions needed at all. Opens the camera directly
+  // for immediate recording — the most reliable path in Expo Go since it
+  // avoids all picker and permission complexity entirely.
+  const pickVideo = async () => {
+    if (!checkShotsOrPaywall()) return;
+    if (Platform.OS === "web") {
+      Alert.alert("Mobile Only", "Video analysis requires the Expo Go app.");
+      return;
+    }
+    await openCamera();
+  };
+
+  // Shows an action sheet letting the user choose among the 3 upload methods.
+  const showUploadOptions = () => {
+    if (!checkShotsOrPaywall()) return;
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: "Upload a Shot",
+          message: "Choose how to add your video",
+          options: ["Cancel", "Photo Library", "Browse Files (iCloud/Downloads)", "Record New Shot"],
+          cancelButtonIndex: 0,
+        },
+        (index) => {
+          if (index === 1) pickFromLibrary();
+          else if (index === 2) pickFromFiles();
+          else if (index === 3) openCamera();
+        }
+      );
+    } else {
+      Alert.alert(
+        "Upload a Shot",
+        "Choose how to add your video",
+        [
+          { text: "Photo Library", onPress: pickFromLibrary },
+          { text: "Browse Files", onPress: pickFromFiles },
+          { text: "Record New Shot", onPress: openCamera },
+          { text: "Cancel", style: "cancel" },
+        ]
+      );
+    }
   };
 
   const analyzeVideo = async (videoUri: string, durationMs?: number) => {
@@ -679,13 +742,13 @@ export default function HomeScreen() {
               opacity: pressed || isAnalyzing ? 0.75 : 1,
             },
           ]}
-          onPress={pickVideo}
+          onPress={showUploadOptions}
           disabled={isAnalyzing}
         >
           <Feather name="upload" size={24} color="#fff" />
           <View style={styles.recordBtnText}>
-            <Text style={styles.recordBtnTitle}>Upload Slow-Mo Video</Text>
-            <Text style={styles.recordBtnSub}>Record in Slo-Mo, then upload for best results</Text>
+            <Text style={styles.recordBtnTitle}>Upload Video</Text>
+            <Text style={styles.recordBtnSub}>Library · Files · Record — choose your source</Text>
           </View>
         </Pressable>
 
@@ -916,7 +979,7 @@ export default function HomeScreen() {
       visible={showTipsSheet}
       onConfirm={() => {
         setShowTipsSheet(false);
-        pickVideo();
+        showUploadOptions();
       }}
       onDismiss={() => setShowTipsSheet(false)}
     />
