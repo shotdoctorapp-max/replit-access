@@ -286,21 +286,21 @@ export default function HomeScreen() {
     }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
+    // "limited" = iOS 14+ partial access — still allows the picker to open
+    if (status !== "granted" && status !== "limited") {
       Alert.alert("Permission needed", "Please allow access to your video library.");
       return;
     }
 
     let result: ImagePicker.ImagePickerResult;
     try {
-      // No quality param — without it, iOS 14+ uses PHPickerViewController which
-      // handles iCloud downloads transparently and returns a real file:// path.
-      // This is how Instagram, TikTok, and every other major app works.
+      // MediaTypeOptions.Videos is more stable than the array syntax in Expo Go.
       result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["videos"],
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       });
-    } catch {
-      Alert.alert("Couldn't open library", "Please try again.");
+    } catch (err) {
+      console.error("launchImageLibraryAsync error:", err);
+      Alert.alert("Couldn't open library", "Please try again or record directly.");
       return;
     }
 
