@@ -29,5 +29,8 @@ A failed `pnpm install --no-frozen-lockfile` (e.g. ENOTDIR crash mid-run) can si
 ## 6. Never update package.json version specs without regenerating the lockfile
 Changing version specs (e.g. `~54.0.27` → `~54.0.35`) in `package.json` without running `pnpm install` breaks EAS's `--frozen-lockfile` check. Either: (a) revert specs to match the lockfile, or (b) run `pnpm install` successfully first. The expo-doctor patch-version warnings are non-blocking for EAS builds.
 
+## 7. Root package.json must not contain runtime mobile deps
+The monorepo root `package.json` must only hold workspace tooling (typescript, prettier, @types/react). Any expo/react-native packages in root dependencies (without react/react-native peers) causes EAS codegen to crash with `TypeError: expand is not a function` during pod install — codegen reads root package.json, finds react-native-safe-area-context/screens but no react or react-native peers. Also: `eas-cli` must never be in any workspace package.json; use `npx eas-cli@latest` instead.
+
 ## 5. node_modules/.bin missing after merged task
 After the vulnerability fixes task merged and changed `pnpm-workspace.yaml`, the `.bin` directory disappeared (pnpm install was interrupted). Fixed by manually creating symlinks (`node_modules/.bin/expo → ../expo/bin/cli`). Real fix is letting `pnpm install` complete fully.
