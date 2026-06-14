@@ -26,27 +26,29 @@ expo-router v6 has no config plugin file. Listing it in `plugins` causes EAS CLI
 If a `package-lock.json` exists alongside `pnpm-lock.yaml`, EAS switches from pnpm to npm (`npm ci`) and fails on missing lockfile entries. Delete any `package-lock.json` not in `node_modules/`.
 A failed `pnpm install --no-frozen-lockfile` (e.g. ENOTDIR crash mid-run) can silently regenerate a `package-lock.json` at the root. Always check with `ls . | grep lock` before retrying an EAS build after a failed local install.
 
+## 5. node_modules/.bin missing after merged task
+After the vulnerability fixes task merged and changed `pnpm-workspace.yaml`, the `.bin` directory disappeared (pnpm install was interrupted). Fixed by manually creating symlinks (`node_modules/.bin/expo → ../expo/bin/cli`). Real fix is letting `pnpm install` complete fully.
+
 ## 6. Never update package.json version specs without regenerating the lockfile
 Changing version specs (e.g. `~54.0.27` → `~54.0.35`) in `package.json` without running `pnpm install` breaks EAS's `--frozen-lockfile` check. Either: (a) revert specs to match the lockfile, or (b) run `pnpm install` successfully first. The expo-doctor patch-version warnings are non-blocking for EAS builds.
 
 ## 7. Root package.json must not contain runtime mobile deps
 The monorepo root `package.json` must only hold workspace tooling (typescript, prettier, @types/react). Any expo/react-native packages in root dependencies (without react/react-native peers) causes EAS codegen to crash with `TypeError: expand is not a function` during pod install — codegen reads root package.json, finds react-native-safe-area-context/screens but no react or react-native peers. Also: `eas-cli` must never be in any workspace package.json; use `npx eas-cli@latest` instead.
 
-## 5. node_modules/.bin missing after merged task
-After the vulnerability fixes task merged and changed `pnpm-workspace.yaml`, the `.bin` directory disappeared (pnpm install was interrupted). Fixed by manually creating symlinks (`node_modules/.bin/expo → ../expo/bin/cli`). Real fix is letting `pnpm install` complete fully.
+## 8. NativeAsyncStorageModule.ts causes codegen crash — fix via pnpm patch
 
-## 8. pnpm version conflicts create mobile-scoped node_modules that break EAS codegen
-When `artifacts/mobile/package.json` pins a package to a DIFFERENT version than what another package in the monorepo requires, pnpm installs TWO copies: the shared version hoisted to root `node_modules/`, and the mobile-specific version in `artifacts/mobile/node_modules/`. On EAS, `expo prebuild` generates `react-native.config.js` pointing to the mobile-scoped copy. The react-native codegen then processes TypeScript spec files from that copy.
+**Root cause:** `@react-native-async-storage/async-storage` (both 1.24.0 and 2.2.0) ships `src/NativeAsyncStorageModule.ts` with:
+- `import type { ErrorLike } from "./types"` — cross-file type import
+- `[string, string][]` — tuple types
+- `readonly string[]` — readonly modifier
 
-**Specific case:** `@react-native-async-storage/async-storage`
-- Mobile specified `2.2.0` (exact pin) → installed at `artifacts/mobile/node_modules/`
-- Something else needed `1.24.0` → installed at root `node_modules/`
-- async-storage 2.2.0 has `src/NativeAsyncStorageModule.ts` which uses cross-file type imports (`ErrorLike` from `./types`) and `readonly string[]` syntax — features unsupported by `@react-native/codegen@0.81.5`
-- Result: `TypeError: expand is not a function` during pod install on EAS
-- The error does NOT reproduce locally (no `react-native.config.js` locally → codegen uses root node_modules path → 1.24.0 is processed → no TypeScript spec → no error)
+These trigger `TypeError: expand is not a function` in `@react-native/codegen@0.81.5` when expo prebuild (run by EAS) generates `react-native.config.js` with explicit package root paths. The codegen then finds and tries to parse `NativeAsyncStorageModule.ts` via that config. Locally this never fails because without `react-native.config.js`, the codegen tries `artifacts/mobile/node_modules/@react-native-async-storage/async-storage` (doesn't exist with hoisted pnpm) and silently skips it.
 
-**Fix:** Align the version in `artifacts/mobile/package.json` to match what's in root (e.g. `"1.24.0"` instead of `"2.2.0"`). This eliminates the version conflict, collapses to a single shared copy at root, and removes the problematic mobile-scoped installation.
+**Fix:** pnpm patch replaces the spec with codegen-safe types (Object[], string[], no cross-file imports). Patch is committed to `patches/@react-native-async-storage__async-storage@1.24.0.patch` and wired via `package.json` → `pnpm.patchedDependencies`. Applied automatically by `pnpm install --frozen-lockfile` on EAS.
 
-**How to apply:** Any time EAS fails with `TypeError: X is not a function` in `[Codegen]` lines during pod install, check for native module packages with version conflicts between `artifacts/mobile/package.json` and what the lockfile resolves at root. Run `cat artifacts/mobile/node_modules/<package>/package.json | grep version` to see if the mobile-scoped copy is a different version with TypeScript spec files starting with `Native*.ts`.
+**Key files:**
+- `patches/@react-native-async-storage__async-storage@1.24.0.patch`
+- Root `package.json`: `pnpm.patchedDependencies`
+- `pnpm-lock.yaml`: patch hash entry
 
-**To diagnose:** Run `ls artifacts/mobile/node_modules/` — any real packages there (not just `@workspace` or `.bin`) indicate version conflicts. Check their `src/` or `src/specs/` for `Native*.ts` files.
+**How to apply for future packages:** If EAS fails with `[Codegen] Processing <lib>` then `TypeError: expand is not a function`, the spec file for that lib has a cross-file type import or unsupported TypeScript type. Run `pnpm patch <package>@<version>`, simplify the `Native*.ts` spec to use only `string`, `number`, `boolean`, `Object`, `Object[]`, `string[]` — no cross-file imports, no tuple types, no readonly, no union types with imported types. Then `pnpm patch-commit`.
