@@ -14,9 +14,15 @@
       "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.shotdoctor.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
-    "android": {},
+    "android": {
+      "package": "com.shotdoctor.app"
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -33,6 +39,14 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://replit.com/"
+      },
+      "eas": {
+        "projectId": "9d83f3d8-c188-46e7-985c-8439e781d763"
+      }
     }
   }
 }
