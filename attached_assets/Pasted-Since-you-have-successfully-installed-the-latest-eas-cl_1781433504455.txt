@@ -1,0 +1,61 @@
+Since you have successfully installed the latest eas-cli and configured your repository, the failure now is likely due to the specific configuration of your project or a mismatch in the build environment.
+
+If npx eas-cli build --platform ios is still failing, we need to bypass the "guesswork" and find the specific cause in the logs. Please follow these steps to force a successful completion.
+
+1. Identify the "True" Error
+When the build fails, the terminal will provide a URL to the Expo Application Services (EAS) Dashboard.
+
+Do not rely on the terminal output. Open that URL in your browser.
+
+Scroll through the logs for the Build or Compile step.
+
+Look for the first line that says Error: or Failed. If you find it, please copy and paste those 5-10 lines here.
+
+2. Common Fixes for "Stubborn" iOS Builds
+If the build is failing before it even starts compiling (e.g., during the "Install" or "Prebuild" phase), try these two commands to reset the state:
+
+A. Clear the Cloud Cache
+Sometimes the EAS server holds onto a "bad" version of your node_modules. Force it to start fresh:
+
+Bash
+npx eas-cli build --platform ios --clear-cache
+B. The "Hard" Prebuild
+Since you are using pnpm and a monorepo structure, your native files might be out of sync with your JavaScript code. Run this locally to ensure your ios/ folder is perfectly generated:
+
+Bash
+# This cleans and regenerates the native iOS code locally
+npx expo prebuild --platform ios --clean
+If this fails locally: You have a local configuration error (like an incompatible dependency). Fix the errors it shows in your terminal.
+
+If this succeeds locally: Your project is healthy. Commit the newly generated ios/ folder (or just the updated configuration) to your repository, push to GitHub, and try the EAS build again.
+
+3. Check eas.json
+There is a possibility that your eas.json file is misconfigured for a monorepo. Ensure it points to the correct directory. It should look something like this:
+
+JSON
+{
+  "build": {
+    "production": {
+      "ios": {
+        "buildConfiguration": "Release"
+      },
+      "env": {
+        "EXPO_PROJECT_ROOT": "artifacts/mobile"
+      }
+    }
+  }
+}
+Ensure that artifacts/mobile matches the path where your package.json is located.
+
+4. Are you using "Development Builds"?
+If you are trying to build a Development Build (to test your app locally) rather than a Production App Store build, the command is slightly different:
+
+Bash
+npx eas-cli build --platform ios --profile development
+To help me fix this for you right now:
+
+Paste the error log from your latest failed build on the EAS Dashboard.
+
+Tell me: Is this a production build for the App Store, or a development build for testing on your phone?
+
+I am standing by to analyze that error log once you paste it.
