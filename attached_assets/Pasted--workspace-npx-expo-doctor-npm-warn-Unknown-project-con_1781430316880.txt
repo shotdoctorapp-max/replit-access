@@ -1,0 +1,82 @@
+~/workspace$ npx expo-doctor
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm.
+npm warn Unknown project config "node-linker". This will stop working in the next major version of npm.
+15/18 checks passed. 3 checks failed. Possible issues detected:
+Use the --verbose flag to see more details about passed checks.
+
+✖ Check Expo config (app.json/ app.config.js) schema
+Error validating asset fields in /home/runner/workspace/app.json:
+ Field: Splash.image - cannot access file at './assets/images/icon.png'.
+ Field: icon - cannot access file at './assets/images/icon.png'.
+Advice:
+Resolve schema errors in your app config. Learn more: https://docs.expo.dev/workflow/configuration/
+
+✖ Check that required peer dependencies are installed
+Missing peer dependency: react
+Required by: expo, expo-font, expo-linking, expo-router, expo-status-bar, react-native-safe-area-context, react-native-screens
+Missing peer dependency: react-native
+Required by: expo, expo-constants, expo-font, expo-linking, expo-router, expo-status-bar, expo-web-browser, react-native-safe-area-context, react-native-screens
+Advice:
+Install missing required peer dependencies with "npx expo install react react-native"
+Your app may crash outside of Expo Go without these dependencies. Native module peer dependencies must be installed directly.
+
+✖ Check that packages match versions required by installed Expo SDK
+
+🔧 Patch version mismatches
+package      expected  found    
+expo         ~54.0.35  54.0.34  
+expo-font    ~14.0.12  14.0.11  
+expo-router  ~6.0.24   6.0.23   
+
+Changelogs:
+- expo-font → https://github.com/expo/expo/blob/sdk-54/packages/expo-font/CHANGELOG.md
+- expo-router → https://github.com/expo/expo/blob/sdk-54/packages/expo-router/CHANGELOG.md
+
+3 packages out of date.
+Advice:
+Use 'npx expo install --check' to review and upgrade your dependencies.
+To ignore specific packages, add them to "expo.install.exclude" in package.json. Learn more: https://expo.fyi/dependency-validation
+
+3 checks failed, indicating possible issues with the project.
+~/workspace$ npx expo-doctor
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm.
+npm warn Unknown project config "node-linker". This will stop working in the next major version of npm.
+15/18 checks passed. 3 checks failed. Possible issues detected:
+Use the --verbose flag to see more details about passed checks.
+
+✖ Check Expo config (app.json/ app.config.js) schema
+Error validating asset fields in /home/runner/workspace/app.json:
+ Field: Splash.image - cannot access file at './assets/images/icon.png'.
+ Field: icon - cannot access file at './assets/images/icon.png'.
+Advice:
+Resolve schema errors in your app config. Learn more: https://docs.expo.dev/workflow/configuration/
+
+✖ Check that required peer dependencies are installed
+Missing peer dependency: react
+Required by: expo, expo-font, expo-linking, expo-router, expo-status-bar, react-native-safe-area-context, react-native-screens
+Missing peer dependency: react-native
+Required by: expo, expo-constants, expo-font, expo-linking, expo-router, expo-status-bar, expo-web-browser, react-native-safe-area-context, react-native-screens
+Advice:
+Install missing required peer dependencies with "npx expo install react react-native"
+Your app may crash outside of Expo Go without these dependencies. Native module peer dependencies must be installed directly.
+
+✖ Check that packages match versions required by installed Expo SDK
+
+🔧 Patch version mismatches
+package      expected  found    
+expo         ~54.0.35  54.0.34  
+expo-font    ~14.0.12  14.0.11  
+expo-router  ~6.0.24   6.0.23   
+
+Changelogs:
+- expo-font → https://github.com/expo/expo/blob/sdk-54/packages/expo-font/CHANGELOG.md
+- expo-router → https://github.com/expo/expo/blob/sdk-54/packages/expo-router/CHANGELOG.md
+
+3 packages out of date.
+Advice:
+Use 'npx expo install --check' to review and upgrade your dependencies.
+To ignore specific packages, add them to "expo.install.exclude" in package.json. Learn more: https://expo.fyi/dependency-validation
+
+3 checks failed, indicating possible issues with the project.
