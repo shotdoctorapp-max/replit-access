@@ -34,3 +34,19 @@ The monorepo root `package.json` must only hold workspace tooling (typescript, p
 
 ## 5. node_modules/.bin missing after merged task
 After the vulnerability fixes task merged and changed `pnpm-workspace.yaml`, the `.bin` directory disappeared (pnpm install was interrupted). Fixed by manually creating symlinks (`node_modules/.bin/expo → ../expo/bin/cli`). Real fix is letting `pnpm install` complete fully.
+
+## 8. pnpm version conflicts create mobile-scoped node_modules that break EAS codegen
+When `artifacts/mobile/package.json` pins a package to a DIFFERENT version than what another package in the monorepo requires, pnpm installs TWO copies: the shared version hoisted to root `node_modules/`, and the mobile-specific version in `artifacts/mobile/node_modules/`. On EAS, `expo prebuild` generates `react-native.config.js` pointing to the mobile-scoped copy. The react-native codegen then processes TypeScript spec files from that copy.
+
+**Specific case:** `@react-native-async-storage/async-storage`
+- Mobile specified `2.2.0` (exact pin) → installed at `artifacts/mobile/node_modules/`
+- Something else needed `1.24.0` → installed at root `node_modules/`
+- async-storage 2.2.0 has `src/NativeAsyncStorageModule.ts` which uses cross-file type imports (`ErrorLike` from `./types`) and `readonly string[]` syntax — features unsupported by `@react-native/codegen@0.81.5`
+- Result: `TypeError: expand is not a function` during pod install on EAS
+- The error does NOT reproduce locally (no `react-native.config.js` locally → codegen uses root node_modules path → 1.24.0 is processed → no TypeScript spec → no error)
+
+**Fix:** Align the version in `artifacts/mobile/package.json` to match what's in root (e.g. `"1.24.0"` instead of `"2.2.0"`). This eliminates the version conflict, collapses to a single shared copy at root, and removes the problematic mobile-scoped installation.
+
+**How to apply:** Any time EAS fails with `TypeError: X is not a function` in `[Codegen]` lines during pod install, check for native module packages with version conflicts between `artifacts/mobile/package.json` and what the lockfile resolves at root. Run `cat artifacts/mobile/node_modules/<package>/package.json | grep version` to see if the mobile-scoped copy is a different version with TypeScript spec files starting with `Native*.ts`.
+
+**To diagnose:** Run `ls artifacts/mobile/node_modules/` — any real packages there (not just `@workspace` or `.bin`) indicate version conflicts. Check their `src/` or `src/specs/` for `Native*.ts` files.
