@@ -15,6 +15,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "image": "latest",
       "prebuildCommand": "node ../../patch-native-modules.js",
       "env": {
         "EAS_BUILD_NO_EXPO_GO_WARNING": "true"
