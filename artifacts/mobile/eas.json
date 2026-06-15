@@ -7,15 +7,16 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "prebuildCommand": "node ../../patch-native-modules.js"
+      "prebuildCommand": "cd ../../ && pnpm install --config.node-linker=hoisted && node patch-native-modules.js"
     },
     "preview": {
       "distribution": "internal",
-      "prebuildCommand": "node ../../patch-native-modules.js"
+      "prebuildCommand": "cd ../../ && pnpm install --config.node-linker=hoisted && node patch-native-modules.js"
     },
     "production": {
       "autoIncrement": true,
-      "prebuildCommand": "node ../../patch-native-modules.js",
+      "image": "latest",
+      "prebuildCommand": "cd ../../ && pnpm install --config.node-linker=hoisted && node patch-native-modules.js",
       "env": {
         "EAS_BUILD_NO_EXPO_GO_WARNING": "true"
       }
