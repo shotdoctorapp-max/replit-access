@@ -3,43 +3,25 @@
 const fs = require('fs');
 const path = require('path');
 
-const PATCHED_SPEC = `import type { TurboModule } from "react-native";
-import { TurboModuleRegistry } from "react-native";
+const SPEC_FILENAME = 'NativeAsyncStorageModule.ts';
+const PACKAGE_SUBPATH = `@react-native-async-storage/async-storage/src/${SPEC_FILENAME}`;
 
-export interface Spec extends TurboModule {
-  multiGet: (
-    keys: string[],
-    callback: (error?: Object[], result?: Object[]) => void
-  ) => void;
-  multiSet: (
-    kvPairs: Object[],
-    callback: (error?: Object[]) => void
-  ) => void;
-  multiRemove: (
-    keys: string[],
-    callback: (error?: Object[]) => void
-  ) => void;
-  multiMerge: (
-    kvPairs: Object[],
-    callback: (error?: Object[]) => void
-  ) => void;
-  getAllKeys: (
-    callback: (error?: Object[], result?: string[]) => void
-  ) => void;
-  clear: (callback: (error?: Object[]) => void) => void;
+const locations = [
+  path.join(__dirname, 'node_modules', PACKAGE_SUBPATH),
+  path.join(__dirname, 'artifacts/mobile/node_modules', PACKAGE_SUBPATH),
+];
+
+let deleted = 0;
+for (const target of locations) {
+  if (fs.existsSync(target)) {
+    fs.unlinkSync(target);
+    console.log(`[patch-native-modules] Deleted ${target}`);
+    deleted++;
+  }
 }
 
-export default TurboModuleRegistry.get<Spec>("RNCAsyncStorage");
-`;
-
-const target = path.join(
-  __dirname,
-  'node_modules/@react-native-async-storage/async-storage/src/NativeAsyncStorageModule.ts'
-);
-
-if (fs.existsSync(target)) {
-  fs.writeFileSync(target, PATCHED_SPEC, 'utf8');
-  console.log('[patch-native-modules] Patched NativeAsyncStorageModule.ts for codegen compatibility');
+if (deleted === 0) {
+  console.log('[patch-native-modules] NativeAsyncStorageModule.ts not found in any location, nothing to do');
 } else {
-  console.log('[patch-native-modules] NativeAsyncStorageModule.ts not found at expected path, skipping');
+  console.log(`[patch-native-modules] Done — deleted ${deleted} file(s). Codegen will skip async-storage (pre-generated bindings used instead).`);
 }

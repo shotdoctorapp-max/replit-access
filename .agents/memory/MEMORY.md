@@ -1,1 +1,2 @@
 - [EAS Build + pnpm monorepo lessons](eas-pnpm-lessons.md) — critical gotchas for getting EAS Build working with this pnpm workspace
+- [EAS async-storage codegen fix](eas-async-storage-codegen.md) — delete NativeAsyncStorageModule.ts (not patch it); use prebuildCommand in eas.json as reliable EAS trigger
