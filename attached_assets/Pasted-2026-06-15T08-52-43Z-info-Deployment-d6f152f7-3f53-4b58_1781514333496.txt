@@ -1,0 +1,210 @@
+2026-06-15T08:52:43Z info: Deployment: d6f152f7-3f53-4b58-8087-0f72a061a8fe
+2026-06-15T08:52:43Z info: Build: ae2de74e-6991-4745-aed2-fc4837d415e3
+2026-06-15T08:52:44Z info: Running Security Scan
+2026-06-15T08:55:00Z info: Security Scan Complete
+2026-06-15T08:55:01Z info: Installing packages
+--> pnpm install
+
+--> pnpm install
+
+Scope: all 12 workspace projects
+
+Scope: all 12 workspace projects
+
+Lockfile is up to date, resolution step is skipped
+
+Lockfile is up to date, resolution step is skipped
+
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 10.26.1 → 11.6.0.   │
+   │   Changelog: https://pnpm.io/v/11.6.0   │
+   │    To update, run: pnpm add -g pnpm     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 10.26.1 → 11.6.0.   │
+   │   Changelog: https://pnpm.io/v/11.6.0   │
+   │    To update, run: pnpm add -g pnpm     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+
+Progress: resolved 0, reused 1, downloaded 0, added 0
+
+Progress: resolved 0, reused 1, downloaded 0, added 0
+
+Packages: +7 -2
++++++++--
+
+Packages: +7 -2
++++++++--
+
+Progress: resolved 0, reused 8, downloaded 0, added 7
+
+Progress: resolved 0, reused 8, downloaded 0, added 7
+
+Progress: resolved 0, reused 8, downloaded 0, added 7, done
+
+Progress: resolved 0, reused 8, downloaded 0, added 7, done
+
+. postinstall$ node patch-native-modules.js
+
+. postinstall$ node patch-native-modules.js
+
+. postinstall: [patch-native-modules] NativeAsyncStorageModule.ts not found in any location, nothing to do
+
+. postinstall: [patch-native-modules] NativeAsyncStorageModule.ts not found in any location, nothing to do
+
+. postinstall: Done
+
+. postinstall: Done
+
+node_modules/core-js postinstall$ node -e "try{require('./postinstall')}catch(e){}"
+
+node_modules/core-js postinstall$ node -e "try{require('./postinstall')}catch(e){}"
+
+node_modules/browser-tabs-lock postinstall$ node scripts/postinstall.js
+
+node_modules/browser-tabs-lock postinstall$ node scripts/postinstall.js
+
+node_modules/core-js postinstall: Thank you for using core-js ( https://github.com/zloirock/core-js ) for polyfilling JavaScript standard library!
+
+node_modules/core-js postinstall: Thank you for using core-js ( https://github.com/zloirock/core-js ) for polyfilling JavaScript standard library!
+
+node_modules/core-js postinstall: The project needs your help! Please consider supporting core-js:
+
+node_modules/core-js postinstall: The project needs your help! Please consider supporting core-js:
+
+node_modules/core-js postinstall: > https://opencollective.com/core-js 
+
+node_modules/core-js postinstall: > https://opencollective.com/core-js 
+
+node_modules/core-js postinstall: > https://patreon.com/zloirock 
+
+node_modules/core-js postinstall: > https://patreon.com/zloirock 
+
+node_modules/core-js postinstall: > https://boosty.to/zloirock 
+
+node_modules/core-js postinstall: > https://boosty.to/zloirock 
+
+node_modules/core-js postinstall: > bitcoin: bc1qlea7544qtsmj2rayg0lthvza9fau63ux0fstcz 
+
+node_modules/core-js postinstall: > bitcoin: bc1qlea7544qtsmj2rayg0lthvza9fau63ux0fstcz 
+
+node_modules/core-js postinstall: I highly recommend reading this: https://github.com/zloirock/core-js/blob/master/docs/2023-02-14-so-whats-next.md 
+
+node_modules/core-js postinstall: I highly recommend reading this: https://github.com/zloirock/core-js/blob/master/docs/2023-02-14-so-whats-next.md 
+
+node_modules/browser-tabs-lock postinstall: Thank you for using browser-tabs-lock ( https://github.com/supertokens/browser-tabs-lock ).
+
+node_modules/browser-tabs-lock postinstall: Thank you for using browser-tabs-lock ( https://github.com/supertokens/browser-tabs-lock ).
+
+node_modules/browser-tabs-lock postinstall: This library was created as a part of a larger project, SuperTokens( https://supertokens.io ) - an open source auth solution.
+node_modules/browser-tabs-lock postinstall: You can also check out our other projects on https://github.com/supertokens
+node_modules/browser-tabs-lock postinstall: 
+
+node_modules/browser-tabs-lock postinstall: This library was created as a part of a larger project, SuperTokens( https://supertokens.io ) - an open source auth solution.
+node_modules/browser-tabs-lock postinstall: You can also check out our other projects on https://github.com/supertokens
+node_modules/browser-tabs-lock postinstall: 
+
+node_modules/core-js postinstall: Done
+
+node_modules/core-js postinstall: Done
+
+node_modules/browser-tabs-lock postinstall: Done
+
+node_modules/browser-tabs-lock postinstall: Done
+
+Done in 3.9s using pnpm v10.26.1
+
+Done in 3.9s using pnpm v10.26.1
+
+2026-06-15T08:55:06Z info: Starting Build
+
+> @workspace/api-server@0.0.0 build /home/runner/workspace/artifacts/api-server
+> node ./build.mjs
+
+
+
+  dist/index.mjs                       3.3mb ⚠️
+  dist/pino-worker.mjs               151.0kb
+  dist/pino-file.mjs                 139.9kb
+  dist/pino-pretty.mjs               111.6kb
+  dist/thread-stream-worker.mjs        7.1kb
+  dist/index.mjs.map                   7.5mb
+  dist/pino-worker.mjs.map           255.6kb
+  dist/pino-file.mjs.map             227.9kb
+  dist/pino-pretty.mjs.map           202.4kb
+  dist/thread-stream-worker.mjs.map   11.9kb
+
+⚡ Done in 307ms
+
+
+> @workspace/landing@0.0.0 build /home/runner/workspace/artifacts/landing
+> vite build --config vite.config.ts
+
+
+vite v7.3.5 building client environment for production...
+
+transforming...
+
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+✓ 1776 modules transformed.
+
+rendering chunks...
+
+computing gzip size...
+
+dist/public/index.html                          1.49 kB │ gzip:   0.56 kB
+
+dist/public/assets/basketball-BADINgvc.png  4,783.00 kB
+dist/public/assets/index-Cln_NVNZ.css         107.05 kB │ gzip:  16.98 kB
+dist/public/assets/index-CI4OiwlL.js          338.85 kB │ gzip: 107.97 kB
+✓ built in 2.69s
+
+
+> @workspace/mobile@0.0.0 build /home/runner/workspace/artifacts/mobile
+> node scripts/build.js
+
+
+Building static Expo Go deployment...
+
+Preparing build directories...
+
+Build: 1781513711851-705
+Clearing Metro cache...
+Cache cleared
+
+Starting Metro...
+
+Setting EXPO_PUBLIC_DOMAIN=shotdoctor.replit.app
+
+Setting EXPO_PUBLIC_REPL_ID=ae2de74e-6991-4745-aed2-fc4837d415e3
+
+[Metro] Starting project at /home/runner/workspace/artifacts/mobile
+
+[Metro] Starting Metro Bundler
+
+[Metro] Waiting on http://localhost:8081
+Logs for your project will appear below.
+
+Metro ready
+
+Downloading bundles and manifests...
+This may take several minutes for production builds...
+Fetching ios bundle...
+
+Downloading: http://localhost:8081/artifacts/mobile/node_modules/expo-router/entry.bundle?platform=ios&dev=false&hot=false&lazy=false&minify=true
+
+Download failed: HTTP 404
+
+/home/runner/workspace/artifacts/mobile:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/mobile@0.0.0 build: `node scripts/build.js`
+Exit status 1
