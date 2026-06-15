@@ -1,0 +1,77 @@
+name: Build & Submit iOS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --force
+
+      - name: Patch native modules
+        run: node patch-native-modules.js
+
+      - name: Expo prebuild
+        run: cd artifacts/mobile && npx expo prebuild --platform ios --clean
+
+      - name: Pod install
+        run: cd artifacts/mobile/ios && pod install
+
+      - name: Setup App Store Connect API key
+        env:
+          ASC_API_KEY_CONTENT: ${{ secrets.ASC_API_KEY_CONTENT }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+        run: |
+          mkdir -p ~/.private_keys
+          echo "$ASC_API_KEY_CONTENT" > ~/.private_keys/AuthKey_${ASC_API_KEY_ID}.p8
+
+      - name: Build archive
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_KEY_ISSUER_ID: ${{ secrets.ASC_API_KEY_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          xcodebuild archive \
+            -workspace artifacts/mobile/ios/ShotDoctor.xcworkspace \
+            -scheme ShotDoctor \
+            -configuration Release \
+            -archivePath $RUNNER_TEMP/ShotDoctor.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.private_keys/AuthKey_${ASC_API_KEY_ID}.p8 \
+            -authenticationKeyID $ASC_API_KEY_ID \
+            -authenticationKeyIssuerID $ASC_API_KEY_ISSUER_ID \
+            DEVELOPMENT_TEAM=$APPLE_TEAM_ID \
+            CODE_SIGN_STYLE=Automatic
+
+      - name: Export and upload to App Store Connect
+        env:
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_KEY_ISSUER_ID: ${{ secrets.ASC_API_KEY_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          sed "s/TEAM_ID_PLACEHOLDER/$APPLE_TEAM_ID/" artifacts/mobile/ExportOptions.plist > /tmp/ExportOptions.plist
+          xcodebuild -exportArchive \
+            -archivePath $RUNNER_TEMP/ShotDoctor.xcarchive \
+            -exportPath $RUNNER_TEMP/export \
+            -exportOptionsPlist /tmp/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.private_keys/AuthKey_${ASC_API_KEY_ID}.p8 \
+            -authenticationKeyID $ASC_API_KEY_ID \
+            -authenticationKeyIssuerID $ASC_API_KEY_ISSUER_ID
