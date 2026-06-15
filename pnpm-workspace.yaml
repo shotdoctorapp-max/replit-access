@@ -4,6 +4,8 @@ packages:
   - lib/integrations/*
   - scripts
 
+nodeLinker: hoisted
+
 autoInstallPeers: false
 
 catalog:
