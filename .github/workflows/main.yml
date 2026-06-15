@@ -24,8 +24,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-        pnpm install --force
-        pnpm approve-builds
+          pnpm install --force
+          pnpm approve-builds
 
       - name: Patch native modules
         run: node patch-native-modules.js
