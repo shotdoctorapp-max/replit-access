@@ -45,7 +45,9 @@
       "bundler": "metro",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": [],
+    "plugins": [
+      "./plugins/withAsyncStorageFix"
+    ],
     "experiments": {
       "typedRoutes": true
     },
