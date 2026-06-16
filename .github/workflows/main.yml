@@ -22,7 +22,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --force --allow-scripts=all
+        run: pnpm install --force
 
       - name: Patch native modules
         run: node patch-native-modules.js
