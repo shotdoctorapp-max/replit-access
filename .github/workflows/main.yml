@@ -22,7 +22,7 @@ jobs:
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --force
+        run: pnpm install --no-frozen-lockfile
 
       - name: Patch native modules
         run: node patch-native-modules.js
