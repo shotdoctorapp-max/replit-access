@@ -14,6 +14,7 @@ Do NOT try to patch the file content.
 ## Why
 - Locally: `@react-native/codegen` resolves `glob` to its nested `node_modules/glob@7.2.3` (created by pnpm due to version conflict with root glob@13). Codegen works fine.
 - On EAS: pnpm may not create that nested glob installation, causing `@react-native/codegen` to use root glob@13 → different minimatch chain → `TypeError: expand is not a function` during `glob.sync()` with brace-expansion patterns.
+- **Confirmed July 2026:** with the global `glob: ^7.2.3` override in place, the same error came from a different override conflict — a global `brace-expansion: ^5.0.6` pin forced v5 under glob@7's minimatch@3. See eas-pnpm-lessons.md lesson 9 for the per-major pin fix. Deleting the async-storage spec remains correct as defence for its separate spec-parsing crash.
 - The codegen ONLY processes files matching `/extends TurboModule/`. Deleting the spec file means the codegen finds no spec for async-storage, returns empty modules (console.warn only, no exception). Pre-generated C++ bindings in `common/native/` handle New Architecture.
 
 ## How to Apply

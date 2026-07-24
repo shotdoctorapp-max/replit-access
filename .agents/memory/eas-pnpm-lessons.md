@@ -52,3 +52,13 @@ These trigger `TypeError: expand is not a function` in `@react-native/codegen@0.
 - `pnpm-lock.yaml`: patch hash entry
 
 **How to apply for future packages:** If EAS fails with `[Codegen] Processing <lib>` then `TypeError: expand is not a function`, the spec file for that lib has a cross-file type import or unsupported TypeScript type. Run `pnpm patch <package>@<version>`, simplify the `Native*.ts` spec to use only `string`, `number`, `boolean`, `Object`, `Object[]`, `string[]` — no cross-file imports, no tuple types, no readonly, no union types with imported types. Then `pnpm patch-commit`.
+
+## 9. Global overrides must keep dependency chains compatible (confirmed pod-install codegen crash)
+
+`glob: ^7.2.3` must stay a GLOBAL override — react-native 0.81 scripts AND @react-native/codegen both need the glob@7 API during pod install codegen, and scoped/nested resolution proved unreliable on EAS. But glob@7 → minimatch@3 requires brace-expansion **v1** (`module.exports = expand`, a function). A global security pin `brace-expansion: ^5.0.6` forced v5 (named-export only) underneath minimatch@3 → `TypeError: expand is not a function` in `glob.sync()` with brace patterns → pod install fails at codegen on EAS.
+
+**Fix:** scope security pins per major so each consumer keeps a compatible API: `'brace-expansion@^1.0.0': ^1.1.12`, `'brace-expansion@^2.0.0': ^2.0.2` (both CVE-2025-5889-fixed), leave v5 line natural.
+
+**Corollaries:**
+- After ANY `overrides:` change, run `pnpm install` to completion locally and keep the lockfile — EAS fails on lockfile/overrides mismatch otherwise, and local node_modules silently keeps the OLD resolution, so the breakage only reproduces on EAS.
+- RN codegen is pure Node — reproduce EAS pod-install codegen crashes locally without a Mac: `node node_modules/react-native/scripts/generate-codegen-artifacts.js --path artifacts/mobile --outputPath /tmp/codegen-test --targetPlatform ios`. Exit 0 + `[Codegen] Done.` means the EAS codegen step will pass. Also sanity-check the chain: resolve `glob` → `minimatch` → `brace-expansion` versions from react-native's dir and run `glob.sync('x.{a,b}')`.
