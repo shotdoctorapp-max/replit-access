@@ -15,7 +15,9 @@
     },
     "production": {
       "autoIncrement": true,
-      "image": "latest",
+      "ios": {
+        "image": "latest"
+      },
       "prebuildCommand": "cd ../../ && pnpm install --no-frozen-lockfile --config.node-linker=hoisted && node patch-native-modules.js",
       "env": {
         "EAS_BUILD_NO_EXPO_GO_WARNING": "true"
