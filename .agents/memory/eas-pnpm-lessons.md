@@ -55,7 +55,7 @@ These trigger `TypeError: expand is not a function` in `@react-native/codegen@0.
 
 ## 9. Global overrides must keep dependency chains compatible (confirmed pod-install codegen crash)
 
-`glob: ^7.2.3` must stay a GLOBAL override — react-native 0.81 scripts AND @react-native/codegen both need the glob@7 API during pod install codegen, and scoped/nested resolution proved unreliable on EAS. But glob@7 → minimatch@3 requires brace-expansion **v1** (`module.exports = expand`, a function). A global security pin `brace-expansion: ^5.0.6` forced v5 (named-export only) underneath minimatch@3 → `TypeError: expand is not a function` in `glob.sync()` with brace patterns → pod install fails at codegen on EAS.
+UPDATE (Aug 2026): the GLOBAL `glob: ^7.2.3` override itself broke `expo prebuild` template generation with `files.map is not a function` — @expo/cli needs glob@10's promise API. Correct form is per-range: `'glob@^7.0.0': ^7.2.3` — RN 0.81 scripts and @react-native/codegen already request glob@^7 so they still get v7, while @expo/cli keeps glob@10+. Verified both codegen repro AND `npx expo prebuild --platform ios --no-install --clean` pass with this scoping. Original context: glob@7 → minimatch@3 requires brace-expansion **v1** (`module.exports = expand`, a function). A global security pin `brace-expansion: ^5.0.6` forced v5 (named-export only) underneath minimatch@3 → `TypeError: expand is not a function` in `glob.sync()` with brace patterns → pod install fails at codegen on EAS.
 
 **Fix:** scope security pins per major so each consumer keeps a compatible API: `'brace-expansion@^1.0.0': ^1.1.12`, `'brace-expansion@^2.0.0': ^2.0.2` (both CVE-2025-5889-fixed), leave v5 line natural.
 

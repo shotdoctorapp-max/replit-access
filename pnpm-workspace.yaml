@@ -70,7 +70,7 @@ overrides:
   '@tailwindcss/oxide>@tailwindcss/oxide-win32-x64-msvc': '-'
   'brace-expansion@^1.0.0': ^1.1.12
   'brace-expansion@^2.0.0': ^2.0.2
-  glob: '^7.2.3'
+  'glob@^7.0.0': ^7.2.3
   esbuild: 0.28.1
   esbuild>@esbuild/aix-ppc64: '-'
   esbuild>@esbuild/android-arm: '-'
