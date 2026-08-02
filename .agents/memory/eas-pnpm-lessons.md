@@ -65,3 +65,7 @@ UPDATE (Aug 2026): the GLOBAL `glob: ^7.2.3` override itself broke `expo prebuil
 
 ## 10. Clerk native iOS SDK requires static frameworks
 `@clerk/expo` pulls native pods (ClerkGoogleSignIn → GoogleSignIn, AppCheckCore). AppCheckCore is a Swift pod depending on GoogleUtilities/RecaptchaInterop which don't define modules → `pod install` fails with "Swift pods cannot yet be integrated as static libraries". Fix: `expo-build-properties` plugin in app.json with `{"ios":{"useFrameworks":"static"}}`. Verified prebuild emits `ios.useFrameworks: static` in Podfile.properties.json and codegen still passes.
+
+
+## 11. Async-storage deletion hack REMOVED (Aug 2026) — it broke the Xcode compile
+Deleting `NativeAsyncStorageModule.ts` (postinstall script + config plugin) stopped codegen from generating `NativeAsyncStorageModuleSpec`, but the pod's RNCAsyncStorage.mm compiles with RCT_NEW_ARCH_ENABLED and REQUIRES that generated spec → Archive fails with "no type or protocol named 'NativeAsyncStorageModuleSpec'". The original codegen crash ('expand is not a function') was actually the brace-expansion override bug (lesson 9), NOT the spec's TypeScript types (lesson 8's patch theory is superseded). With brace-expansion fixed, the real spec parses cleanly (verified via `@react-native/codegen` TypeScriptParser.parseFile). All deletion machinery removed: no postinstall, no plugins/withAsyncStorageFix, no patch-native-modules.js. Never suppress a codegen spec that native code references under new-arch.

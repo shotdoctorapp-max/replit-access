@@ -46,7 +46,6 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "./plugins/withAsyncStorageFix",
       [
         "expo-build-properties",
         {
