@@ -46,7 +46,15 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "./plugins/withAsyncStorageFix"
+      "./plugins/withAsyncStorageFix",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

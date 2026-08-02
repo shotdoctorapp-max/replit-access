@@ -62,3 +62,6 @@ UPDATE (Aug 2026): the GLOBAL `glob: ^7.2.3` override itself broke `expo prebuil
 **Corollaries:**
 - After ANY `overrides:` change, run `pnpm install` to completion locally and keep the lockfile — EAS fails on lockfile/overrides mismatch otherwise, and local node_modules silently keeps the OLD resolution, so the breakage only reproduces on EAS.
 - RN codegen is pure Node — reproduce EAS pod-install codegen crashes locally without a Mac: `node node_modules/react-native/scripts/generate-codegen-artifacts.js --path artifacts/mobile --outputPath /tmp/codegen-test --targetPlatform ios`. Exit 0 + `[Codegen] Done.` means the EAS codegen step will pass. Also sanity-check the chain: resolve `glob` → `minimatch` → `brace-expansion` versions from react-native's dir and run `glob.sync('x.{a,b}')`.
+
+## 10. Clerk native iOS SDK requires static frameworks
+`@clerk/expo` pulls native pods (ClerkGoogleSignIn → GoogleSignIn, AppCheckCore). AppCheckCore is a Swift pod depending on GoogleUtilities/RecaptchaInterop which don't define modules → `pod install` fails with "Swift pods cannot yet be integrated as static libraries". Fix: `expo-build-properties` plugin in app.json with `{"ios":{"useFrameworks":"static"}}`. Verified prebuild emits `ios.useFrameworks: static` in Podfile.properties.json and codegen still passes.
