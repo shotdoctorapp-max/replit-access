@@ -11,6 +11,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -27,8 +28,41 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
-const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
+
+function ConfigErrorScreen() {
+  useEffect(() => {
+    SplashScreen.hideAsync();
+  }, []);
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: "#000000",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 32,
+      }}
+    >
+      <Text
+        style={{
+          color: "#FFFFFF",
+          fontSize: 18,
+          fontWeight: "600",
+          textAlign: "center",
+          marginBottom: 12,
+        }}
+      >
+        Something went wrong
+      </Text>
+      <Text style={{ color: "#999999", fontSize: 14, textAlign: "center" }}>
+        The app is missing required configuration. Please update to the latest
+        version or contact support.
+      </Text>
+    </View>
+  );
+}
 
 function RootLayoutNav() {
   return (
@@ -57,6 +91,10 @@ export default function RootLayout() {
   }, [fontsLoaded, fontError]);
 
   if (!fontsLoaded && !fontError) return null;
+
+  if (!publishableKey) {
+    return <ConfigErrorScreen />;
+  }
 
   return (
     <ClerkProvider
