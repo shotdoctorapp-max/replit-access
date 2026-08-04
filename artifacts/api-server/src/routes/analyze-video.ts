@@ -90,7 +90,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     const [selectionResult, rhythmResult] = await Promise.all([
       frames.length > 1
         ? openai.chat.completions.create({
-            model: "gpt-4o-mini",
+            model: "gpt-5.4-mini",
             max_completion_tokens: 128,
             messages: [
               { role: "system", content: BEST_FRAME_PROMPT },
