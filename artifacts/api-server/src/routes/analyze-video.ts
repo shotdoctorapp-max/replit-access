@@ -112,7 +112,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         : Promise.resolve(null),
       frames.length >= 3
         ? openai.chat.completions.create({
-            model: "gpt-4o",
+            model: "gpt-5",
             max_completion_tokens: 512,
             messages: [
               { role: "system", content: RHYTHM_SYSTEM_PROMPT },
@@ -227,7 +227,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     }
 
     const analysisResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 2048,
       messages: [
         { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },

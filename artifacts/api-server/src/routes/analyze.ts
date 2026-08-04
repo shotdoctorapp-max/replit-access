@@ -17,7 +17,7 @@ router.post("/analyze", requireAuth(), analysisRateLimit, async (req, res) => {
     }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5",
       max_completion_tokens: 2048,
       messages: [
         { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },
