@@ -192,9 +192,6 @@ export default function TipsScreen() {
             <Text style={[styles.focusArea, { color: colors.foreground }]}>
               {weakestArea[0].replace(/([A-Z])/g, " $1").trim()}
             </Text>
-            <Text style={[styles.focusScore, { color: colors.mutedForeground }]}>
-              Score: {weakestArea[1].score}/100
-            </Text>
           </View>
         </View>
       )}
@@ -411,11 +408,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: "Inter_700Bold",
     textTransform: "capitalize",
-  },
-  focusScore: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginTop: 2,
   },
   sectionTitle: {
     fontSize: 11,
