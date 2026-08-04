@@ -1,11 +1,19 @@
 export type Tier = "Elite" | "Pro" | "Rising" | "Developing" | "Beginner";
+export type Severity = "Critical" | "Moderate" | "Minor" | "Good";
 
 export const TIER_COLORS: Record<Tier, string> = {
-  Elite:      "#FFD700", // gold
-  Pro:        "#A8B2C1", // silver
-  Rising:     "#4A9EFF", // blue
-  Developing: "#CD7F32", // bronze
-  Beginner:   "#6B7280", // grey
+  Elite:      "#9B59B6", // purple
+  Pro:        "#FF4444", // red
+  Rising:     "#FFD700", // gold
+  Developing: "#A8B2C1", // silver
+  Beginner:   "#CD7F32", // bronze
+};
+
+export const SEVERITY_COLORS: Record<Severity, string> = {
+  Critical: "#FF4444",
+  Moderate: "#FF9500",
+  Minor:    "#FFD700",
+  Good:     "#00C853",
 };
 
 /** Icon name (MaterialCommunityIcons) for each tier */
@@ -28,4 +36,12 @@ export function scoreToTier(score: number): Tier {
 /** Returns the tier color hex string for a given numeric score. */
 export function tierColor(score: number): string {
   return TIER_COLORS[scoreToTier(score)];
+}
+
+/** Returns the severity level for a given numeric score. */
+export function scoreSeverity(score: number): Severity {
+  if (score < 55) return "Critical";
+  if (score < 70) return "Moderate";
+  if (score < 85) return "Minor";
+  return "Good";
 }

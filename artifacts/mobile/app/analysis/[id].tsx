@@ -22,7 +22,7 @@ import { ScoreRing } from "@/components/ScoreRing";
 import { ComponentBar } from "@/components/ComponentBar";
 import { DrillCard } from "@/components/DrillCard";
 import { FrameAnnotationOverlay } from "@/components/FrameAnnotationOverlay";
-import { scoreToTier, tierColor, TIER_ICONS } from "@/utils/grading";
+import { scoreToTier, tierColor, TIER_ICONS, scoreSeverity } from "@/utils/grading";
 
 const COMPONENT_LABELS: Record<string, string> = {
   stance: "Stance & Base",
@@ -405,33 +405,10 @@ export default function AnalysisScreen() {
             </View>
           </View>
           <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
-          {analysis.summary
-            .split(/(?<=\.)\s+/)
-            .map((s) => s.replace(/\.$/, "").trim())
-            .filter((s) => s.length > 4)
-            .map((point, i) => {
-              const parts = point.split(/\s*—\s*/);
-              const accentColor = i === 0 ? colors.primary : scoreColor;
-              return (
-                <View
-                  key={i}
-                  style={[
-                    styles.summaryBulletRow,
-                    { borderLeftColor: accentColor, borderLeftWidth: 3, paddingLeft: 10 },
-                  ]}
-                >
-                  {parts.length >= 2 ? (
-                    <Text style={[styles.summaryBulletText, { color: colors.foreground }]}>
-                      <Text style={styles.summaryBulletLabel}>{parts[0]}</Text>
-                      {" — "}
-                      <Text>{parts.slice(1).join(" — ")}</Text>
-                    </Text>
-                  ) : (
-                    <Text style={[styles.summaryBulletText, { color: colors.foreground }]}>{point}</Text>
-                  )}
-                </View>
-              );
-            })}
+          <View style={styles.coachParagraphRow}>
+            <MaterialCommunityIcons name="whistle" size={14} color={colors.primary} style={{ marginTop: 2, flexShrink: 0 }} />
+            <Text style={[styles.coachParagraphText, { color: colors.foreground }]}>{analysis.summary}</Text>
+          </View>
         </View>
 
         <View style={styles.section}>
@@ -441,11 +418,11 @@ export default function AnalysisScreen() {
             {(() => {
               const issueCount = BODY_ZONES.filter(({ key }) => {
                 const comp = analysis.components?.[key as keyof typeof analysis.components];
-                return (comp?.score ?? 0) < 70;
+                return (comp?.score ?? 100) < 85;
               }).length;
               return issueCount > 0 ? (
                 <View style={[styles.bodyMapIssueBadge, { backgroundColor: colors.destructive + "22", borderColor: colors.destructive + "66" }]}>
-                  <Text style={[styles.bodyMapIssueBadgeText, { color: colors.destructive }]}>{issueCount} {issueCount === 1 ? "issue" : "issues"}</Text>
+                  <Text style={[styles.bodyMapIssueBadgeText, { color: colors.destructive }]}>{issueCount} need work</Text>
                 </View>
               ) : null;
             })()}
@@ -461,7 +438,8 @@ export default function AnalysisScreen() {
               const score = component?.score ?? 0;
               const zoneColor = tierColor(score);
               const isExpanded = expandedBodyZone === key;
-              const isIssue = score < 70;
+              const isIssue = score < 85;
+              const isMajorIssue = score < 70;
               const isSeen = seenZones.has(key);
               const showHint = isIssue && !isSeen;
               const dotColor = tierColor(score);
@@ -485,14 +463,16 @@ export default function AnalysisScreen() {
                   </View>
                   {showHint && (
                     <View style={styles.notificationDotWrapper}>
-                      <PulsingDot color={dotColor} />
+                      {isMajorIssue
+                        ? <PulsingDot color={dotColor} />
+                        : <View style={[styles.staticIssueDot, { backgroundColor: dotColor }]} />}
                     </View>
                   )}
                   <MaterialCommunityIcons name={icon as any} size={22} color={zoneColor} style={styles.bodyZoneIcon} />
                   <Text style={[styles.bodyZoneLabel, { color: colors.foreground }]} numberOfLines={2}>
                     {label}
                   </Text>
-                  {showHint && (
+                  {showHint && isMajorIssue && (
                     <Text style={[styles.howToFixHint, { color: dotColor }]}>How to fix →</Text>
                   )}
                 </Pressable>
@@ -507,14 +487,23 @@ export default function AnalysisScreen() {
             const feedback = typeof comp.feedback === "string"
               ? comp.feedback.split(/(?<=\.)\s+/).map((s) => s.replace(/\.$/, "").trim()).filter((s) => s.length > 2)
               : [];
-            const adjustments: string[] = comp.score < 70 ? (comp.adjustments ?? []) : [];
+            const adjustments: string[] = comp.score < 85 ? (comp.adjustments ?? []) : [];
             const zoneLabel = COMPONENT_LABELS[expandedBodyZone] ?? expandedBodyZone;
+            const severity = scoreSeverity(comp.score);
+            const severityColor = severity === "Critical" ? "#FF4444" : severity === "Moderate" ? "#FF9500" : "#FFD700";
             return (
               <View style={[styles.bodyZoneExpanded, { backgroundColor: color + "12", borderColor: color + "40" }]}>
                 <View style={styles.bodyZoneExpandedHeader}>
                   <Text style={[styles.bodyZoneExpandedTitle, { color }]}>{zoneLabel}</Text>
-                  <View style={[styles.zoneGradeBadge, { backgroundColor: color + "33", borderColor: color }]}>
-                    <Text style={[styles.zoneGradeText, { color }]} adjustsFontSizeToFit numberOfLines={1}>{scoreToTier(comp.score)}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    {severity !== "Good" && (
+                      <View style={[styles.severityBadge, { backgroundColor: severityColor + "22", borderColor: severityColor + "80" }]}>
+                        <Text style={[styles.severityBadgeText, { color: severityColor }]}>{severity}</Text>
+                      </View>
+                    )}
+                    <View style={[styles.zoneGradeBadge, { backgroundColor: color + "33", borderColor: color }]}>
+                      <Text style={[styles.zoneGradeText, { color }]} adjustsFontSizeToFit numberOfLines={1}>{scoreToTier(comp.score)}</Text>
+                    </View>
                   </View>
                 </View>
                 {feedback.length === 0 && (
@@ -589,15 +578,21 @@ export default function AnalysisScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
-            <MaterialCommunityIcons name="alert-circle" size={16} color={colors.warning} />
+            <MaterialCommunityIcons name="format-list-numbered" size={16} color={colors.warning} />
             <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>PRIORITY FIXES</Text>
           </View>
-          {(analysis.priorityFixes ?? []).map((f, i) => (
-            <View key={i} style={styles.bulletRow}>
-              <View style={[styles.dot, { backgroundColor: colors.warning }]} />
-              <Text style={[styles.bulletText, { color: colors.foreground }]}>{f}</Text>
-            </View>
-          ))}
+          {(analysis.priorityFixes ?? []).map((f, i) => {
+            const rankColors = [colors.destructive, colors.warning, colors.primary];
+            const rankColor = rankColors[i] ?? colors.mutedForeground;
+            return (
+              <View key={i} style={[styles.priorityFixCard, { backgroundColor: rankColor + "12", borderColor: rankColor + "40" }]}>
+                <View style={[styles.priorityFixNumber, { backgroundColor: rankColor }]}>
+                  <Text style={styles.priorityFixNumberText}>{i + 1}</Text>
+                </View>
+                <Text style={[styles.priorityFixText, { color: colors.foreground }]}>{f}</Text>
+              </View>
+            );
+          })}
         </View>
 
         {session.rhythm && <RhythmSection rhythm={session.rhythm} />}
@@ -1116,6 +1111,64 @@ const styles = StyleSheet.create({
   },
   rhythmObs: {
     gap: 6,
+  },
+  coachParagraphRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  coachParagraphText: {
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 22,
+    flex: 1,
+    opacity: 0.9,
+  },
+  staticIssueDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    opacity: 0.75,
+  },
+  severityBadge: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  severityBadgeText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
+  },
+  priorityFixCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  priorityFixNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  priorityFixNumberText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+    color: "#fff",
+  },
+  priorityFixText: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 20,
+    flex: 1,
   },
   adjustmentStep: {
     flexDirection: "row",
