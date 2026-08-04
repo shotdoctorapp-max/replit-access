@@ -590,12 +590,29 @@ document.getElementById('lock-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const val = document.getElementById('secret-input').value.trim();
   if (!val) return;
-  setSecret(val);
-  document.getElementById('lock-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  wlLoaded = false;
-  bugsLoaded = false;
-  switchTab('waitlist');
+  const btn = e.submitter || document.querySelector('#lock-form button[type=submit]');
+  const lockErr = document.getElementById('lock-err');
+  lockErr.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = 'Checking…'; }
+  try {
+    const test = await fetch('/api/admin/waitlist?page=1&limit=1', {
+      headers: { 'x-admin-secret': val }
+    });
+    if (test.status === 401) throw new Error('Invalid secret — please try again.');
+    if (test.status === 503) throw new Error('Admin access not configured on the server.');
+    if (!test.ok) throw new Error('Server error (' + test.status + ') — try again.');
+    setSecret(val);
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    wlLoaded = false;
+    bugsLoaded = false;
+    switchTab('waitlist');
+  } catch (err) {
+    lockErr.textContent = err.message || 'Could not reach the server. Check your connection.';
+    lockErr.style.display = 'block';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Unlock'; }
+  }
 });
 
 // Auto-unlock if session has a stored secret
