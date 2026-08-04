@@ -6,8 +6,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
-import { useColors } from "@/hooks/useColors";
-import { scoreToGrade, gradeColor } from "@/utils/grading";
+import { scoreToTier, tierColor } from "@/utils/grading";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -26,7 +25,6 @@ export function ScoreRing({
   label,
   fontSize = 28,
 }: ScoreRingProps) {
-  const colors = useColors();
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = useSharedValue(0);
@@ -39,8 +37,11 @@ export function ScoreRing({
     strokeDashoffset: circumference * (1 - progress.value),
   }));
 
-  const ringColor = gradeColor(score, colors);
-  const grade = scoreToGrade(score);
+  const ringCol = tierColor(score);
+  const tier = scoreToTier(score);
+
+  // Scale down font for the score number to leave room for tier name
+  const scoreFontSize = Math.round(fontSize * 0.72);
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
@@ -49,7 +50,7 @@ export function ScoreRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.surface3}
+          stroke="#1a1a1a"
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -57,7 +58,7 @@ export function ScoreRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={ringColor}
+          stroke={ringCol}
           strokeWidth={strokeWidth}
           fill="none"
           strokeDasharray={circumference}
@@ -66,12 +67,23 @@ export function ScoreRing({
           transform={`rotate(-90, ${size / 2}, ${size / 2})`}
         />
       </Svg>
-      <View style={styles.center}>
-        <Text style={[styles.score, { color: ringColor, fontSize }]}>
-          {grade}
+      <View style={[styles.center, { width: size - strokeWidth * 2 - 4 }]}>
+        <Text
+          style={[styles.score, { color: ringCol, fontSize: scoreFontSize }]}
+          numberOfLines={1}
+        >
+          {Math.round(score)}
+        </Text>
+        <Text
+          style={[styles.tier, { color: ringCol }]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
+        >
+          {tier}
         </Text>
         {label && (
-          <Text style={[styles.label, { color: colors.mutedForeground }]}>
+          <Text style={[styles.label, { color: "#606060" }]}>
             {label}
           </Text>
         )}
@@ -94,11 +106,18 @@ const styles = StyleSheet.create({
   },
   score: {
     fontFamily: "Inter_700Bold",
-    lineHeight: 32,
+    lineHeight: undefined,
+  },
+  tier: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    lineHeight: 13,
   },
   label: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: "Inter_500Medium",
     textAlign: "center",
+    marginTop: 1,
   },
 });

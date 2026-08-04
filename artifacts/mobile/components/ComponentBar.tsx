@@ -8,7 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
-import { scoreToGrade, gradeColor } from "@/utils/grading";
+import { scoreToTier, tierColor, TIER_ICONS } from "@/utils/grading";
 
 interface ComponentBarProps {
   label: string;
@@ -50,18 +50,22 @@ export function ComponentBar({ label, score, feedback, delay = 0 }: ComponentBar
     width: `${width.value * 100}%`,
   }));
 
-  const barColor = gradeColor(score, colors);
-  const grade = scoreToGrade(score);
+  const barColor = tierColor(score);
+  const tier = scoreToTier(score);
+  const bulletIcon = TIER_ICONS[tier] as any;
   const bullets = parseBullets(feedback);
-  const bulletIcon =
-    score >= 70 ? "check-circle-outline" : score >= 55 ? "alert-circle-outline" : "arrow-right-circle-outline";
+
+  const isElite = tier === "Elite";
 
   return (
     <View style={[styles.container, { borderColor: barColor + "30", backgroundColor: barColor + "08" }]}>
       <View style={styles.header}>
         <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
         <View style={[styles.gradePill, { backgroundColor: barColor + "25", borderColor: barColor + "60" }]}>
-          <Text style={[styles.grade, { color: barColor }]}>{grade}</Text>
+          {isElite && (
+            <MaterialCommunityIcons name="crown" size={11} color={barColor} style={styles.pillIcon} />
+          )}
+          <Text style={[styles.grade, { color: barColor }]}>{tier}</Text>
         </View>
       </View>
 
@@ -73,7 +77,7 @@ export function ComponentBar({ label, score, feedback, delay = 0 }: ComponentBar
         {bullets.map((point, i) => (
           <View key={i} style={styles.bulletRow}>
             <MaterialCommunityIcons
-              name={bulletIcon as any}
+              name={bulletIcon}
               size={14}
               color={barColor}
               style={styles.bulletIcon}
@@ -108,9 +112,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  pillIcon: {
+    marginRight: 2,
   },
   grade: {
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "Inter_700Bold",
   },
   track: {

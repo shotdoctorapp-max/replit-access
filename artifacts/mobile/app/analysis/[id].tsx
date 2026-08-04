@@ -22,7 +22,7 @@ import { ScoreRing } from "@/components/ScoreRing";
 import { ComponentBar } from "@/components/ComponentBar";
 import { DrillCard } from "@/components/DrillCard";
 import { FrameAnnotationOverlay } from "@/components/FrameAnnotationOverlay";
-import { scoreToGrade, gradeColor } from "@/utils/grading";
+import { scoreToTier, tierColor, TIER_ICONS } from "@/utils/grading";
 
 const COMPONENT_LABELS: Record<string, string> = {
   stance: "Stance & Base",
@@ -92,7 +92,7 @@ function RhythmSection({ rhythm }: { rhythm: RhythmAnalysis }) {
   const colors = useColors();
   const meta = PATTERN_META[rhythm.pattern] ?? PATTERN_META["unknown"];
   const patternColor = colors[meta.colorKey];
-  const rhythmGrade = scoreToGrade(rhythm.rhythmScore ?? 0);
+  const rhythmTier = scoreToTier(rhythm.rhythmScore ?? 0);
   // Use last observation as the coaching cue (most actionable sentence)
   const obs = rhythm.observations ?? [];
   const coachingCue = obs[obs.length - 1] ?? null;
@@ -113,7 +113,7 @@ function RhythmSection({ rhythm }: { rhythm: RhythmAnalysis }) {
           )}
         </View>
         <View style={[styles.rhythmGradePill, { backgroundColor: patternColor + "25", borderColor: patternColor + "60" }]}>
-          <Text style={[styles.rhythmGradeText, { color: patternColor }]}>{rhythmGrade}</Text>
+          <Text style={[styles.rhythmGradeText, { color: patternColor }]}>{rhythmTier}</Text>
         </View>
       </View>
     </View>
@@ -141,8 +141,8 @@ export default function AnalysisScreen() {
 
   const { analysis } = session;
   const overallScore = analysis.overallScore ?? 0;
-  const scoreColor = gradeColor(overallScore, colors);
-  const overallGrade = scoreToGrade(overallScore);
+  const scoreColor = tierColor(overallScore);
+  const overallTier = scoreToTier(overallScore);
   const initialKeyFrameUri =
     session.isVideo && session.keyFrameUris && session.keyFrameUris.length > 0
       ? session.keyFrameUris[0]
@@ -323,7 +323,7 @@ export default function AnalysisScreen() {
 
         <View style={styles.imageOverlay}>
           <View style={[styles.scoreBadge, { backgroundColor: colors.surface1 + "ee" }]}>
-            <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>{overallGrade}</Text>
+            <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>{overallTier}</Text>
           </View>
         </View>
       </View>
@@ -401,7 +401,7 @@ export default function AnalysisScreen() {
             <ScoreRing score={overallScore} size={80} strokeWidth={7} fontSize={26} />
             <View style={styles.summaryTopRight}>
               <Text style={[styles.overallLabel, { color: colors.mutedForeground }]}>OVERALL GRADE</Text>
-              <Text style={[styles.gradeLabel, { color: scoreColor }]}>{overallGrade}</Text>
+              <Text style={[styles.gradeLabel, { color: scoreColor }]}>{overallTier}</Text>
             </View>
           </View>
           <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
@@ -441,7 +441,7 @@ export default function AnalysisScreen() {
             {(() => {
               const issueCount = BODY_ZONES.filter(({ key }) => {
                 const comp = analysis.components?.[key as keyof typeof analysis.components];
-                return (comp?.score ?? 0) < 75;
+                return (comp?.score ?? 0) < 70;
               }).length;
               return issueCount > 0 ? (
                 <View style={[styles.bodyMapIssueBadge, { backgroundColor: colors.destructive + "22", borderColor: colors.destructive + "66" }]}>
@@ -459,17 +459,12 @@ export default function AnalysisScreen() {
             {BODY_ZONES.map(({ key, label, icon }) => {
               const component = analysis.components?.[key as keyof typeof analysis.components];
               const score = component?.score ?? 0;
-              const zoneColor =
-                score >= 75
-                  ? colors.success
-                  : score >= 50
-                  ? colors.warning
-                  : colors.destructive;
+              const zoneColor = tierColor(score);
               const isExpanded = expandedBodyZone === key;
-              const isIssue = score < 75;
+              const isIssue = score < 70;
               const isSeen = seenZones.has(key);
               const showHint = isIssue && !isSeen;
-              const dotColor = score >= 50 ? colors.warning : colors.destructive;
+              const dotColor = tierColor(score);
               return (
                 <Pressable
                   key={key}
@@ -486,7 +481,7 @@ export default function AnalysisScreen() {
                   ]}
                 >
                   <View style={[styles.bodyZoneScoreBadge, { backgroundColor: zoneColor }]}>
-                    <Text style={styles.bodyZoneScoreText}>{scoreToGrade(score)}</Text>
+                    <Text style={styles.bodyZoneScoreText} adjustsFontSizeToFit numberOfLines={1}>{scoreToTier(score)}</Text>
                   </View>
                   {showHint && (
                     <View style={styles.notificationDotWrapper}>
@@ -508,18 +503,18 @@ export default function AnalysisScreen() {
           {expandedBodyZone && (() => {
             const comp = analysis.components?.[expandedBodyZone as keyof typeof analysis.components];
             if (!comp) return null;
-            const color = gradeColor(comp.score, colors);
+            const color = tierColor(comp.score);
             const feedback = typeof comp.feedback === "string"
               ? comp.feedback.split(/(?<=\.)\s+/).map((s) => s.replace(/\.$/, "").trim()).filter((s) => s.length > 2)
               : [];
-            const adjustments: string[] = comp.score < 75 ? (comp.adjustments ?? []) : [];
+            const adjustments: string[] = comp.score < 70 ? (comp.adjustments ?? []) : [];
             const zoneLabel = COMPONENT_LABELS[expandedBodyZone] ?? expandedBodyZone;
             return (
               <View style={[styles.bodyZoneExpanded, { backgroundColor: color + "12", borderColor: color + "40" }]}>
                 <View style={styles.bodyZoneExpandedHeader}>
                   <Text style={[styles.bodyZoneExpandedTitle, { color }]}>{zoneLabel}</Text>
                   <View style={[styles.zoneGradeBadge, { backgroundColor: color + "33", borderColor: color }]}>
-                    <Text style={[styles.zoneGradeText, { color }]}>{scoreToGrade(comp.score)}</Text>
+                    <Text style={[styles.zoneGradeText, { color }]} adjustsFontSizeToFit numberOfLines={1}>{scoreToTier(comp.score)}</Text>
                   </View>
                 </View>
                 {feedback.length === 0 && (

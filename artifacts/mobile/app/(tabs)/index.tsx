@@ -27,7 +27,7 @@ import { useSessions } from "@/context/SessionContext";
 import { useShots } from "@/context/ShotsContext";
 import type { AnalysisResult, Session } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
-import { scoreToGrade, gradeColor } from "@/utils/grading";
+import { scoreToTier, tierColor } from "@/utils/grading";
 import { extractFrames } from "@/utils/videoFrames";
 import { FilmingTipsSheet, shouldShowFilmingTips } from "@/components/FilmingTipsSheet";
 import { CourtBackground } from "@/components/CourtBackground";
@@ -868,8 +868,8 @@ export default function HomeScreen() {
           </View>
           {recentSessions.map((session) => {
             const score = session.analysis.overallScore;
-            const scoreColor = gradeColor(score, colors);
-            const grade = scoreToGrade(score);
+            const scoreColor = tierColor(score);
+            const grade = scoreToTier(score);
             return (
               <Pressable
                 key={session.id}

@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { useSessions, type Session } from "@/context/SessionContext";
-import { scoreToGrade, gradeColor } from "@/utils/grading";
+import { scoreToTier, tierColor } from "@/utils/grading";
 import { CourtBackground } from "@/components/CourtBackground";
 
 function SessionItem({ session, onPress, onDelete }: {
@@ -25,8 +25,8 @@ function SessionItem({ session, onPress, onDelete }: {
 }) {
   const colors = useColors();
   const score = session.analysis.overallScore;
-  const scoreColor = gradeColor(score, colors);
-  const grade = scoreToGrade(score);
+  const scoreColor = tierColor(score);
+  const tier = scoreToTier(score);
 
   const weakest = Object.entries(session.analysis.components).sort(
     ([, a], [, b]) => a.score - b.score
@@ -57,7 +57,7 @@ function SessionItem({ session, onPress, onDelete }: {
           })}
         </Text>
         <View style={styles.scoreRow}>
-          <Text style={[styles.score, { color: scoreColor }]}>{grade}</Text>
+          <Text style={[styles.score, { color: scoreColor }]} adjustsFontSizeToFit numberOfLines={1}>{tier}</Text>
         </View>
         {weakestLabel ? (
           <View style={[styles.tag, { backgroundColor: colors.destructive + "20" }]}>
@@ -105,9 +105,9 @@ export default function HistoryScreen() {
     sessions.length > 0
       ? Math.round(sessions.reduce((a, s) => a + s.analysis.overallScore, 0) / sessions.length)
       : 0;
-  const avgGrade = scoreToGrade(avgScore);
+  const avgTier = scoreToTier(avgScore);
   const bestScore = sessions.length > 0 ? Math.max(...sessions.map(s => s.analysis.overallScore)) : 0;
-  const bestGrade = scoreToGrade(bestScore);
+  const bestTier = scoreToTier(bestScore);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -143,15 +143,15 @@ export default function HistoryScreen() {
                 </View>
                 <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <View style={styles.summaryItem}>
-                  <Text style={[styles.summaryNum, { color: gradeColor(avgScore, colors) }]}>
-                    {avgGrade}
+                  <Text style={[styles.summaryNum, { color: tierColor(avgScore) }]} adjustsFontSizeToFit numberOfLines={1}>
+                    {avgTier}
                   </Text>
                   <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Avg Grade</Text>
                 </View>
                 <View style={[styles.divider, { backgroundColor: colors.border }]} />
                 <View style={styles.summaryItem}>
-                  <Text style={[styles.summaryNum, { color: gradeColor(bestScore, colors) }]}>
-                    {bestGrade}
+                  <Text style={[styles.summaryNum, { color: tierColor(bestScore) }]} adjustsFontSizeToFit numberOfLines={1}>
+                    {bestTier}
                   </Text>
                   <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>Best</Text>
                 </View>
