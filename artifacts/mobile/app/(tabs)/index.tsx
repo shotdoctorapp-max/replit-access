@@ -197,86 +197,6 @@ export default function HomeScreen() {
     return true;
   };
 
-  // Fast copy for already-downloaded ph:// assets. Returns null silently for
-  // iCloud-only videos so the caller can pass the original URI to analyzeVideo,
-  // which handles the download in-app with a progress stage.
-  const resolveVideoUri = async (uri: string): Promise<string | null> => {
-    if (!uri.startsWith("ph://")) return uri;
-    try {
-      const dest = new FileSystem.File(FileSystem.Paths.cache, `shot_${Date.now()}.mov`);
-      const src = new FileSystem.File(uri);
-      src.copy(dest);
-      return dest.uri;
-    } catch (e: any) {
-      const msg = String(e?.message ?? "");
-      if (msg.includes("PHPhotosErrorDomain") || msg.includes("3164")) {
-        // iCloud-only — return null so caller routes through analyzeVideo
-        return null;
-      }
-      Alert.alert("Couldn't load video", "Please try again with a different video.");
-      return null;
-    }
-  };
-
-  const openCamera = async () => {
-    if (Platform.OS === "web") {
-      Alert.alert(
-        "Mobile Only",
-        "Video analysis requires the Expo Go app on your iPhone or Android device."
-      );
-      return;
-    }
-
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission needed", "Please allow camera access to record your shot.");
-      return;
-    }
-
-    let result: ImagePicker.ImagePickerResult;
-    try {
-      result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["videos"],
-        videoMaxDuration: 10,
-        quality: ImagePicker.UIImagePickerControllerQualityType.Medium,
-      });
-    } catch (e: any) {
-      const msg = String(e?.message ?? "");
-      if (msg.includes("PHPhotosErrorDomain") || msg.includes("3164")) {
-        Alert.alert(
-          "Video still downloading",
-          "This video is being fetched from iCloud. Please try again in a moment.",
-          [
-            { text: "Cancel", style: "cancel" },
-            { text: "Try Again", onPress: () => openCamera() },
-          ]
-        );
-      } else {
-        Alert.alert("Camera error", msg || "Something went wrong opening the camera.");
-      }
-      return;
-    }
-
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      const uri = await resolveVideoUri(asset.uri);
-      // If fast copy returned null for an iCloud video, pass the raw ph:// URI
-      // to analyzeVideo which will handle the in-app download with progress UI.
-      const finalUri = uri ?? (asset.uri.startsWith("ph://") ? asset.uri : null);
-      if (finalUri) await analyzeVideo(finalUri, asset.duration ?? undefined);
-    }
-  };
-
-  const recordVideo = async () => {
-    if (!checkShotsOrPaywall()) return;
-    const show = await shouldShowFilmingTips();
-    if (show) {
-      setShowTipsSheet(true);
-    } else {
-      await openCamera();
-    }
-  };
-
   // METHOD 1: Photo Library via ImagePicker
   // Uses the stable MediaTypeOptions.Videos enum (not the new array syntax which
   // throws in Expo Go). PHPickerViewController on iOS 14+ gives a temporary
@@ -300,7 +220,7 @@ export default function HomeScreen() {
       });
     } catch (err) {
       console.error("pickFromLibrary error:", err);
-      Alert.alert("Couldn't open library", "Try 'Browse Files' or record a new shot.");
+      Alert.alert("Couldn't open library", "Try 'Browse Files (iCloud/Downloads)' instead.");
       return;
     }
     if (result.canceled || !result.assets[0]) return;
@@ -337,7 +257,7 @@ export default function HomeScreen() {
       });
     } catch (err) {
       console.error("pickFromFiles error:", err);
-      Alert.alert("Couldn't open files", "Try 'Photo Library' or record a new shot.");
+      Alert.alert("Couldn't open files", "Try 'Photo Library' instead.");
       return;
     }
     if (docResult.canceled || !docResult.assets?.[0]) return;
@@ -345,20 +265,7 @@ export default function HomeScreen() {
     await analyzeVideo(file.uri, undefined);
   };
 
-  // METHOD 3: Record New Shot via Camera
-  // No library or file permissions needed at all. Opens the camera directly
-  // for immediate recording — the most reliable path in Expo Go since it
-  // avoids all picker and permission complexity entirely.
-  const pickVideo = async () => {
-    if (!checkShotsOrPaywall()) return;
-    if (Platform.OS === "web") {
-      Alert.alert("Mobile Only", "Video analysis requires the Expo Go app.");
-      return;
-    }
-    await openCamera();
-  };
-
-  // Shows an action sheet letting the user choose among the 3 upload methods.
+  // Shows an action sheet letting the user choose between the 2 upload methods.
   const showUploadOptions = () => {
     if (!checkShotsOrPaywall()) return;
     if (Platform.OS === "ios") {
@@ -366,13 +273,12 @@ export default function HomeScreen() {
         {
           title: "Upload a Shot",
           message: "Choose how to add your video",
-          options: ["Cancel", "Photo Library", "Browse Files (iCloud/Downloads)", "Record New Shot"],
+          options: ["Cancel", "Photo Library", "Browse Files (iCloud/Downloads)"],
           cancelButtonIndex: 0,
         },
         (index) => {
           if (index === 1) pickFromLibrary();
           else if (index === 2) pickFromFiles();
-          else if (index === 3) openCamera();
         }
       );
     } else {
@@ -381,8 +287,7 @@ export default function HomeScreen() {
         "Choose how to add your video",
         [
           { text: "Photo Library", onPress: pickFromLibrary },
-          { text: "Browse Files", onPress: pickFromFiles },
-          { text: "Record New Shot", onPress: openCamera },
+          { text: "Browse Files (iCloud/Downloads)", onPress: pickFromFiles },
           { text: "Cancel", style: "cancel" },
         ]
       );
@@ -466,7 +371,7 @@ export default function HomeScreen() {
             const copyMsg = copyErr instanceof Error ? copyErr.message : "";
             if (copyMsg.includes("PHPhotosErrorDomain") || copyMsg.includes("3164")) {
               throw new Error(
-                "Couldn't download the video from iCloud. Make sure you have an internet connection and try again."
+                "This video hasn't been downloaded from iCloud yet.\n\nOpen the Photos app, tap the video to download it, then come back and try again."
               );
             }
             throw copyErr;
@@ -624,7 +529,7 @@ export default function HomeScreen() {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       const message = err instanceof Error ? err.message : "Something went wrong";
       const isICloudError = message.includes("iCloud") || message.includes("PHPhotosErrorDomain") || message.includes("3164");
-      Alert.alert(isICloudError ? "Video unavailable" : "Video Analysis Failed", message);
+      Alert.alert(isICloudError ? "Video still in iCloud" : "Analysis Failed", message);
       activeAnimRef.current?.stop();
       RNAnimated.timing(cardOpacity, {
         toValue: 0,
@@ -748,7 +653,7 @@ export default function HomeScreen() {
           <Feather name="upload" size={24} color="#fff" />
           <View style={styles.recordBtnText}>
             <Text style={styles.recordBtnTitle}>Upload Video</Text>
-            <Text style={styles.recordBtnSub}>Library · Files · Record — choose your source</Text>
+            <Text style={styles.recordBtnSub}>Photo Library · iCloud / Files</Text>
           </View>
         </Pressable>
 
