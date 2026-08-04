@@ -78,6 +78,9 @@ export default function SignUpScreen() {
         <Pressable style={[styles.btn, isLoading && styles.btnDisabled]} onPress={handleVerify} disabled={isLoading}>
           {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Verify Email</Text>}
         </Pressable>
+        <Text style={styles.spamHint}>
+          Didn't receive it? Check your spam folder, or tap Resend.
+        </Text>
         <Pressable onPress={() => signUp.verifications.sendEmailCode()} style={styles.linkBtn}>
           <Text style={styles.linkText}>Resend code</Text>
         </Pressable>
@@ -203,6 +206,7 @@ const styles = StyleSheet.create({
   btnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_700Bold" },
   footer: { flexDirection: "row", justifyContent: "center", alignItems: "center" },
   footerText: { fontSize: 14, fontFamily: "Inter_400Regular", color: MUTED },
+  spamHint: { fontSize: 12, color: MUTED, fontFamily: "Inter_400Regular", textAlign: "center", marginBottom: 4, paddingHorizontal: 16 },
   linkBtn: { alignItems: "center", paddingVertical: 8 },
   linkText: { color: GREEN, fontSize: 14, fontFamily: "Inter_500Medium" },
 });
