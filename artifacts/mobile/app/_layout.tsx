@@ -10,8 +10,9 @@ import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Text, View } from "react-native";
+import { LaunchScreen } from "@/components/LaunchScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -83,6 +84,7 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+  const [showLaunch, setShowLaunch] = useState(true);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -97,26 +99,29 @@ export default function RootLayout() {
   }
 
   return (
-    <ClerkProvider
-      publishableKey={publishableKey}
-      tokenCache={tokenCache}
-      proxyUrl={proxyUrl}
-    >
-      <ClerkLoaded>
-        <SafeAreaProvider>
-          <ErrorBoundary>
-            <QueryClientProvider client={queryClient}>
-              <SessionProvider>
-                <ShotsProvider>
-                  <GestureHandlerRootView>
-                    <RootLayoutNav />
-                  </GestureHandlerRootView>
-                </ShotsProvider>
-              </SessionProvider>
-            </QueryClientProvider>
-          </ErrorBoundary>
-        </SafeAreaProvider>
-      </ClerkLoaded>
-    </ClerkProvider>
+    <>
+      <ClerkProvider
+        publishableKey={publishableKey}
+        tokenCache={tokenCache}
+        proxyUrl={proxyUrl}
+      >
+        <ClerkLoaded>
+          <SafeAreaProvider>
+            <ErrorBoundary>
+              <QueryClientProvider client={queryClient}>
+                <SessionProvider>
+                  <ShotsProvider>
+                    <GestureHandlerRootView>
+                      <RootLayoutNav />
+                    </GestureHandlerRootView>
+                  </ShotsProvider>
+                </SessionProvider>
+              </QueryClientProvider>
+            </ErrorBoundary>
+          </SafeAreaProvider>
+        </ClerkLoaded>
+      </ClerkProvider>
+      {showLaunch && <LaunchScreen onHide={() => setShowLaunch(false)} />}
+    </>
   );
 }
