@@ -37,6 +37,7 @@ export interface RhythmAnalysis {
   armExtendFrame: number;
   rhythmScore: number;
   observations: string[];
+  adjustments?: string[];
 }
 
 export interface AnalysisResult {

@@ -89,7 +89,7 @@ function PulsingDot({ color }: { color: string }) {
   );
 }
 
-function RhythmSection({ rhythm }: { rhythm: RhythmAnalysis }) {
+function RhythmSection({ rhythm, sessionId }: { rhythm: RhythmAnalysis; sessionId: string }) {
   const colors = useColors();
   const meta = PATTERN_META[rhythm.pattern] ?? PATTERN_META["unknown"];
   const patternColor = colors[meta.colorKey];
@@ -97,6 +97,31 @@ function RhythmSection({ rhythm }: { rhythm: RhythmAnalysis }) {
   // Use last observation as the coaching cue (most actionable sentence)
   const obs = rhythm.observations ?? [];
   const coachingCue = obs[obs.length - 1] ?? null;
+  const adjustments: string[] = (rhythm.rhythmScore ?? 100) < 85 ? (rhythm.adjustments ?? []) : [];
+
+  const adjStorageKey = `hoopform_rhythm_adj_done_${sessionId}`;
+  const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    AsyncStorage.getItem(adjStorageKey)
+      .then((raw) => {
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) setDoneSteps(new Set(parsed));
+        }
+      })
+      .catch(() => {});
+  }, [adjStorageKey]);
+
+  const toggleStep = useCallback((key: string) => {
+    setDoneSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      AsyncStorage.setItem(adjStorageKey, JSON.stringify([...next])).catch(() => {});
+      return next;
+    });
+  }, [adjStorageKey]);
 
   return (
     <View style={styles.section}>
@@ -119,6 +144,47 @@ function RhythmSection({ rhythm }: { rhythm: RhythmAnalysis }) {
       </View>
 
       <RhythmTimeline rhythm={rhythm} />
+
+      {adjustments.length > 0 && (
+        <View style={styles.rhythmAdjustmentsBlock}>
+          <View style={[styles.sectionHeaderRow, { marginTop: 14, marginBottom: 6 }]}>
+            <MaterialCommunityIcons name="metronome" size={14} color={patternColor} />
+            <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>HOW TO FIX</Text>
+          </View>
+          {adjustments.map((step, i) => {
+            const stepKey = `rhythm:${i}`;
+            const isDone = doneSteps.has(stepKey);
+            return (
+              <Pressable
+                key={`radj-${i}`}
+                style={styles.adjustmentStep}
+                onPress={() => toggleStep(stepKey)}
+              >
+                <View style={[
+                  styles.adjustmentCheckbox,
+                  isDone
+                    ? { backgroundColor: patternColor, borderColor: patternColor }
+                    : { borderColor: patternColor },
+                ]}>
+                  {isDone && <Feather name="check" size={9} color="#fff" />}
+                </View>
+                <Text style={[
+                  styles.adjustmentNumber,
+                  { color: isDone ? colors.mutedForeground : patternColor },
+                ]}>{i + 1}</Text>
+                <Text style={[
+                  styles.adjustmentText,
+                  {
+                    color: isDone ? colors.mutedForeground : colors.foreground,
+                    textDecorationLine: isDone ? "line-through" : "none",
+                    opacity: isDone ? 0.5 : 0.88,
+                  },
+                ]}>{step}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
@@ -606,7 +672,7 @@ export default function AnalysisScreen() {
           })}
         </View>
 
-        {session.rhythm && <RhythmSection rhythm={session.rhythm} />}
+        {session.rhythm && <RhythmSection rhythm={session.rhythm} sessionId={session.id} />}
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>BIOMECHANICAL BREAKDOWN</Text>
@@ -1228,5 +1294,8 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
     opacity: 0.8,
+  },
+  rhythmAdjustmentsBlock: {
+    marginTop: 4,
   },
 });
