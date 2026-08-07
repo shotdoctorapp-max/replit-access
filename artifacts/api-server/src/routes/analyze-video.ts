@@ -204,11 +204,20 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
           type: "text",
           text: `KEY FRAME — frameIndex: 2 (Release phase, frame ${releaseIdx}/${frames.length - 1}). Place annotations with frameIndex 2 at the exact body-part positions visible in THIS image. Use for: followThrough (shooting wrist/arm finish), eyeTracking (eyes/head direction).`,
         },
-        {
-          type: "text",
-          text: "Return ONLY valid JSON as specified. CRITICAL for annotations: use the exact pixel coordinates from each labeled KEY FRAME image — do NOT guess positions. frameIndex 0 = Dip image, frameIndex 1 = Set Point image, frameIndex 2 = Release image.",
-        }
       );
+
+      // Inject rhythm context so the biomechanics summary can reference it
+      if (rhythm && typeof rhythm.rhythmScore === "number") {
+        biomechanicsUserContent.push({
+          type: "text",
+          text: `RHYTHM CONTEXT: This shooter's rhythm was also analyzed separately. rhythmScore: ${rhythm.rhythmScore}/100, pattern: "${rhythm.pattern}". If rhythmScore < 70, mention rhythm in your summary as a factor dragging down the overall score.`,
+        });
+      }
+
+      biomechanicsUserContent.push({
+        type: "text",
+        text: "Return ONLY valid JSON as specified. CRITICAL for annotations: use the exact pixel coordinates from each labeled KEY FRAME image — do NOT guess positions. frameIndex 0 = Dip image, frameIndex 1 = Set Point image, frameIndex 2 = Release image.",
+      });
     } else {
       biomechanicsUserContent.push(
         {
@@ -245,6 +254,11 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       req.log.error({ content }, "Failed to parse AI response as JSON");
       res.status(500).json({ error: "Failed to parse analysis response" });
       return;
+    }
+
+    // Blend rhythm into overall score for video sessions (rhythm = 15% weight)
+    if (rhythm && typeof rhythm.rhythmScore === "number" && typeof analysis.overallScore === "number") {
+      analysis.overallScore = Math.round(analysis.overallScore * 0.85 + rhythm.rhythmScore * 0.15);
     }
 
     res.json({

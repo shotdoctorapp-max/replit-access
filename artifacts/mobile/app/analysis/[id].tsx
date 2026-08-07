@@ -21,6 +21,7 @@ import { useSessions, type RhythmAnalysis, type FrameAnnotation } from "@/contex
 import { ScoreRing } from "@/components/ScoreRing";
 import { ComponentBar } from "@/components/ComponentBar";
 import { DrillCard } from "@/components/DrillCard";
+import { RhythmTimeline } from "@/components/RhythmTimeline";
 import { FrameAnnotationOverlay } from "@/components/FrameAnnotationOverlay";
 import { scoreToTier, tierColor, TIER_ICONS, scoreSeverity } from "@/utils/grading";
 
@@ -116,6 +117,8 @@ function RhythmSection({ rhythm }: { rhythm: RhythmAnalysis }) {
           <Text style={[styles.rhythmGradeText, { color: patternColor }]}>{rhythmTier}</Text>
         </View>
       </View>
+
+      <RhythmTimeline rhythm={rhythm} />
     </View>
   );
 }
@@ -409,6 +412,14 @@ export default function AnalysisScreen() {
             <MaterialCommunityIcons name="whistle" size={14} color={colors.primary} style={{ marginTop: 2, flexShrink: 0 }} />
             <Text style={[styles.coachParagraphText, { color: colors.foreground }]}>{analysis.summary}</Text>
           </View>
+          {session.rhythm && typeof session.rhythm.rhythmScore === "number" && session.rhythm.rhythmScore < 70 && (
+            <View style={styles.rhythmNote}>
+              <MaterialCommunityIcons name="metronome" size={13} color="#f59e0b" />
+              <Text style={[styles.rhythmNoteText, { color: colors.mutedForeground }]}>
+                Rhythm score: {session.rhythm.rhythmScore} — factored into your overall grade
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -1201,5 +1212,21 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     flex: 1,
     opacity: 0.88,
+  },
+  rhythmNote: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#f59e0b40",
+  },
+  rhythmNoteText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
+    lineHeight: 18,
+    opacity: 0.8,
   },
 });

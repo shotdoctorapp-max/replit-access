@@ -137,7 +137,7 @@ Keep all text SHORT and SCANNABLE. Use the format: "Label — brief explanation"
 Respond ONLY with valid JSON in exactly this format:
 {
   "overallScore": <0-100 integer>,
-  "summary": "<1 short sentence on the biggest strength. 1 short sentence on the single most impactful fix. Coach voice, plain language.>",
+  "summary": "<1 short sentence on the biggest strength. 1 short sentence on the single most impactful fix. Coach voice, plain language. If a RHYTHM CONTEXT block appears in the user message and rhythmScore is below 70, add one final sentence calling out rhythm as a factor dragging down the overall score.>",
   "components": {
     "stance": { "score": <0-100>, "feedback": "<Label — one short sentence. e.g. 'Solid base — feet well positioned and balanced.'>", "adjustments": <omit if score >= 75, otherwise array of 2-4 short plain-English correction steps, e.g. ["Stand with feet shoulder-width apart, toes pointing slightly outward.", "Shift weight onto the balls of your feet, not your heels."]> },
     "hipAlignment": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 75, otherwise 2-4 step array> },
