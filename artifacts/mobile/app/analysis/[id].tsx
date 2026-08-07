@@ -219,7 +219,9 @@ export default function AnalysisScreen() {
   const initialFrameIdx =
     session.isVideo && session.keyFrameUris && session.keyFrameUris.length > 0 ? 0 : null;
 
-  const [heroUri, setHeroUri] = useState(initialKeyFrameUri);
+  const [heroUri, setHeroUri] = useState<string | null>(initialKeyFrameUri);
+  const [heroFailed, setHeroFailed] = useState(false);
+  const [failedFrameIdxs, setFailedFrameIdxs] = useState<Set<number>>(new Set());
   const [activeFrameIdx, setActiveFrameIdx] = useState<number | null>(initialFrameIdx);
   const [expandedBodyZone, setExpandedBodyZone] = useState<string | null>(null);
   const [showAnnotations, setShowAnnotations] = useState(true);
@@ -351,14 +353,24 @@ export default function AnalysisScreen() {
           setImageLayout({ width, height });
         }}
       >
-        <Image source={{ uri: heroUri }} style={styles.heroImage} />
+        {!heroFailed && heroUri ? (
+          <Image
+            source={{ uri: heroUri }}
+            style={styles.heroImage}
+            onError={() => setHeroFailed(true)}
+          />
+        ) : (
+          <View style={[styles.heroImage, styles.heroImageFallback]}>
+            <MaterialCommunityIcons name="image-off-outline" size={40} color="#444" />
+          </View>
+        )}
 
         {showAnnotations && activeAnnotations.length > 0 && imageLayout.width > 0 && (
           <FrameAnnotationOverlay
             annotations={activeAnnotations}
             containerWidth={imageLayout.width}
             containerHeight={imageLayout.height}
-            imageUri={heroUri}
+            imageUri={heroUri ?? ""}
             componentFeedback={analysis.components as Record<string, { score: number; feedback: string; adjustments?: string[] }>}
           />
         )}
@@ -428,7 +440,17 @@ export default function AnalysisScreen() {
                     styles.frameThumb,
                     { borderColor },
                   ]}>
-                    <Image source={{ uri }} style={styles.frameThumbImg} />
+                    {!failedFrameIdxs.has(i) ? (
+                      <Image
+                        source={{ uri }}
+                        style={styles.frameThumbImg}
+                        onError={() => setFailedFrameIdxs((prev) => new Set([...prev, i]))}
+                      />
+                    ) : (
+                      <View style={[styles.frameThumbImg, styles.frameThumbFallback]}>
+                        <MaterialCommunityIcons name="image-off-outline" size={14} color="#555" />
+                      </View>
+                    )}
                     {isActive && (
                       <View style={[styles.frameThumbActive, { backgroundColor: colors.primary + "33" }]} />
                     )}
@@ -749,6 +771,16 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 320,
     resizeMode: "contain",
+  },
+  heroImageFallback: {
+    backgroundColor: "#111",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  frameThumbFallback: {
+    backgroundColor: "#1a1a1a",
+    alignItems: "center",
+    justifyContent: "center",
   },
   frameStripContainer: {
     borderBottomWidth: 1,

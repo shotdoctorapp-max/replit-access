@@ -6,7 +6,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   Animated as RNAnimated,
@@ -108,6 +108,8 @@ export default function HomeScreen() {
   const { shotsRemaining, totalFreeShots, isPro, consumeShot } = useShots();
   const [stage, setStage] = useState<AnalyzingStage>("idle");
   const [isCompleting, setIsCompleting] = useState(false);
+  const [imgFailedSessions, setImgFailedSessions] = useState<Record<string, boolean>>({});
+  const markImgFailed = useCallback((id: string) => setImgFailedSessions((p) => ({ ...p, [id]: true })), []);
   const [bestFrameInfo, setBestFrameInfo] = useState<{
     index: number;
     total: number;
@@ -421,7 +423,7 @@ export default function HomeScreen() {
       const bestThumbUri = thumbnailUris[data.bestFrameIndex] ?? thumbnailUris[0];
       if (bestThumbUri) {
         try {
-          const destUri = `${FileSystem.cacheDirectory}shotdoc_frame_${sessionId}_best.jpg`;
+          const destUri = `${FileSystem.documentDirectory}shotdoc_frame_${sessionId}_best.jpg`;
           await FileSystem.copyAsync({ from: bestThumbUri, to: destUri });
           capturedFrameUri = destUri;
         } catch {
@@ -470,7 +472,7 @@ export default function HomeScreen() {
         const src = thumbnailUris[index];
         if (!src) continue;
         try {
-          const dest = `${FileSystem.cacheDirectory}shotdoc_frame_${sessionId}_kf${i}.jpg`;
+          const dest = `${FileSystem.documentDirectory}shotdoc_frame_${sessionId}_kf${i}.jpg`;
           await FileSystem.copyAsync({ from: src, to: dest });
           keyFrameUris.push(dest);
           keyFrameLabels.push(label);
@@ -794,10 +796,17 @@ export default function HomeScreen() {
                 }
               >
                 <View style={styles.sessionImageContainer}>
-                  <Image
-                    source={{ uri: session.imageUri }}
-                    style={styles.sessionImage}
-                  />
+                  {!imgFailedSessions[session.id] ? (
+                    <Image
+                      source={{ uri: session.imageUri }}
+                      style={styles.sessionImage}
+                      onError={() => markImgFailed(session.id)}
+                    />
+                  ) : (
+                    <View style={[styles.sessionImage, styles.sessionImageFallback]}>
+                      <MaterialCommunityIcons name="image-off-outline" size={20} color="#555" />
+                    </View>
+                  )}
                   {session.isVideo && (
                     <View
                       style={[
@@ -1178,6 +1187,11 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 8,
     resizeMode: "cover",
+  },
+  sessionImageFallback: {
+    backgroundColor: "#1a1a1a",
+    alignItems: "center",
+    justifyContent: "center",
   },
   videoTag: {
     position: "absolute",

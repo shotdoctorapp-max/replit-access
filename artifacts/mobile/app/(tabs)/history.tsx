@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   Alert,
   FlatList,
@@ -24,6 +24,7 @@ function SessionItem({ session, onPress, onDelete }: {
   onDelete: () => void;
 }) {
   const colors = useColors();
+  const [imgFailed, setImgFailed] = useState(false);
   const score = session.analysis.overallScore;
   const scoreColor = tierColor(score);
   const tier = scoreToTier(score);
@@ -47,7 +48,17 @@ function SessionItem({ session, onPress, onDelete }: {
       ]}
       onPress={onPress}
     >
-      <Image source={{ uri: session.imageUri }} style={styles.image} />
+      {!imgFailed ? (
+        <Image
+          source={{ uri: session.imageUri }}
+          style={styles.image}
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <View style={[styles.image, styles.imageFallback]}>
+          <MaterialCommunityIcons name="image-off-outline" size={22} color="#555" />
+        </View>
+      )}
       <View style={styles.info}>
         <Text style={[styles.date, { color: colors.mutedForeground }]}>
           {new Date(session.timestamp).toLocaleDateString("en-US", {
@@ -210,6 +221,11 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 10,
     resizeMode: "cover",
+  },
+  imageFallback: {
+    backgroundColor: "#1a1a1a",
+    alignItems: "center",
+    justifyContent: "center",
   },
   info: { flex: 1 },
   date: { fontSize: 11, fontFamily: "Inter_400Regular", marginBottom: 2 },
