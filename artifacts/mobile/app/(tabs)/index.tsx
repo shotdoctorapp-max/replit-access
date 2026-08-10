@@ -210,11 +210,26 @@ export default function HomeScreen() {
       return;
     }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    // "limited" = iOS 14+ partial access — still allows the picker to open
     if (status !== "granted" && (status as string) !== "limited") {
       Alert.alert("Permission needed", "Please allow access to your video library.");
       return;
     }
+
+    // iOS 14+ limited access: the user granted access to only some photos.
+    // Videos recorded AFTER that grant are invisible in the picker unless we
+    // open the native "add more photos" sheet first.
+    // presentPermissionsPickerAsync opens the Apple-native sheet so the user
+    // can expand their granted set — after they confirm, the picker will
+    // include any newly added videos.
+    if ((status as string) === "limited") {
+      try {
+        await MediaLibrary.presentPermissionsPickerAsync(["video"]);
+      } catch {
+        // Can throw if the user dismisses immediately or on older OS versions
+        // — fall through and open the picker anyway.
+      }
+    }
+
     let result: ImagePicker.ImagePickerResult;
     try {
       result = await ImagePicker.launchImageLibraryAsync({
