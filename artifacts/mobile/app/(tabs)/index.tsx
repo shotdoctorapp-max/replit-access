@@ -236,8 +236,58 @@ export default function HomeScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       });
     } catch (err) {
-      console.error("pickFromLibrary error:", err);
-      Alert.alert("Couldn't open library", "Try 'Browse Files (iCloud/Downloads)' instead.");
+      const errMsg = err instanceof Error ? err.message : String(err);
+      // Log the full error so device logs (Xcode / EAS) can pinpoint the cause
+      console.error("pickFromLibrary error:", errMsg, err);
+
+      // Detect known failure patterns:
+      // • iCloud offloading — video not on device, NSItemProvider export fails
+      // • PHPhotosErrorDomain / error 3164 — same iCloud class of errors
+      // • Format/codec — older H.264 profiles or .MOV containers the item provider
+      //   can't transcode; shows up as "UTType", "format", or "codec" in the message
+      // • NSItemProvider / loadFileRepresentation — broad export failure catch-all
+      const isICloud =
+        errMsg.includes("iCloud") ||
+        errMsg.includes("PHPhotosErrorDomain") ||
+        errMsg.includes("3164") ||
+        errMsg.includes("not available locally") ||
+        errMsg.includes("download");
+      const isFormat =
+        errMsg.includes("UTType") ||
+        errMsg.includes("format") ||
+        errMsg.includes("codec") ||
+        errMsg.includes("AVAsset") ||
+        errMsg.includes("NSItemProvider") ||
+        errMsg.includes("loadFileRepresentation");
+
+      if (isICloud) {
+        Alert.alert(
+          "Video not on this device",
+          "This video is stored in iCloud and hasn't downloaded yet. Open Photos, tap the video to download it, then try again — or use Browse Files to pick it directly from iCloud Drive.",
+          [
+            { text: "Browse Files Instead", onPress: pickFromFiles },
+            { text: "OK", style: "cancel" },
+          ]
+        );
+      } else if (isFormat) {
+        Alert.alert(
+          "Couldn't read this video",
+          "This video format isn't supported by the picker. Try 'Browse Files (iCloud/Downloads)' instead — it handles more formats.",
+          [
+            { text: "Browse Files Instead", onPress: pickFromFiles },
+            { text: "OK", style: "cancel" },
+          ]
+        );
+      } else {
+        Alert.alert(
+          "Couldn't open library",
+          "Something went wrong loading this video. Try 'Browse Files (iCloud/Downloads)' instead.",
+          [
+            { text: "Browse Files Instead", onPress: pickFromFiles },
+            { text: "OK", style: "cancel" },
+          ]
+        );
+      }
       return;
     }
     if (result.canceled || !result.assets[0]) return;
