@@ -7,6 +7,63 @@ import React, {
   useState,
 } from "react";
 
+// ---------------------------------------------------------------------------
+// Stale cache URI cleanup
+// ---------------------------------------------------------------------------
+// Frames were historically saved to cacheDirectory, which iOS purges under
+// storage pressure. On load we check any cache-path URIs and nullify ones
+// that no longer exist so the fallback UI (onError icon) renders instead of
+// a broken/blank image. documentDirectory URIs are left untouched.
+async function cleanStaleCacheUris(
+  sessions: Session[]
+): Promise<{ sessions: Session[]; changed: boolean }> {
+  const FileSystem = await import("expo-file-system/legacy");
+  const cacheDir = FileSystem.cacheDirectory ?? "";
+  if (!cacheDir) return { sessions, changed: false };
+
+  let changed = false;
+
+  const cleaned = await Promise.all(
+    sessions.map(async (s) => {
+      let { imageUri, keyFrameUris, ...rest } = s;
+
+      // Check imageUri
+      if (imageUri && imageUri.startsWith(cacheDir)) {
+        const info = await FileSystem.getInfoAsync(imageUri).catch(() => ({
+          exists: false,
+        }));
+        if (!info.exists) {
+          imageUri = "";
+          changed = true;
+        }
+      }
+
+      // Check each keyFrameUri
+      if (keyFrameUris && keyFrameUris.length > 0) {
+        const checked = await Promise.all(
+          keyFrameUris.map(async (uri) => {
+            if (uri && uri.startsWith(cacheDir)) {
+              const info = await FileSystem.getInfoAsync(uri).catch(() => ({
+                exists: false,
+              }));
+              if (!info.exists) {
+                changed = true;
+                return "";
+              }
+            }
+            return uri;
+          })
+        );
+        keyFrameUris = checked;
+      }
+
+      return { ...rest, imageUri, keyFrameUris };
+    })
+  );
+
+  return { sessions: cleaned, changed };
+}
+
 export interface ComponentScore {
   score: number;
   feedback: string;
@@ -89,8 +146,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((raw) => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) {
@@ -99,6 +157,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                 s &&
                 typeof s.id === "string" &&
                 typeof s.timestamp === "string" &&
+                // imageUri may be "" after stale-cache cleanup — allow that
                 typeof s.imageUri === "string" &&
                 s.analysis &&
                 typeof s.analysis.overallScore === "number" &&
@@ -107,12 +166,26 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                 Array.isArray(s.analysis.priorityFixes) &&
                 Array.isArray(s.analysis.drillRecommendations)
             ) as Session[];
-            setSessions(valid);
+
+            // Nullify (set to "") any cacheDirectory URIs whose files are gone.
+            // Persists cleaned list so this check only runs once per stale URI.
+            const { sessions: cleaned, changed } =
+              await cleanStaleCacheUris(valid);
+            if (changed) {
+              AsyncStorage.setItem(
+                STORAGE_KEY,
+                JSON.stringify(cleaned)
+              ).catch(() => {});
+            }
+            setSessions(cleaned);
           }
         }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      } catch {
+        // ignore parse / storage errors
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   const addSession = useCallback(async (session: Session) => {
