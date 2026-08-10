@@ -134,19 +134,28 @@ Keep all text SHORT and SCANNABLE. Use the format: "Label — brief explanation"
 - Explanations should be one short sentence max
 - No long run-on sentences. No robotic checklists. Think coach talking between plays.
 
+CRITICAL FEEDBACK RULE — applies to every component:
+- score < 85: feedback MUST name the specific flaw or what needs correcting. Do NOT describe what's already good. The user sees a "Minor", "Warning", or "Issue" badge — they need to know what's wrong.
+  BAD (score 78): "Controlled grip — good finger pad contact"
+  GOOD (score 78): "Grip off-center — fingertips aren't evenly loaded on the ball"
+  BAD (score 72): "Solid stance — feet reasonably placed"
+  GOOD (score 72): "Stance too narrow — feet inside shoulder width, reducing your base"
+- score >= 85: feedback may be praise-like or neutral, describing what's working.
+  GOOD (score 91): "Solid base — feet well positioned and balanced"
+
 Respond ONLY with valid JSON in exactly this format:
 {
   "overallScore": <0-100 integer>,
   "summary": "<1 short sentence on the biggest strength. 1 short sentence on the single most impactful fix. Coach voice, plain language. If a RHYTHM CONTEXT block appears in the user message and rhythmScore is below 70, add one final sentence calling out rhythm as a factor dragging down the overall score.>",
   "components": {
-    "stance": { "score": <0-100>, "feedback": "<Label — one short sentence. e.g. 'Solid base — feet well positioned and balanced.'>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps as a JSON array. Each step is one imperative sentence describing a specific body movement the shooter can do right now, e.g. "Plant your feet shoulder-width apart with toes angled 10–15° outward." Never use vague phrases like "focus on" or "try to" — name the exact movement.> },
-    "hipAlignment": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps. Each step is one imperative sentence describing a specific hip/pelvis movement.> },
-    "elbowPosition": { "score": <0-100>, "feedback": "<Label — one short sentence. e.g. 'Elbow flaring — tuck it in to stop the ball going left.'>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps, e.g. ["Tuck your shooting elbow directly under the ball so it points at the rim.", "Hold a piece of paper between your elbow and ribs during practice reps to keep it in.", "Trace a straight line from your elbow to the basket as your arm extends upward."]> },
-    "gripPosition": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps describing specific hand and finger placement.> },
-    "setPoint": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps describing exactly where to position the ball on the way up.> },
-    "followThrough": { "score": <0-100>, "feedback": "<Label — one short sentence. Most important component.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps describing the wrist snap, arm finish, and hold position.> },
-    "balance": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps describing body posture, weight distribution, and landing.> },
-    "eyeTracking": { "score": <0-100>, "feedback": "<Label — one short sentence.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps describing exactly where to look and when.> }
+    "stance": { "score": <0-100>, "feedback": "<If score < 85: name the flaw, e.g. 'Stance too wide — feet splayed past shoulder width, hurting your push-off.' If score >= 85: describe what's working, e.g. 'Solid base — feet well positioned and balanced.'>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps as a JSON array. Each step is one imperative sentence describing a specific body movement the shooter can do right now, e.g. "Plant your feet shoulder-width apart with toes angled 10–15° outward." Never use vague phrases like "focus on" or "try to" — name the exact movement.> },
+    "hipAlignment": { "score": <0-100>, "feedback": "<If score < 85: name the flaw, e.g. 'Hips rotated open — they're angled away from the basket at release.' If score >= 85: describe what's working.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps. Each step is one imperative sentence describing a specific hip/pelvis movement.> },
+    "elbowPosition": { "score": <0-100>, "feedback": "<If score < 85: name the flaw, e.g. 'Elbow flaring — tuck it in to stop the ball going left.' If score >= 85: describe what's working, e.g. 'Elbow tucked — clean line to the basket.'>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps, e.g. ["Tuck your shooting elbow directly under the ball so it points at the rim.", "Hold a piece of paper between your elbow and ribs during practice reps to keep it in.", "Trace a straight line from your elbow to the basket as your arm extends upward."]> },
+    "gripPosition": { "score": <0-100>, "feedback": "<If score < 85: name the flaw, e.g. 'Grip off-center — fingertips aren't evenly loaded, causing side spin.' If score >= 85: describe what's working.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps describing specific hand and finger placement.> },
+    "setPoint": { "score": <0-100>, "feedback": "<If score < 85: name the flaw, e.g. 'Set point too low — ball dropping below eye level before going up.' If score >= 85: describe what's working.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps describing exactly where to position the ball on the way up.> },
+    "followThrough": { "score": <0-100>, "feedback": "<If score < 85: name the flaw, e.g. 'Wrist not finishing — arm stops short instead of holding the goose-neck.' If score >= 85: describe what's working. Most important component.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps describing the wrist snap, arm finish, and hold position.> },
+    "balance": { "score": <0-100>, "feedback": "<If score < 85: name the flaw, e.g. 'Falling backward — weight shifting behind you at release.' If score >= 85: describe what's working.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps describing body posture, weight distribution, and landing.> },
+    "eyeTracking": { "score": <0-100>, "feedback": "<If score < 85: name the flaw, e.g. 'Eyes leaving the rim early — tracking the ball before release.' If score >= 85: describe what's working.>", "adjustments": <omit if score >= 85, otherwise exactly 3 physical correction steps describing exactly where to look and when.> }
   },
   "keyStrengths": ["<2–4 word label only, e.g. 'Strong leg drive'>", "<2–4 word label>"],
   "priorityFixes": ["<2–4 word label, e.g. 'Flat arc'>", "<2–4 word label>", "<2–4 word label>"],
