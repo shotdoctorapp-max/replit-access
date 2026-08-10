@@ -19,15 +19,30 @@ The ideal frame shows:
 Respond with ONLY a JSON object: { "bestFrameIndex": <0-based index>, "reason": "<10-word explanation>" }`;
 
 /** Mirror of the mobile key-frame selection heuristic so annotation
- *  coordinates always refer to the exact frames displayed in the strip. */
+ *  coordinates always refer to the exact frames displayed in the strip.
+ *
+ *  bestFrameIndex is the frame selected by BEST_FRAME_PROMPT (the AI-chosen
+ *  release or set-point frame). When the rhythm AI can't identify frame
+ *  positions (returns -1), we anchor the fallback positions on bestFrameIndex
+ *  rather than blind fixed percentages. This ensures that even when rhythm
+ *  analysis fails, the DIP/SET POINT/RELEASE strip shows frames that are
+ *  clustered around the actual shot moment rather than arbitrary positions. */
 function selectKeyFrameIndices(
   totalFrames: number,
-  rhythm: { dipFrame?: number; setPointFrame?: number; armExtendFrame?: number } | null
+  rhythm: { dipFrame?: number; setPointFrame?: number; armExtendFrame?: number } | null,
+  bestFrameIndex: number
 ): { dipIdx: number; setPointIdx: number; releaseIdx: number } {
+  // Fallbacks anchored on bestFrameIndex. BEST_FRAME_PROMPT selects the
+  // release or set-point frame, so it's a reliable anchor for the shot climax.
+  const spread       = Math.max(2, Math.round(totalFrames * 0.15));
+  const fallbackRelease  = Math.min(totalFrames - 1, bestFrameIndex + spread);
+  const fallbackSetPoint = bestFrameIndex;
+  const fallbackDip      = Math.max(0, bestFrameIndex - Math.max(2, Math.round(totalFrames * 0.35)));
+
   let dipIdx = (() => {
     const d = rhythm?.dipFrame;
     if (d !== undefined && d >= 0 && d < totalFrames * 0.45) return d;
-    return Math.floor(totalFrames * 0.20);
+    return fallbackDip;
   })();
 
   let setPointIdx = (() => {
@@ -35,13 +50,14 @@ function selectKeyFrameIndices(
     if (sp !== undefined && sp > dipIdx && sp >= totalFrames * 0.4 && sp < totalFrames * 0.75) return sp;
     const ae = rhythm?.armExtendFrame;
     if (ae !== undefined && ae > dipIdx + 1) return ae - 1;
-    return Math.floor(totalFrames * 0.55);
+    // Use bestFrameIndex as set-point anchor; if it collides with dipIdx push it forward
+    return fallbackSetPoint > dipIdx ? fallbackSetPoint : Math.min(dipIdx + 1, totalFrames - 1);
   })();
 
   let releaseIdx = (() => {
     const ae = rhythm?.armExtendFrame;
     if (ae !== undefined && ae > setPointIdx && ae >= totalFrames * 0.6 && ae < totalFrames * 0.95) return ae;
-    return Math.floor(totalFrames * 0.78);
+    return fallbackRelease;
   })();
 
   dipIdx      = Math.max(0, Math.min(dipIdx,      totalFrames - 1));
@@ -160,7 +176,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
 
     // Step 2: compute the 3 key frame indices using the same heuristic as the mobile client.
     // This guarantees annotation coordinates match the exact frames shown in the strip.
-    const { dipIdx, setPointIdx, releaseIdx } = selectKeyFrameIndices(frames.length, rhythm);
+    const { dipIdx, setPointIdx, releaseIdx } = selectKeyFrameIndices(frames.length, rhythm, bestFrameIndex);
     req.log.info({ bestFrameIndex, dipIdx, setPointIdx, releaseIdx }, "Step 2: running biomechanics with 3 key frames");
 
     // Build biomechanics prompt with all 3 key frames for annotation accuracy
@@ -256,14 +272,30 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       return;
     }
 
-    // Blend rhythm into overall score for video sessions (rhythm = 15% weight)
-    if (rhythm && typeof rhythm.rhythmScore === "number" && typeof analysis.overallScore === "number") {
-      analysis.overallScore = Math.round(analysis.overallScore * 0.85 + rhythm.rhythmScore * 0.15);
+    // Rhythm reliability gate: if the AI couldn't identify any key frame positions
+    // (both dipFrame and armExtendFrame are -1 or missing), the rhythmScore is
+    // almost certainly unreliable — the model couldn't see the shot phases clearly.
+    // In that case, suppress rhythm from the response entirely so it doesn't drag
+    // down the overall score or show a misleading "Rhythm score: 0" banner.
+    const rhythmReliable =
+      rhythm !== null &&
+      typeof rhythm?.rhythmScore === "number" &&
+      ((rhythm.dipFrame !== undefined && rhythm.dipFrame >= 0) ||
+       (rhythm.armExtendFrame !== undefined && rhythm.armExtendFrame >= 0));
+
+    req.log.info(
+      { rhythmReliable, dipFrame: rhythm?.dipFrame, armExtendFrame: rhythm?.armExtendFrame, rhythmScore: rhythm?.rhythmScore },
+      "Rhythm reliability check"
+    );
+
+    // Blend rhythm into overall score only when reliable (rhythm = 15% weight)
+    if (rhythmReliable && typeof analysis.overallScore === "number") {
+      analysis.overallScore = Math.round(analysis.overallScore * 0.85 + (rhythm!.rhythmScore as number) * 0.15);
     }
 
     res.json({
       analysis,
-      rhythm,
+      rhythm: rhythmReliable ? rhythm : null,
       bestFrameIndex,
       totalFrames: frames.length,
       timestamp: new Date().toISOString(),

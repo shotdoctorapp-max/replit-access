@@ -503,11 +503,16 @@ export default function HomeScreen() {
       const [dipIdx, setPointIdx, releaseIdx] = serverIndices && serverIndices.length >= 3
         ? serverIndices
         : (() => {
-            // Fallback: compute locally from rhythm (older server responses)
+            // Fallback: compute locally from rhythm (older server responses without keyFrameIndices).
+            // Anchor on bestFrameIndex (the AI-selected release/set-point frame) so that
+            // when rhythm data is unavailable the strip is centred on the actual shot climax
+            // rather than blind fixed percentages of the total frame count.
             const rhythm = data.rhythm;
-            let d = Math.floor(totalFrames * 0.20);
-            let sp = Math.floor(totalFrames * 0.55);
-            let r = Math.floor(totalFrames * 0.78);
+            const best = data.bestFrameIndex ?? Math.floor(totalFrames / 2);
+            const spread = Math.max(2, Math.round(totalFrames * 0.15));
+            let d  = Math.max(0, best - Math.max(2, Math.round(totalFrames * 0.35)));
+            let sp = best;
+            let r  = Math.min(totalFrames - 1, best + spread);
             if (rhythm?.dipFrame !== undefined && rhythm.dipFrame >= 0 && rhythm.dipFrame < totalFrames * 0.45) d = rhythm.dipFrame;
             if (rhythm?.setPointFrame !== undefined && rhythm.setPointFrame > d && rhythm.setPointFrame < totalFrames * 0.75) sp = rhythm.setPointFrame;
             else if (rhythm?.armExtendFrame !== undefined && rhythm.armExtendFrame > d + 1) sp = rhythm.armExtendFrame - 1;
