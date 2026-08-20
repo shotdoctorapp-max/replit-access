@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { requireAuth } from "@clerk/express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { batchProcess, openrouter } from "@workspace/integrations-openrouter-ai";
 import { BIOMECHANICS_SYSTEM_PROMPT, RHYTHM_SYSTEM_PROMPT } from "../lib/prompts";
 import { analysisRateLimit } from "../middlewares/analysisRateLimit";
 
 const router = Router();
+const ANALYSIS_MODEL = "google/gemma-4-31b-it:free";
 
 const BEST_FRAME_PROMPT = `You are a basketball shooting form expert. You will receive multiple frames from a basketball shooting video.
 
@@ -102,34 +103,46 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       ];
     });
 
-    // Step 1: best frame selection + rhythm in parallel — both need all frames at low detail
-    const [selectionResult, rhythmResult] = await Promise.all([
-      frames.length > 1
-        ? openai.chat.completions.create({
-            model: "gpt-5.4-mini",
-            max_completion_tokens: 128,
-            messages: [
-              { role: "system", content: BEST_FRAME_PROMPT },
-              {
-                role: "user",
-                content: [
-                  ...frames.map((b64) => ({
-                    type: "image_url" as const,
-                    image_url: { url: `data:${mimeType};base64,${b64}`, detail: "low" as const },
-                  })),
-                  {
-                    type: "text" as const,
-                    text: `These are ${frames.length} frames from a basketball shooting video. Which frame index (0-based) best shows the shooting mechanics at the key moment (release or set point)? Respond with JSON only.`,
-                  },
-                ],
-              },
-            ],
-          })
-        : Promise.resolve(null),
-      frames.length >= 3
-        ? openai.chat.completions.create({
-            model: "gpt-5",
-            max_completion_tokens: 512,
+    // Free OpenRouter models have tighter rate limits. Queue these two calls with
+    // retries rather than sending a burst that could fail an otherwise valid analysis.
+    const stepOneJobs = [
+      ...(frames.length > 1 ? ["selection" as const] : []),
+      ...(frames.length >= 3 ? ["rhythm" as const] : []),
+    ];
+    const stepOneResults = await batchProcess(
+      stepOneJobs,
+      async (job) => {
+        if (job === "selection") {
+          return {
+            job,
+            response: await openrouter.chat.completions.create({
+              model: ANALYSIS_MODEL,
+              max_tokens: 128,
+              messages: [
+                { role: "system", content: BEST_FRAME_PROMPT },
+                {
+                  role: "user",
+                  content: [
+                    ...frames.map((b64) => ({
+                      type: "image_url" as const,
+                      image_url: { url: `data:${mimeType};base64,${b64}`, detail: "low" as const },
+                    })),
+                    {
+                      type: "text" as const,
+                      text: `These are ${frames.length} frames from a basketball shooting video. Which frame index (0-based) best shows the shooting mechanics at the key moment (release or set point)? Respond with JSON only.`,
+                    },
+                  ],
+                },
+              ],
+            }),
+          };
+        }
+
+        return {
+          job,
+          response: await openrouter.chat.completions.create({
+            model: ANALYSIS_MODEL,
+            max_tokens: 512,
             messages: [
               { role: "system", content: RHYTHM_SYSTEM_PROMPT },
               {
@@ -143,9 +156,13 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
                 ],
               },
             ],
-          })
-        : Promise.resolve(null),
-    ]);
+          }),
+        };
+      },
+      { concurrency: 1, retries: 3, minTimeout: 1000, maxTimeout: 12000 }
+    );
+    const selectionResult = stepOneResults.find((result) => result.job === "selection")?.response ?? null;
+    const rhythmResult = stepOneResults.find((result) => result.job === "rhythm")?.response ?? null;
 
     // Parse best frame
     let bestFrameIndex = Math.floor(frames.length / 2);
@@ -251,14 +268,19 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       );
     }
 
-    const analysisResponse = await openai.chat.completions.create({
-      model: "gpt-5",
-      max_completion_tokens: 2048,
-      messages: [
-        { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },
-        { role: "user", content: biomechanicsUserContent },
-      ],
-    });
+    const [analysisResponse] = await batchProcess(
+      [biomechanicsUserContent],
+      async (content) =>
+        openrouter.chat.completions.create({
+          model: ANALYSIS_MODEL,
+          max_tokens: 2048,
+          messages: [
+            { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },
+            { role: "user", content },
+          ],
+        }),
+      { concurrency: 1, retries: 3, minTimeout: 1000, maxTimeout: 12000 }
+    );
 
     // Parse biomechanics
     const content = analysisResponse.choices[0]?.message?.content ?? "{}";
