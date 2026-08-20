@@ -19,7 +19,6 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "Allow Shot Doctor to record audio with your shot videos for analysis.",
-        "NSCameraUsageDescription": "Allow Shot Doctor to record video to analyze your shooting form.",
         "NSPhotoLibraryUsageDescription": "Allow Shot Doctor to access your videos to analyze your shooting form.",
         "NSPhotoLibraryAddUsageDescription": "Allow Shot Doctor to save videos to your photo library."
       }
