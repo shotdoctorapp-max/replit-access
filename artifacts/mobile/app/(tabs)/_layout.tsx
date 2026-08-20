@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/expo";
+import { useAuth } from "@clerk/react";
 import { BlurView } from "expo-blur";
 import { Redirect, Tabs } from "expo-router";
 import { SymbolView } from "expo-symbols";

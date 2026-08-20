@@ -12,6 +12,7 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
+    "@clerk/react": "^6.9.1",
     "@clerk/expo": "^3.2.6",
     "@expo-google-fonts/inter": "^0.4.0",
     "@expo/vector-icons": "^15.0.3",

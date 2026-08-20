@@ -1,2 +1,3 @@
 - [EAS Build + pnpm monorepo lessons](eas-pnpm-lessons.md) — critical gotchas for getting EAS Build working with this pnpm workspace
 - [EAS async-storage codegen fix](eas-async-storage-codegen.md) — OBSOLETE deletion hack (broke Xcode compile, removed Aug 2026); see eas-pnpm-lessons.md lesson 11
+- [Expo web Clerk context](expo-web-clerk-context.md) — Expo’s Clerk bridge needs a web-only browser provider and unified hooks for programmatic preview sessions.

@@ -5,13 +5,20 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { ClerkProvider, ClerkLoaded } from "@clerk/expo";
+import {
+  ClerkProvider as NativeClerkProvider,
+  ClerkLoaded as NativeClerkLoaded,
+} from "@clerk/expo";
 import { tokenCache } from "@clerk/expo/token-cache";
+import {
+  ClerkLoaded as WebClerkLoaded,
+  ClerkProvider as WebClerkProvider,
+} from "@clerk/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 import { LaunchScreen } from "@/components/LaunchScreen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -77,6 +84,29 @@ function RootLayoutNav() {
   );
 }
 
+function AuthProvider({ children }: { children: React.ReactNode }) {
+  if (Platform.OS === "web") {
+    return (
+      <WebClerkProvider
+        publishableKey={publishableKey!}
+        proxyUrl={proxyUrl}
+      >
+        <WebClerkLoaded>{children}</WebClerkLoaded>
+      </WebClerkProvider>
+    );
+  }
+
+  return (
+    <NativeClerkProvider
+      publishableKey={publishableKey!}
+      tokenCache={tokenCache}
+      proxyUrl={proxyUrl}
+    >
+      <NativeClerkLoaded>{children}</NativeClerkLoaded>
+    </NativeClerkProvider>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -100,27 +130,21 @@ export default function RootLayout() {
 
   return (
     <>
-      <ClerkProvider
-        publishableKey={publishableKey}
-        tokenCache={tokenCache}
-        proxyUrl={proxyUrl}
-      >
-        <ClerkLoaded>
-          <SafeAreaProvider>
-            <ErrorBoundary>
-              <QueryClientProvider client={queryClient}>
-                <SessionProvider>
-                  <ShotsProvider>
-                    <GestureHandlerRootView>
-                      <RootLayoutNav />
-                    </GestureHandlerRootView>
-                  </ShotsProvider>
-                </SessionProvider>
-              </QueryClientProvider>
-            </ErrorBoundary>
-          </SafeAreaProvider>
-        </ClerkLoaded>
-      </ClerkProvider>
+      <AuthProvider>
+        <SafeAreaProvider>
+          <ErrorBoundary>
+            <QueryClientProvider client={queryClient}>
+              <SessionProvider>
+                <ShotsProvider>
+                  <GestureHandlerRootView>
+                    <RootLayoutNav />
+                  </GestureHandlerRootView>
+                </ShotsProvider>
+              </SessionProvider>
+            </QueryClientProvider>
+          </ErrorBoundary>
+        </SafeAreaProvider>
+      </AuthProvider>
       {showLaunch && <LaunchScreen onHide={() => setShowLaunch(false)} />}
     </>
   );

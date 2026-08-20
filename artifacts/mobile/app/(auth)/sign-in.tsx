@@ -1,4 +1,4 @@
-import { useSignIn } from "@clerk/expo";
+import { useSignIn } from "@clerk/react";
 import { Link, useRouter } from "expo-router";
 import React from "react";
 import { CourtBackground } from "@/components/CourtBackground";
