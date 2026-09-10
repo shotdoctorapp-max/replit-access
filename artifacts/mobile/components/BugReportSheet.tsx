@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Device from "expo-device";
 import * as Application from "expo-application";
 import Constants from "expo-constants";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/utils/clerk";
 import { useColors } from "@/hooks/useColors";
 
 const API_BASE = process.env.EXPO_PUBLIC_DOMAIN

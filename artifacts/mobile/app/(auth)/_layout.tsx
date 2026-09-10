@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/utils/clerk";
 import { Redirect, Stack } from "expo-router";
 
 export default function AuthLayout() {

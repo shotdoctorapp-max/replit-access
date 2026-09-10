@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useAuth } from "@clerk/react";
+import { useAuth } from "@/utils/clerk";
 import React, {
   createContext,
   useCallback,

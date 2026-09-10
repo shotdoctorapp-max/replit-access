@@ -5,21 +5,13 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import {
-  ClerkProvider as NativeClerkProvider,
-  ClerkLoaded as NativeClerkLoaded,
-} from "@clerk/expo";
-import { tokenCache } from "@clerk/expo/token-cache";
-import {
-  ClerkLoaded as WebClerkLoaded,
-  ClerkProvider as WebClerkProvider,
-} from "@clerk/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
-import { Platform, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { LaunchScreen } from "@/components/LaunchScreen";
+import { AuthProvider } from "@/components/AuthProvider";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -37,7 +29,6 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-const proxyUrl = process.env.EXPO_PUBLIC_CLERK_PROXY_URL || undefined;
 
 function ConfigErrorScreen() {
   useEffect(() => {
@@ -81,29 +72,6 @@ function RootLayoutNav() {
       <Stack.Screen name="paywall" options={{ presentation: "modal" }} />
       <Stack.Screen name="analysis/[id]" />
     </Stack>
-  );
-}
-
-function AuthProvider({ children }: { children: React.ReactNode }) {
-  if (Platform.OS === "web") {
-    return (
-      <WebClerkProvider
-        publishableKey={publishableKey!}
-        proxyUrl={proxyUrl}
-      >
-        <WebClerkLoaded>{children}</WebClerkLoaded>
-      </WebClerkProvider>
-    );
-  }
-
-  return (
-    <NativeClerkProvider
-      publishableKey={publishableKey!}
-      tokenCache={tokenCache}
-      proxyUrl={proxyUrl}
-    >
-      <NativeClerkLoaded>{children}</NativeClerkLoaded>
-    </NativeClerkProvider>
   );
 }
 

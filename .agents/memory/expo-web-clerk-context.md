@@ -5,8 +5,8 @@ description: Browser-session compatibility requirements for Clerk inside this Ex
 
 # Expo web Clerk context
 
-Use Clerk’s browser provider and Clerk React hooks for the Expo **web** bundle, while retaining Expo’s provider and token cache for iOS and Android. Metro must prevent the Expo package’s native Clerk module from being bundled on web.
+Use Clerk’s browser provider and Clerk React hooks for the Expo **web** bundle, while retaining Expo’s provider, hooks, and token cache for iOS and Android. Isolate providers and hook exports with `.web.tsx`/`.web.ts` files; do not import `@clerk/react` from shared native modules or alias the whole `@clerk/expo` package in Metro.
 
-**Why:** The Expo package’s compiled native-module import bypasses Metro’s normal web resolution, and its hook/provider bridge does not accept programmatically injected browser sessions. This can produce native-module errors or make an active browser Clerk session look signed out.
+**Why:** Direct browser-package imports in shared modules can crash native launches. Aliasing Expo Clerk to browser Clerk can create duplicate provider contexts on web, causing hooks to report that they are outside `ClerkProvider`.
 
-**How to apply:** When updating Clerk, Expo, or Metro, rerun a clean browser-context programmatic Clerk sign-in through onboarding to the authenticated Analyze tab. Keep native-specific provider/token-cache behavior isolated from the web compatibility layer.
+**How to apply:** Keep native and web Clerk imports behind platform-resolved provider and hook wrappers. After Clerk, Expo, or Metro changes, build iOS/Android/web and rerun a clean browser-context sign-in through onboarding.
