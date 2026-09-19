@@ -1,0 +1,12 @@
+The bug: Frame selection worked correctly with our previous model, but broke after we switched to the new ai model. It now picks wrong frames — e.g., random frames / the same frame 2 times/ frames too early or late in the shot].
+What I need you to do:
+1. Diagnose before changing anything. Find the frame-selection code . Identify exactly what changed with the model swap: prompt format, how frames are sent , response parsing (eg JSON schema, markdown fences, plain text), temperature/sampling settings, and token limits. Old model response format vs new model response format is the prime suspect — check if we're parsing the output with assumptions that no longer hold.
+2. Fix the frame definitions in the prompt. The model must understand these phases precisely:
+    * Dip: the lowest point of the ball/body before the upward motion begins (knees most flexed, ball at its lowest)
+    * Set point: the moment the ball is at/above forehead height with the shooting elbow at roughly 90°, just before the final arm extension
+    * Release: the last frame where the ball is still in contact with the fingertips
+    * Make the model reason about temporal order: dip MUST come before set point, which MUST come before release. Reject any selection that violates this ordering.
+3. Make output parsing robust. Force structured output (eg JSON mode / function calling / response schema if the new model supports it) with frame indices or timestamps as numbers. Add validation: exactly 3 frames, indices within video bounds, strictly increasing order, and a retry-with-correction loop if validation fails. Log raw model responses so we can debug.
+4. Send enough context. Sample frames at a consistent rate ([e.g. 10 fps]) with clear frame numbers/timestamps labeled on or alongside each image, so the model references frames by index, not by description. If the new model has lower image limits or resolution than the old one, adjust sampling accordingly.
+5. Verify the fix. Run it against [test video(s) in this folder / describe test clip]. Ground truth for the test clip: dip ≈ frame [X], set point ≈ frame [Y], release ≈ frame [Z]. The selection should land within ±2 frames of each. Show me before/after results.
+Do not rewrite the whole pipeline — make the minimal, correct fix and explain what was actually broken.
