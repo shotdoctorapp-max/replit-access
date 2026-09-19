@@ -29,6 +29,8 @@ import type { AnalysisResult, Session } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
 import { scoreToTier, tierColor } from "@/utils/grading";
 import { extractFrames } from "@/utils/videoFrames";
+import { validateFrameMapping } from "@/utils/frameSampling";
+import { analyzeVideo as requestVideoAnalysis } from "@workspace/api-client-react";
 import { FilmingTipsSheet, shouldShowFilmingTips } from "@/components/FilmingTipsSheet";
 import { CourtBackground } from "@/components/CourtBackground";
 
@@ -447,35 +449,35 @@ export default function HomeScreen() {
       }
 
       setStage("extracting");
-      const { base64Frames, thumbnailUris, timestamps } = await extractFrames(resolvedUri, durationMs);
+      let extracted = await extractFrames(resolvedUri, durationMs);
 
       setStage("selecting");
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       const token = await getToken();
-      const response = await fetch(`${API_BASE}/api/analyze-video`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ frames: base64Frames, timestamps, mimeType: "image/jpeg" }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error((err as { error: string }).error ?? "Analysis failed");
+      const requestOptions = { headers: token ? { Authorization: `Bearer ${token}` } : undefined };
+      if (extracted.coarse) {
+        const location = await requestVideoAnalysis({
+          frames: extracted.base64Frames, timestamps: extracted.timestamps, mimeType: "image/jpeg", mode: "locate",
+        }, requestOptions);
+        if (!("shotIndex" in location) || !Number.isInteger(location.shotIndex) ||
+            location.totalFrames !== extracted.timestamps.length ||
+            location.shotIndex < 0 || location.shotIndex >= extracted.timestamps.length ||
+            location.shotTimestamp !== extracted.timestamps[location.shotIndex]) {
+          throw new Error("Could not locate the shot in this clip. Please retry with a shorter clip.");
+        }
+        extracted = await extractFrames(resolvedUri, extracted.durationMs, location.shotTimestamp);
       }
+      const { base64Frames, thumbnailUris, timestamps } = extracted;
+      const data = await requestVideoAnalysis({
+        frames: base64Frames, timestamps, mimeType: "image/jpeg", mode: "analyze",
+      }, requestOptions);
+      if (!("analysis" in data)) throw new Error("Incomplete analysis response. Please retry.");
+      const selectedIndices = validateFrameMapping(data.keyFrameIndices, data.keyFrameTimestamps,
+        data.totalFrames, timestamps, thumbnailUris);
+      if (data.bestFrameIndex !== selectedIndices[1]) throw new Error("Analysis frame mismatch. Please retry.");
 
       setStage("analyzing");
-      const data = (await response.json()) as {
-        analysis: AnalysisResult;
-        rhythm?: import("@/context/SessionContext").RhythmAnalysis;
-        bestFrameIndex: number;
-        totalFrames: number;
-        timestamp: string;
-        keyFrameIndices?: number[];
-      };
 
       setBestFrameInfo({ index: data.bestFrameIndex, total: data.totalFrames });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -484,43 +486,11 @@ export default function HomeScreen() {
       const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
 
       // Save the best frame thumbnail as a stable file for the analysis screen
-      let capturedFrameUri = resolvedUri;
-      const bestThumbUri = thumbnailUris[data.bestFrameIndex] ?? thumbnailUris[0];
-      if (bestThumbUri) {
-        try {
-          const destUri = `${FileSystem.documentDirectory}shotdoc_frame_${sessionId}_best.jpg`;
-          await FileSystem.copyAsync({ from: bestThumbUri, to: destUri });
-          capturedFrameUri = destUri;
-        } catch {
-          // fall back to videoUri
-        }
-      }
+      const capturedFrameUri = `${FileSystem.documentDirectory}shotdoc_frame_${sessionId}_best.jpg`;
+      await FileSystem.copyAsync({ from: thumbnailUris[data.bestFrameIndex], to: capturedFrameUri });
 
-      // Select key frames — use server-returned indices when available so annotation
-      // coordinates always refer to the exact same frames that are displayed in the strip.
-      const totalFrames = data.totalFrames ?? thumbnailUris.length;
-      const serverIndices = data.keyFrameIndices;
-      const [dipIdx, setPointIdx, releaseIdx] = serverIndices && serverIndices.length >= 3
-        ? serverIndices
-        : (() => {
-            // Fallback: compute locally from rhythm (older server responses without keyFrameIndices).
-            // Anchor on bestFrameIndex (the AI-selected release/set-point frame) so that
-            // when rhythm data is unavailable the strip is centred on the actual shot climax
-            // rather than blind fixed percentages of the total frame count.
-            const rhythm = data.rhythm;
-            const best = data.bestFrameIndex ?? Math.floor(totalFrames / 2);
-            const spread = Math.max(2, Math.round(totalFrames * 0.15));
-            let d  = Math.max(0, best - Math.max(2, Math.round(totalFrames * 0.35)));
-            let sp = best;
-            let r  = Math.min(totalFrames - 1, best + spread);
-            if (rhythm?.dipFrame !== undefined && rhythm.dipFrame >= 0 && rhythm.dipFrame < totalFrames * 0.45) d = rhythm.dipFrame;
-            if (rhythm?.setPointFrame !== undefined && rhythm.setPointFrame > d && rhythm.setPointFrame < totalFrames * 0.75) sp = rhythm.setPointFrame;
-            else if (rhythm?.armExtendFrame !== undefined && rhythm.armExtendFrame > d + 1) sp = rhythm.armExtendFrame - 1;
-            if (rhythm?.armExtendFrame !== undefined && rhythm.armExtendFrame > sp && rhythm.armExtendFrame < totalFrames * 0.95) r = rhythm.armExtendFrame;
-            if (sp <= d) sp = Math.min(d + 1, totalFrames - 1);
-            if (r <= sp) r = Math.min(sp + 1, totalFrames - 1);
-            return [d, sp, r];
-          })();
+      // Only validated server indices may own annotation/display positions.
+      const [dipIdx, setPointIdx, releaseIdx] = selectedIndices;
 
       const candidateFrames: { index: number; label: string }[] = [
         { index: dipIdx,      label: "Dip"       },
@@ -528,11 +498,8 @@ export default function HomeScreen() {
         { index: releaseIdx,  label: "Release"    },
       ];
 
-      // Remove entries whose thumbnail is missing or whose index duplicates an earlier entry
-      const seen = new Set<number>();
-      const keyFrameEntries = candidateFrames
-        .filter((f) => thumbnailUris[f.index] !== undefined && !seen.has(f.index) && seen.add(f.index))
-        .slice(0, 3);
+      // Keep all three positions; never compress the annotation index space.
+      const keyFrameEntries = candidateFrames;
 
       // Copy key frame thumbnails to stable cache paths
       const keyFrameUris: string[] = [];
@@ -540,15 +507,12 @@ export default function HomeScreen() {
       for (let i = 0; i < keyFrameEntries.length; i++) {
         const { index, label } = keyFrameEntries[i];
         const src = thumbnailUris[index];
-        if (!src) continue;
-        try {
-          const dest = `${FileSystem.documentDirectory}shotdoc_frame_${sessionId}_kf${i}.jpg`;
-          await FileSystem.copyAsync({ from: src, to: dest });
-          keyFrameUris.push(dest);
-          keyFrameLabels.push(label);
-        } catch {
-          // skip this frame if copy fails
-        }
+        const dest = `${FileSystem.documentDirectory}shotdoc_frame_${sessionId}_kf${i}.jpg`;
+        // All three persist or the operation fails before consuming/saving a shot.
+        // Never shift annotation positions by silently skipping a failed copy.
+        await FileSystem.copyAsync({ from: src, to: dest });
+        keyFrameUris.push(dest);
+        keyFrameLabels.push(label);
       }
 
       // Copy original video to stable cache path (best-effort)
@@ -566,12 +530,15 @@ export default function HomeScreen() {
         timestamp: data.timestamp,
         imageUri: capturedFrameUri,
         analysis: data.analysis,
-        rhythm: data.rhythm,
+        rhythm: data.rhythm as unknown as import("@/context/SessionContext").RhythmAnalysis | undefined,
         isVideo: true,
         bestFrameIndex: data.bestFrameIndex,
         totalFrames: data.totalFrames,
         keyFrameUris: keyFrameUris.length > 0 ? keyFrameUris : undefined,
         keyFrameLabels: keyFrameLabels.length > 0 ? keyFrameLabels : undefined,
+        keyFrameIndices: selectedIndices,
+        keyFrameTimestamps: data.keyFrameTimestamps,
+        sampledTimestamps: timestamps,
         videoUri: cachedVideoUri,
       };
 

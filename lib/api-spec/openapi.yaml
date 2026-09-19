@@ -111,7 +111,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CreateBugReportResponse"
+                $ref: "#/components/schemas/BugReportResult"
         "400":
           description: Bad request
         "500":
@@ -136,13 +136,17 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AnalyzeVideoResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/VideoAnalysisResult"
+                  - $ref: "#/components/schemas/LocateShotResponse"
         "400":
           description: Bad request
         "401":
           description: Unauthorized — valid Clerk session required
         "429":
           description: Rate limit exceeded — too many analysis requests
+        "422":
+          description: Recoverable uncertain phase selection; no frames were guessed
         "500":
           description: Server error
   /analyze:
@@ -190,7 +194,7 @@ components:
           items:
             type: string
           minItems: 1
-          maxItems: 12
+          maxItems: 48
           description: Base64-encoded JPEG frames extracted from the video
         timestamps:
           type: array
@@ -200,10 +204,27 @@ components:
         mimeType:
           type: string
           default: image/jpeg
+        mode:
+          type: string
+          enum: [analyze, locate]
+          default: analyze
+          description: Locate returns a coarse shot anchor only; analyze returns validated final phases
       required:
         - frames
+        - timestamps
 
-    AnalyzeVideoResponse:
+    LocateShotResponse:
+      type: object
+      properties:
+        shotIndex:
+          type: integer
+        shotTimestamp:
+          type: number
+        totalFrames:
+          type: integer
+      required: [shotIndex, shotTimestamp, totalFrames]
+
+    VideoAnalysisResult:
       type: object
       properties:
         analysis:
@@ -224,11 +245,18 @@ components:
           items:
             type: integer
           description: Indices of the dip, set-point, and release frames
+        keyFrameTimestamps:
+          type: array
+          items:
+            type: number
+          description: Original-video milliseconds aligned with keyFrameIndices
       required:
         - analysis
         - bestFrameIndex
         - totalFrames
         - timestamp
+        - keyFrameIndices
+        - keyFrameTimestamps
 
     HealthStatus:
       type: object
@@ -251,7 +279,7 @@ components:
       required:
         - message
 
-    CreateBugReportResponse:
+    BugReportResult:
       type: object
       properties:
         id:

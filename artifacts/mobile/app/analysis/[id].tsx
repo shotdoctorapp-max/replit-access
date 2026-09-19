@@ -458,7 +458,9 @@ export default function AnalysisScreen() {
                   <Text style={[
                     styles.frameThumbLabel,
                     { color: isActive ? colors.primary : colors.mutedForeground },
-                  ]}>{label}</Text>
+                  ]}>{label}{session.keyFrameTimestamps?.[i] !== undefined
+                    ? ` · ${(session.keyFrameTimestamps[i] / 1000).toFixed(2)}s`
+                    : ""}</Text>
                 </Pressable>
               );
             })}

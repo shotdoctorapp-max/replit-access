@@ -127,6 +127,9 @@ export interface Session {
   totalFrames?: number;
   keyFrameUris?: string[];
   keyFrameLabels?: string[];
+  keyFrameIndices?: number[];
+  keyFrameTimestamps?: number[];
+  sampledTimestamps?: number[];
   videoUri?: string;
 }
 
