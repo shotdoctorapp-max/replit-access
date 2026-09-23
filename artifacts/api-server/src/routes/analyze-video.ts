@@ -3,12 +3,17 @@ import { requireAuth } from "@clerk/express";
 import { batchProcess, openrouter } from "@workspace/integrations-openrouter-ai";
 import { BIOMECHANICS_SYSTEM_PROMPT, RHYTHM_SYSTEM_PROMPT } from "../lib/prompts";
 import { analysisRateLimit } from "../middlewares/analysisRateLimit";
-import { FRAME_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, FrameSelectionError, labeledImages, selectWithCorrection, rhythmShotContext, providerFailure } from "../lib/frameSelection";
+import { DIP_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, SET_RELEASE_SELECTION_PROMPT, FrameSelectionError, labeledImages, selectWithCorrection, rhythmShotContext, providerFailure, validateDipBeforeSetPoint, validateSetReleaseIndices } from "../lib/frameSelection";
 
 const router = Router();
-const ANALYSIS_MODEL = process.env.ANALYSIS_MODEL ?? "google/gemini-3.8-flash";
+const ANALYSIS_MODEL = process.env.ANALYSIS_MODEL ?? "google/gemini-2.5-flash";
 
 router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res) => {
+  let providerCostUsd = 0;
+  const recordCost = (response: unknown) => {
+    const cost = (response as { usage?: { cost?: unknown } | null })?.usage?.cost;
+    if (typeof cost === "number" && Number.isFinite(cost)) providerCostUsd += cost;
+  };
   try {
     const { frames, timestamps, mode = "analyze", mimeType = "image/jpeg" } = req.body as {
       frames: string[];
@@ -43,10 +48,10 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       return;
     }
 
-    const labeledFrameMessages = labeledImages(frames, timestamps, mimeType);
     let indices = [0];
-    if (frames.length > 1) {
-      indices = await selectWithCorrection(frames.length, mode === "locate" ? 1 : 3,
+    if (frames.length > 1 && mode === "locate") {
+      const labeledFrameMessages = labeledImages(frames, timestamps, mimeType);
+      indices = await selectWithCorrection(frames.length, 1,
         async (correction, jsonMode) => {
           const [response] = await batchProcess([0], () => openrouter.chat.completions.create({
             model: ANALYSIS_MODEL,
@@ -54,21 +59,75 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
             temperature: 0,
             ...(jsonMode ? { response_format: { type: "json_object" as const } } : {}),
             messages: [
-              { role: "system", content: mode === "locate" ? LOCATE_SHOT_PROMPT : FRAME_SELECTION_PROMPT },
+              { role: "system", content: LOCATE_SHOT_PROMPT },
               { role: "user", content: labeledFrameMessages },
               ...(correction ? [{ role: "user" as const, content: correction }] : []),
             ],
           }, { maxRetries: 0, timeout: 90_000 }),
           { concurrency: 1, retries: 2, minTimeout: 2000, maxTimeout: 12000 });
+          recordCost(response);
           return { raw: response.choices[0]?.message.content ?? "", finish: response.choices[0]?.finish_reason };
         },
         event => req.log.info(event, "Frame selection response"));
     }
     if (mode === "locate") {
+      req.log.info({ model: ANALYSIS_MODEL, providerCostUsd }, "Analysis provider cost");
       res.json({ shotIndex: indices[0], shotTimestamp: timestamps[indices[0]], totalFrames: frames.length });
       return;
     }
+    if (frames.length > 1) {
+      const labeledFrameMessages = labeledImages(frames, timestamps, mimeType);
+      const setReleaseIndices = await selectWithCorrection(frames.length, 2,
+        async (correction, jsonMode) => {
+          const [response] = await batchProcess([0], () => openrouter.chat.completions.create({
+            model: ANALYSIS_MODEL,
+            max_tokens: 8192,
+            temperature: 0,
+            ...(jsonMode ? { response_format: { type: "json_object" as const } } : {}),
+            messages: [
+              { role: "system", content: SET_RELEASE_SELECTION_PROMPT },
+              { role: "user", content: labeledFrameMessages },
+              ...(correction ? [{ role: "user" as const, content: correction }] : []),
+            ],
+          }, { maxRetries: 0, timeout: 90_000 }),
+          { concurrency: 1, retries: 2, minTimeout: 2000, maxTimeout: 12000 });
+          recordCost(response);
+          return { raw: response.choices[0]?.message.content ?? "", finish: response.choices[0]?.finish_reason };
+        },
+        event => req.log.info(event, "Set Point/Release selection response"),
+        "setPoint,release",
+        validateSetReleaseIndices);
+      const [setPointIdx, releaseIdx] = setReleaseIndices;
+      const dipFrameCount = setPointIdx + 1;
+      const dipFrameMessages = labeledImages(
+        frames.slice(0, dipFrameCount),
+        timestamps.slice(0, dipFrameCount),
+        mimeType,
+      );
+      const [dipIdx] = await selectWithCorrection(dipFrameCount, 1,
+        async (correction, jsonMode) => {
+          const [response] = await batchProcess([0], () => openrouter.chat.completions.create({
+            model: ANALYSIS_MODEL,
+            max_tokens: 8192,
+            temperature: 0,
+            ...(jsonMode ? { response_format: { type: "json_object" as const } } : {}),
+            messages: [
+              { role: "system", content: DIP_SELECTION_PROMPT },
+              { role: "user", content: dipFrameMessages },
+              ...(correction ? [{ role: "user" as const, content: correction }] : []),
+            ],
+          }, { maxRetries: 0, timeout: 90_000 }),
+          { concurrency: 1, retries: 2, minTimeout: 2000, maxTimeout: 12000 });
+          recordCost(response);
+          return { raw: response.choices[0]?.message.content ?? "", finish: response.choices[0]?.finish_reason };
+        },
+        event => req.log.info(event, "Dip selection response"),
+        "dip",
+        selected => validateDipBeforeSetPoint(selected, setPointIdx));
+      indices = [dipIdx, setPointIdx, releaseIdx];
+    }
     const [dipIdx, setPointIdx = 0, releaseIdx = 0] = indices;
+    const labeledFrameMessages = labeledImages(frames, timestamps, mimeType);
     const bestFrameIndex = setPointIdx;
 
     // Rhythm is separate from selection: it cannot replace the validated phases.
@@ -78,25 +137,27 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     const stepOneResults = await batchProcess(
       stepOneJobs,
       async (job) => {
+        const response = await openrouter.chat.completions.create({
+          model: ANALYSIS_MODEL,
+          max_tokens: 8192,
+          messages: [
+            { role: "system", content: RHYTHM_SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: [
+                ...labeledFrameMessages,
+                {
+                  type: "text" as const,
+                  text: `${rhythmShotContext(indices, timestamps)} Analyze the temporal motion sequence to determine the shot rhythm pattern. Look specifically for: when does the body/legs drive up vs when does the ball rise (body-first = good kinetic chain). Return ONLY valid JSON.`,
+                },
+              ],
+            },
+          ],
+        });
+        recordCost(response);
         return {
           job,
-          response: await openrouter.chat.completions.create({
-            model: ANALYSIS_MODEL,
-            max_tokens: 8192,
-            messages: [
-              { role: "system", content: RHYTHM_SYSTEM_PROMPT },
-              {
-                role: "user",
-                content: [
-                  ...labeledFrameMessages,
-                  {
-                    type: "text" as const,
-                    text: `${rhythmShotContext(indices, timestamps)} Analyze the temporal motion sequence to determine the shot rhythm pattern. Look specifically for: when does the body/legs drive up vs when does the ball rise (body-first = good kinetic chain). Return ONLY valid JSON.`,
-                  },
-                ],
-              },
-            ],
-          }),
+          response,
         };
       },
       { concurrency: 1, retries: 3, minTimeout: 1000, maxTimeout: 12000 }
@@ -200,15 +261,18 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
 
     const [analysisResponse] = await batchProcess(
       [biomechanicsUserContent],
-      async (content) =>
-        openrouter.chat.completions.create({
+      async (content) => {
+        const response = await openrouter.chat.completions.create({
           model: ANALYSIS_MODEL,
           max_tokens: 8192,
           messages: [
             { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },
             { role: "user", content },
           ],
-        }),
+        });
+        recordCost(response);
+        return response;
+      },
       { concurrency: 1, retries: 3, minTimeout: 1000, maxTimeout: 12000 }
     );
 
@@ -244,6 +308,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       analysis.overallScore = Math.round(analysis.overallScore * 0.85 + (rhythm!.rhythmScore as number) * 0.15);
     }
 
+    req.log.info({ model: ANALYSIS_MODEL, providerCostUsd }, "Analysis provider cost");
     res.json({
       analysis,
       rhythm: rhythmReliable ? rhythm : null,
@@ -254,6 +319,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       keyFrameTimestamps: indices.map(i => timestamps[i]),
     });
   } catch (err) {
+    req.log.warn({ model: ANALYSIS_MODEL, providerCostUsd }, "Partial analysis provider cost");
     if (err instanceof FrameSelectionError) {
       res.status(422).json({ error: err.message, code: "FRAME_SELECTION_UNCERTAIN", retryable: true });
       return;

@@ -63,7 +63,7 @@ externalPort = 6800
 
 [userenv.shared]
 EXPO_PUBLIC_LANDING_URL = "https://shotdoctor.replit.app/landing/"
-ANALYSIS_MODEL = "google/gemini-3.8-flash"
+ANALYSIS_MODEL = "google/gemini-2.5-flash"
 
 [nix]
 channel = "stable-25_05"

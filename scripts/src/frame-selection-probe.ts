@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { openrouter, batchProcess } from "../../lib/integrations-openrouter-ai/src/index";
-import { FRAME_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, labeledImages, parseIndices, safeSelectionDiagnostic } from "../../artifacts/api-server/src/lib/frameSelection";
+import { DIP_SELECTION_PROMPT, FRAME_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, labeledImages, parseIndices, safeSelectionDiagnostic } from "../../artifacts/api-server/src/lib/frameSelection";
 import { planFrameTimes } from "../../artifacts/mobile/utils/frameSampling";
 
 const out = "/tmp/frame-selection-124";
@@ -52,7 +52,7 @@ for (const [clipIndex, clip] of clips.entries()) {
     }
   }, { concurrency: 1, retries: 2, minTimeout: 2000, maxTimeout: 15000 });
   if (after && plan.coarse && "raw" in results[0]) {
-    const anchorIndex = parseIndices(results[0].raw, timestamps.length, 1)[0];
+    const anchorIndex = parseIndices(results[0].raw!, timestamps.length, 1)[0];
     const dense = planFrameTimes(duration, timestamps[anchorIndex]);
     timestamps = dense.timestamps;
     frames = timestamps.map((t, i) => {
@@ -71,11 +71,41 @@ for (const [clipIndex, clip] of clips.entries()) {
       ],
     }, { maxRetries: 0, timeout: 90_000 });
     results.push({
-      job: "dense-selection",
+      job: "set-release-selection",
       raw: safeSelectionDiagnostic(response.choices[0]?.message.content ?? ""),
       finish: response.choices[0]?.finish_reason,
       usage: response.usage,
     });
+  }
+  if (after) {
+    const setReleaseResult = plan.coarse ? results.at(-1) : results[0];
+    if (setReleaseResult && "raw" in setReleaseResult) {
+      const [setPointIndex] = parseIndices(setReleaseResult.raw!, timestamps.length, 2);
+      const dipCount = setPointIndex + 1;
+      const response = await openrouter.chat.completions.create({
+        model,
+        max_tokens: 8192,
+        temperature: 0,
+        response_format: { type: "json_object" as const },
+        messages: [
+          { role: "system", content: DIP_SELECTION_PROMPT },
+          {
+            role: "user",
+            content: labeledImages(
+              frames.slice(0, dipCount),
+              timestamps.slice(0, dipCount),
+              "image/jpeg",
+            ),
+          },
+        ],
+      }, { maxRetries: 0, timeout: 90_000 });
+      results.push({
+        job: "dip-selection",
+        raw: safeSelectionDiagnostic(response.choices[0]?.message.content ?? ""),
+        finish: response.choices[0]?.finish_reason,
+        usage: response.usage,
+      });
+    }
   }
   const evidence = { model, clipIndex, duration, fps: meta.streams.find((s: any) => s.codec_type === "video").avg_frame_rate, timestamps, results };
   writeFileSync(`${out}/${after ? "after" : "before"}-${clipIndex}.json`, JSON.stringify(evidence, null, 2));

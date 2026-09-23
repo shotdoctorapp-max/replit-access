@@ -5,14 +5,32 @@ export class FrameSelectionError extends Error {
   }
 }
 
-export const FRAME_SELECTION_PROMPT = `Identify ONE complete basketball shot in the labeled chronological images.
-Dip = lowest ball/body position immediately before upward shooting motion, with deepest knee flexion.
+export const SET_RELEASE_SELECTION_PROMPT = `Identify ONE complete basketball shot in the labeled chronological images.
 Set Point = ball at or above forehead and shooting elbow roughly 90 degrees, before final arm extension.
 Release = LAST frame with fingertip contact with the ball, NOT the detached ball or follow-through.
+To find Release, compare neighboring images: first locate the EARLIEST image where a visible gap separates
+the fingertips and ball, then choose the immediately PRECEDING supplied image where contact is still visible.
+Never return the first detached-ball image itself.
 Select the closest supplied visible frames of the SAME shot. Do not infer phases from percentages of clip duration.
-Return ONLY JSON {"indices":[dipIndex,setPointIndex,releaseIndex]} with exactly three distinct numeric integers,
+Return ONLY JSON {"indices":[setPointIndex,releaseIndex]} with exactly two distinct numeric integers,
 0-based indices matching the labels, in strictly increasing temporal order.
 If any phase is not visible or cannot be distinguished, return {"indices":[]} instead of guessing.`;
+
+export const DIP_SELECTION_PROMPT = `Identify the Dip of the SAME basketball shot in these labeled chronological images.
+Dip is defined ONLY by BALL POSITION: the final frame where the ball is at its lowest visible vertical position
+immediately before it begins sustained upward shooting movement toward the Set Point.
+Compare the CENTER of the ball across neighboring images using the fixed image coordinates:
+lower on screen = closer to the BOTTOM image edge; upward = progressively closer to the TOP image edge.
+Choose the image where the ball center is closest to the bottom edge. If several adjacent images are tied at
+the same lowest height, choose the LAST tied image before the rise. A valid Dip must then be followed by at
+least TWO supplied later frames whose ball centers are progressively closer to the top edge.
+Ignore the player's knees, hips, torso, deepest knee flexion, body depth, and percentages of clip duration.
+Do not select a later pause near the forehead, Set Point, or release.
+Return ONLY JSON {"indices":[dipIndex]} with exactly one numeric integer, using the 0-based image labels.
+If the ball or subsequent upward movement cannot be distinguished, return {"indices":[]} instead of guessing.`;
+
+/** Backward-compatible export for probes that still compare the old combined contract. */
+export const FRAME_SELECTION_PROMPT = SET_RELEASE_SELECTION_PROMPT;
 
 export const LOCATE_SHOT_PROMPT = `These are coarse, explicitly labeled chronological video frames.
 Locate the first complete basketball shot: choose the frame nearest the ball at the forehead or release.
@@ -59,6 +77,18 @@ export function parseIndices(raw: string, count: number, expected = 3): number[]
   return indices;
 }
 
+export function validateSetReleaseIndices(indices: number[]) {
+  if (indices.length !== 2 || indices[0] < 2) {
+    throw new Error("Set Point must leave at least two earlier frames for Dip motion evidence");
+  }
+}
+
+export function validateDipBeforeSetPoint(indices: number[], setPointIndex: number) {
+  if (indices.length !== 1 || indices[0] > setPointIndex - 2) {
+    throw new Error("Dip must be followed by at least two supplied frames before or at Set Point");
+  }
+}
+
 export function labeledImages(frames: string[], timestamps: number[], mimeType: string) {
   return frames.flatMap((b64, index) => [
     { type: "text" as const, text: `IMAGE index=${index}; original video timestamp=${timestamps[index]}ms. The next image has this label.` },
@@ -92,6 +122,8 @@ export async function selectWithCorrection(
   expected: number,
   request: (correction: string | undefined, jsonMode: boolean) => Promise<{ raw: string; finish?: string }>,
   diagnostic: (event: { attempt: number; raw: string; finish?: string; validation?: string }) => void,
+  labels = expected === 3 ? "dip,setPoint,release" : expected === 2 ? "setPoint,release" : "shot",
+  validate?: (indices: number[]) => void,
 ): Promise<number[]> {
   let correction: string | undefined;
   let jsonMode = true;
@@ -107,12 +139,13 @@ export async function selectWithCorrection(
     try {
       if (result.finish !== "stop") throw new Error("Response incomplete or refused");
       const indices = parseIndices(result.raw, count, expected);
+      validate?.(indices);
       diagnostic({ attempt, raw: safeSelectionDiagnostic(result.raw), finish: result.finish });
       return indices;
     } catch (error) {
       const validation = (error as Error).message;
       diagnostic({ attempt, raw: safeSelectionDiagnostic(result.raw), finish: result.finish, validation });
-      correction = `Previous response was invalid: ${validation}. Reinspect the labeled images. Return exactly {"indices":[${expected === 3 ? "dip,setPoint,release" : "shot"}]} with ${expected} increasing integers in [0,${count - 1}]. If the phases are not visible return an empty indices array; never invent phases.`;
+      correction = `Previous response was invalid: ${validation}. Reinspect the labeled images. Return exactly {"indices":[${labels}]} with ${expected} increasing integers in [0,${count - 1}]. If the phases are not visible return an empty indices array; never invent phases.`;
     }
   }
   throw new FrameSelectionError();

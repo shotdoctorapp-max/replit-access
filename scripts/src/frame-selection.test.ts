@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
-import { FrameSelectionError, labeledImages, parseIndices, safeSelectionDiagnostic, selectWithCorrection, providerFailure, rhythmShotContext } from "../../artifacts/api-server/src/lib/frameSelection";
+import { DIP_SELECTION_PROMPT, FrameSelectionError, labeledImages, parseIndices, safeSelectionDiagnostic, selectWithCorrection, providerFailure, rhythmShotContext, validateDipBeforeSetPoint, validateSetReleaseIndices } from "../../artifacts/api-server/src/lib/frameSelection";
 import { RHYTHM_SYSTEM_PROMPT } from "../../artifacts/api-server/src/lib/prompts";
 import { MAX_SELECTION_IMAGES, planFrameTimes, validateFrameMapping } from "../../artifacts/mobile/utils/frameSampling";
 
@@ -71,6 +71,27 @@ test("bounded correction retry returns only validated response", async () => {
   assert.equal(corrections[0], undefined);
   assert.match(corrections[1]!, /Previous response was invalid/);
   assert.equal(logs.length, 2);
+});
+
+test("Dip is ball-position only and requires two later frames of upward-motion evidence", async () => {
+  assert.match(DIP_SELECTION_PROMPT, /defined ONLY by BALL POSITION/);
+  assert.match(DIP_SELECTION_PROMPT, /CENTER of the ball/);
+  assert.match(DIP_SELECTION_PROMPT, /closer to the BOTTOM image edge/);
+  assert.match(DIP_SELECTION_PROMPT, /at\s+least TWO supplied later frames/);
+  assert.match(DIP_SELECTION_PROMPT, /deepest knee flexion/);
+  assert.doesNotThrow(() => validateSetReleaseIndices([3, 4]));
+  assert.throws(() => validateSetReleaseIndices([1, 4]), /two earlier frames/);
+  assert.doesNotThrow(() => validateDipBeforeSetPoint([2], 4));
+  assert.throws(() => validateDipBeforeSetPoint([3], 4), /two supplied frames/);
+
+  const corrections: (string | undefined)[] = [];
+  const dip = await selectWithCorrection(5, 1, async correction => {
+    corrections.push(correction);
+    return { raw: corrections.length === 1 ? '{"indices":[3]}' : '{"indices":[2]}', finish: "stop" };
+  }, () => {}, "dip", indices => validateDipBeforeSetPoint(indices, 4));
+  assert.deepEqual(dip, [2]);
+  assert.match(corrections[1]!, /Dip must be followed/);
+  assert.match(corrections[1]!, /"indices":\[dip\]/);
 });
 
 test("exhaustion and truncation never invent successful indices", async () => {
