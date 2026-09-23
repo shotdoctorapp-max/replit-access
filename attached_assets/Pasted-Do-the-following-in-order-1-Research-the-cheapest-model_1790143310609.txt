@@ -1,0 +1,14 @@
+Do the following, in order:
+1. Research the cheapest model that can actually do the job.
+The job: given ~30-60 labeled frames sampled at 10fps from a slow-mo basketball shot video, return exactly 3 frame indices (dip, set point, release) in strictly increasing order, as structured JSON. This requires solid vision understanding of body/ball position across a sequence — not all cheap models handle multi-image temporal reasoning well.
+Check current pricing (pricing changes often — pull from official pricing pages, not memory) for at least:
+Gemini Flash tier (paid) — likely incumbent since we're already on Google's stack
+Gemma hosted paid options
+GPT-4o-mini / latest OpenAI mini tier
+Claude Haiku tier
+Any vision-capable open model hosted cheaply (e.g., Qwen-VL on a provider like Together/Fireworks)
+Compare cost per analysis, not cost per 1M tokens — estimate our actual usage: [~N frames] images + prompt tokens in, small JSON out. Present a short table: model, cost per analysis, notes on multi-image limits and structured output support.
+2. Recommend and justify. Pick the cheapest model that (a) accepts 30+ images per request or a cost-effective sampling of them, (b) supports structured/JSON output, and (c) has rate limits suitable for multiple concurrent users. If two are close in price, prefer the one requiring the least code change from our current Gemma integration.
+3. Implement it. Wire up the chosen model behind the existing provider/config layer so the model can be swapped via environment variable without code changes. Keep the strict validation and corrective-retry logic — it's model-agnostic. Move the API key to a server-side env var; it must never ship in the mobile app. Handle HTTP 429/quota errors with a distinct "service busy, try again" user-facing message.
+4. Verify with real accuracy numbers — this is what unblocks Task #124. Run both test clips through the new model. Ground truth: clip 1 dip ≈ frame [X], set point ≈ frame [Y], release ≈ frame [Z]; clip 2 dip ≈ [X2], set point ≈ [Y2], release ≈ [Z2]. Report the selected frames vs ground truth and confirm they're within ±2 frames. Show the raw model responses in the log. Do not mark Task #124 complete until this verification passes on the paid model.
+Budget constraint: prefer a solution under [$X] per 1,000 analyses. If nothing meets both the accuracy and budget bar, stop and report the tradeoffs instead of shipping a compromise.
