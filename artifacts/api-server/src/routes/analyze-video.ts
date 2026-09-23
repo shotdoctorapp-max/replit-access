@@ -6,7 +6,7 @@ import { analysisRateLimit } from "../middlewares/analysisRateLimit";
 import { FRAME_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, FrameSelectionError, labeledImages, selectWithCorrection, rhythmShotContext, providerFailure } from "../lib/frameSelection";
 
 const router = Router();
-const ANALYSIS_MODEL = "google/gemma-4-31b-it:free";
+const ANALYSIS_MODEL = process.env.ANALYSIS_MODEL ?? "google/gemini-3.8-flash";
 
 router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res) => {
   try {

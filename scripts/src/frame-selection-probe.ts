@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { openrouter, batchProcess } from "../../lib/integrations-openrouter-ai/src/index";
-import { FRAME_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, labeledImages, safeSelectionDiagnostic } from "../../artifacts/api-server/src/lib/frameSelection";
+import { FRAME_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, labeledImages, parseIndices, safeSelectionDiagnostic } from "../../artifacts/api-server/src/lib/frameSelection";
 import { planFrameTimes } from "../../artifacts/mobile/utils/frameSampling";
 
 const out = "/tmp/frame-selection-124";
@@ -11,6 +11,7 @@ const prompt = route.match(/const BEST_FRAME_PROMPT = `([\s\S]*?)`;/)?.[1];
 const oldPrompts = execFileSync("git", ["show", "49bb3ae:artifacts/api-server/src/lib/prompts.ts"], { encoding: "utf8" });
 const RHYTHM_SYSTEM_PROMPT = oldPrompts.match(/export const RHYTHM_SYSTEM_PROMPT = `([\s\S]*?)`;/)![1];
 const after = process.argv.includes("--after");
+const model = process.env.ANALYSIS_MODEL ?? "google/gemma-4-31b-it:free";
 const clips = [
   "attached_assets/WhatsApp_Video_2026-05-01_at_9.04.30_PM_1777640689387.mp4",
   "attached_assets/WhatsApp_Video_2026-05-01_at_11.29.09_PM_1777649371569.mp4",
@@ -19,9 +20,9 @@ for (const [clipIndex, clip] of clips.entries()) {
   const meta = JSON.parse(execFileSync("ffprobe", ["-v", "quiet", "-show_streams", "-show_format", "-of", "json", clip], { encoding: "utf8" }));
   const duration = Number(meta.format.duration) * 1000;
   const plan = planFrameTimes(duration);
-  const timestamps = after ? plan.timestamps :
+  let timestamps = after ? plan.timestamps :
     Array.from({ length: 12 }, (_, i) => Math.round(i * Math.max(150, duration / 11)));
-  const frames = timestamps.map((t, i) => {
+  let frames = timestamps.map((t, i) => {
     const path = `${out}/${clipIndex}-${i}.jpg`;
     execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", String(Math.min(t, duration - 200) / 1000), "-i", clip, "-frames:v", "1", "-q:v", "3", path]);
     return readFileSync(path).toString("base64");
@@ -29,7 +30,7 @@ for (const [clipIndex, clip] of clips.entries()) {
   const results = await batchProcess(after ? ["json-format-probe"] : ["selection", "rhythm"], async job => {
     try {
       const response = await openrouter.chat.completions.create({
-        model: "google/gemma-4-31b-it:free",
+        model,
         max_tokens: after ? 8192 : job === "selection" ? 128 : 512, // old limits ONLY for reproduction
         ...(after ? { temperature: 0, response_format: { type: "json_object" as const } } : {}),
         messages: [
@@ -50,7 +51,33 @@ for (const [clipIndex, clip] of clips.entries()) {
       return { job, error: { status: e.status, message: String(e.message).replace(/https?:\/\/\S+/g, "[url]").slice(0, 600) } };
     }
   }, { concurrency: 1, retries: 2, minTimeout: 2000, maxTimeout: 15000 });
-  const evidence = { clipIndex, duration, fps: meta.streams.find((s: any) => s.codec_type === "video").avg_frame_rate, timestamps, results };
+  if (after && plan.coarse && "raw" in results[0]) {
+    const anchorIndex = parseIndices(results[0].raw, timestamps.length, 1)[0];
+    const dense = planFrameTimes(duration, timestamps[anchorIndex]);
+    timestamps = dense.timestamps;
+    frames = timestamps.map((t, i) => {
+      const path = `${out}/${clipIndex}-dense-${i}.jpg`;
+      execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", String(Math.min(t, duration - 200) / 1000), "-i", clip, "-frames:v", "1", "-q:v", "3", path]);
+      return readFileSync(path).toString("base64");
+    });
+    const response = await openrouter.chat.completions.create({
+      model,
+      max_tokens: 8192,
+      temperature: 0,
+      response_format: { type: "json_object" as const },
+      messages: [
+        { role: "system", content: FRAME_SELECTION_PROMPT },
+        { role: "user", content: labeledImages(frames, timestamps, "image/jpeg") },
+      ],
+    }, { maxRetries: 0, timeout: 90_000 });
+    results.push({
+      job: "dense-selection",
+      raw: safeSelectionDiagnostic(response.choices[0]?.message.content ?? ""),
+      finish: response.choices[0]?.finish_reason,
+      usage: response.usage,
+    });
+  }
+  const evidence = { model, clipIndex, duration, fps: meta.streams.find((s: any) => s.codec_type === "video").avg_frame_rate, timestamps, results };
   writeFileSync(`${out}/${after ? "after" : "before"}-${clipIndex}.json`, JSON.stringify(evidence, null, 2));
   console.log(JSON.stringify(evidence));
 }

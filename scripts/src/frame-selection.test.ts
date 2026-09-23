@@ -43,6 +43,7 @@ test("daily quota, transient rate limit and uncertain clip have distinct safe me
   const temporary = providerFailure({ status: 429, message: "Rate limit exceeded per minute" });
   assert.equal(temporary.body.code, "PROVIDER_RATE_LIMIT");
   assert.doesNotMatch(temporary.body.error, /daily/);
+  assert.match(temporary.body.error, /service is busy/);
   assert.equal(providerFailure({ status: 400, message: "invalid image" }).status, 502);
   assert.match(new FrameSelectionError().message, /short, clear clip/);
 });

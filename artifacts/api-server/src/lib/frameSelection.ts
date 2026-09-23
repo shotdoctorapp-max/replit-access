@@ -31,9 +31,9 @@ export function providerFailure(error: unknown) {
     status: e?.status === 429 ? 429 : 502,
     body: {
       error: dailyQuota
-        ? "The free analysis provider's daily quota is exhausted. This is not a problem with your clip. Try again after the provider's quota resets."
+        ? "The analysis service's daily quota is exhausted. This is not a problem with your clip. Try again after the quota resets."
         : e?.status === 429
-          ? "The free analysis provider is temporarily rate-limited. This is not a problem with your clip. Please try again later."
+          ? "The analysis service is busy right now. This is not a problem with your clip. Please try again shortly."
           : "Video analysis failed. Please try again.",
       code: dailyQuota ? "PROVIDER_DAILY_QUOTA" : e?.status === 429 ? "PROVIDER_RATE_LIMIT" : "PROVIDER_ERROR",
       retryable: true,
