@@ -6,11 +6,24 @@ export class FrameSelectionError extends Error {
 }
 
 export const SET_RELEASE_SELECTION_PROMPT = `Identify ONE complete basketball shot in the labeled chronological images.
-Set Point = ball at or above forehead and shooting elbow roughly 90 degrees, before final arm extension.
-Release = LAST frame with fingertip contact with the ball, NOT the detached ball or follow-through.
-To find Release, compare neighboring images: first locate the EARLIEST image where a visible gap separates
-the fingertips and ball, then choose the immediately PRECEDING supplied image where contact is still visible.
-Never return the first detached-ball image itself.
+Set Point = the LAST clearly loaded frame BEFORE sustained shooting-arm extension begins:
+- ball at or near forehead/temple height;
+- INSIDE angle at the shooting elbow is closest to a right angle (roughly 90 degrees, allowing for perspective);
+- upper arm and forearm form a clear bent "L" shape, with the forearm rising from elbow toward the ball;
+- forearm and upper arm still visibly loaded, NOT already midway through straightening.
+Find the first neighboring frame where the shooting elbow clearly opens and the hand/ball rise through extension,
+then choose the immediately PRECEDING supplied frame that best satisfies the loaded roughly-90-degree position.
+Do NOT call an elbow angle above roughly 120 degrees "90 degrees." Reject a frame where the upper arm and forearm
+already form a mostly straight line, even if the ball is still near the head.
+
+Release = the EARLIEST clear POST-RELEASE frame after the ball has left the shooting fingertips:
+- a visible gap separates the ball from every shooting fingertip;
+- shooting arm is extended;
+- shooting wrist has snapped forward/down into follow-through.
+Compare neighboring images. Reject any frame where the ball still touches or overlaps the fingertips, the wrist
+is still loaded/upright, or the arm is only midway through extension. Do not wait for a later full follow-through
+when an earlier supplied frame already shows separation, extension, and wrist snap.
+
 Select the closest supplied visible frames of the SAME shot. Do not infer phases from percentages of clip duration.
 Return ONLY JSON {"indices":[setPointIndex,releaseIndex]} with exactly two distinct numeric integers,
 0-based indices matching the labels, in strictly increasing temporal order.
@@ -39,7 +52,7 @@ Return ONLY JSON {"indices":[shotIndex]}, one numeric integer matching a supplie
 If no shot is visible, return {"indices":[]}.`;
 
 export function rhythmShotContext(indices: number[], timestamps: number[]) {
-  return `Analyze ONLY the selected same shot: Dip index=${indices[0]} @ ${timestamps[indices[0]]}ms; Set Point index=${indices[1]} @ ${timestamps[indices[1]]}ms; Release index=${indices[2]} @ ${timestamps[indices[2]]}ms (last fingertip contact). Return these phase indices unchanged. Use preceding frames only to establish the rise leading into THIS shot; ignore any other shot. If rise timing cannot be identified, use -1 rather than choosing another shot.`;
+  return `Analyze ONLY the selected same shot: Dip index=${indices[0]} @ ${timestamps[indices[0]]}ms; Set Point index=${indices[1]} @ ${timestamps[indices[1]]}ms (loaded roughly-90-degree elbow before extension); Release index=${indices[2]} @ ${timestamps[indices[2]]}ms (earliest clear ball separation with extended arm and snapped wrist). Return these phase indices unchanged. Use preceding frames only to establish the rise leading into THIS shot; ignore any other shot. If rise timing cannot be identified, use -1 rather than choosing another shot.`;
 }
 
 export function providerFailure(error: unknown) {

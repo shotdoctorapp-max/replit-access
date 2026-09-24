@@ -211,8 +211,8 @@ Examine the motion sequence for these specific timing markers:
 1. **dipFrame**: Lowest ball/body position before upward shooting motion, with deepest knee flexion.
 2. **bodyRiseFrame**: When do the legs/hips begin extending UPWARD (dip ends, body drives up)?
 3. **ballRiseFrame**: When does the ball begin its upward movement toward the set point or release?
-4. **setPointFrame**: Ball at or above forehead height, shooting elbow roughly 90 degrees, before final arm extension.
-5. **armExtendFrame**: This legacy field name means RELEASE: the LAST frame where fingertips still contact the ball. It is NOT the start of arm extension, a detached ball, or follow-through.
+4. **setPointFrame**: Last loaded frame before sustained arm extension: ball near forehead/temple height and shooting elbow roughly 90 degrees, not already midway through straightening.
+5. **armExtendFrame**: This legacy field name means RELEASE: the earliest clear post-release frame with a visible ball-to-fingertip gap, extended shooting arm, and wrist snapped forward/down. It is NOT extension onset or a frame where the ball still touches the hand.
 
 Analyze only the SAME shot identified by the supplied selected Dip, Set Point and Release indices.
 Use those supplied phase indices; do not choose phases from another shot. Infer bodyRiseFrame and ballRiseFrame
@@ -232,8 +232,8 @@ Respond ONLY with valid JSON:
   "dipFrame": <0-based frame index of maximum dip/bend, or -1 if unclear>,
   "ballRiseFrame": <0-based frame index where ball begins upward movement, or -1 if unclear>,
   "bodyRiseFrame": <0-based frame index where legs/hips begin extending upward, or -1 if unclear>,
-  "setPointFrame": <supplied 0-based Set Point index: ball at/above forehead, elbow roughly 90 degrees before final extension>,
-  "armExtendFrame": <supplied 0-based Release index: LAST fingertip contact, NOT extension onset or detached ball>,
+  "setPointFrame": <supplied 0-based Set Point index: last loaded frame near forehead/temple with elbow roughly 90 degrees before extension>,
+  "armExtendFrame": <supplied 0-based Release index: earliest clear ball separation with extended arm and snapped wrist>,
   "rhythmScore": <0-100 integer — 100 = perfectly synchronized fluid kinetic chain, 0 = ball rising while body still squatting (completely disconnected)>,
   "observations": [
     "<specific timing observation about what you see across the frames — reference frame numbers>",

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
-import { DIP_SELECTION_PROMPT, FrameSelectionError, labeledImages, parseIndices, safeSelectionDiagnostic, selectWithCorrection, providerFailure, rhythmShotContext, validateDipBeforeSetPoint, validateSetReleaseIndices } from "../../artifacts/api-server/src/lib/frameSelection";
+import { DIP_SELECTION_PROMPT, SET_RELEASE_SELECTION_PROMPT, FrameSelectionError, labeledImages, parseIndices, safeSelectionDiagnostic, selectWithCorrection, providerFailure, rhythmShotContext, validateDipBeforeSetPoint, validateSetReleaseIndices } from "../../artifacts/api-server/src/lib/frameSelection";
 import { RHYTHM_SYSTEM_PROMPT } from "../../artifacts/api-server/src/lib/prompts";
 import { MAX_SELECTION_IMAGES, planFrameTimes, validateFrameMapping } from "../../artifacts/mobile/utils/frameSampling";
 
@@ -23,14 +23,28 @@ test("historical heuristic demonstrably replaces late valid dip, accepts fractio
   assert.throws(() => parseIndices('{"indices":[7,11,11]}', 12));
 });
 
-test("rhythm uses selected same-shot indices and release means last contact, not extension onset", () => {
+test("Set Point is loaded before extension and Release requires separation plus wrist snap", () => {
+  assert.match(SET_RELEASE_SELECTION_PROMPT, /LAST clearly loaded frame BEFORE sustained shooting-arm extension/);
+  assert.match(SET_RELEASE_SELECTION_PROMPT, /INSIDE angle at the shooting elbow/);
+  assert.match(SET_RELEASE_SELECTION_PROMPT, /bent "L" shape/);
+  assert.match(SET_RELEASE_SELECTION_PROMPT, /above roughly 120 degrees/);
+  assert.match(SET_RELEASE_SELECTION_PROMPT, /mostly straight line/);
+  assert.match(SET_RELEASE_SELECTION_PROMPT, /NOT already midway through straightening/);
+  assert.match(SET_RELEASE_SELECTION_PROMPT, /EARLIEST clear POST-RELEASE frame/);
+  assert.match(SET_RELEASE_SELECTION_PROMPT, /visible gap separates the ball from every shooting fingertip/);
+  assert.match(SET_RELEASE_SELECTION_PROMPT, /wrist has snapped forward\/down/);
+  assert.match(SET_RELEASE_SELECTION_PROMPT, /Reject any frame where the ball still touches/);
+  assert.doesNotMatch(SET_RELEASE_SELECTION_PROMPT, /LAST frame with fingertip contact/);
+
   const context = rhythmShotContext([1, 3, 4], [5000, 5100, 5200, 5300, 5400]);
   assert.match(context, /Dip index=1 @ 5100ms/);
   assert.match(context, /Set Point index=3 @ 5300ms/);
   assert.match(context, /Release index=4 @ 5400ms/);
+  assert.match(context, /earliest clear ball separation/);
   assert.match(context, /ignore any other shot/);
-  assert.match(RHYTHM_SYSTEM_PROMPT, /LAST frame where fingertips still contact/);
-  assert.doesNotMatch(RHYTHM_SYSTEM_PROMPT, /When does the shooting arm begin its final extension/);
+  assert.match(RHYTHM_SYSTEM_PROMPT, /earliest clear post-release frame/);
+  assert.match(RHYTHM_SYSTEM_PROMPT, /wrist snapped forward\/down/);
+  assert.doesNotMatch(RHYTHM_SYSTEM_PROMPT, /LAST frame where fingertips still contact/);
 });
 
 test("daily quota, transient rate limit and uncertain clip have distinct safe messages", () => {
