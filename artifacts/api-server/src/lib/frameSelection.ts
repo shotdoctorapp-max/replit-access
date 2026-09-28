@@ -29,6 +29,18 @@ Return ONLY JSON {"indices":[setPointIndex,releaseIndex]} with exactly two disti
 0-based indices matching the labels, in strictly increasing temporal order.
 If any phase is not visible or cannot be distinguished, return {"indices":[]} instead of guessing.`;
 
+export const VERIFY_RELEASE_PROMPT = `Examine these consecutive images from AFTER the Set Point of ONE basketball shot.
+Independently find the EARLIEST supplied image that clearly shows ALL of the following at once:
+1. Visible empty space between the ball and EVERY fingertip of the SHOOTING hand. The ball must not touch or overlap the shooting hand, even at its edge.
+2. The shooting arm is extended, not merely beginning to straighten.
+3. The shooting wrist is snapped forward/down into follow-through, not upright or still pushing the ball.
+Inspect the ball-hand boundary closely in each neighboring image. A ball above the hand is not enough if any fingertip still touches it.
+The ball must be moving AWAY from the shooting hand during the first release, not descending back toward the hands.
+Reject a late frame after the shooting arm starts retracting or a ball rebounds/returns, even if the ball is separate then.
+Do not assume an image is post-release merely because it follows Set Point. Blurry, obscured or ambiguous contact does NOT count as clear separation.
+If no supplied image clearly meets all three cues, return {"indices":[]} rather than guessing or selecting the last frame.
+Return ONLY JSON {"indices":[index]} with exactly one 0-based index matching the supplied image labels, or {"indices":[]} when uncertain.`;
+
 export const DIP_SELECTION_PROMPT = `Identify the Dip of the SAME basketball shot in these labeled chronological images.
 Dip is defined ONLY by BALL POSITION: the final frame where the ball is at its lowest visible vertical position
 immediately before it begins sustained upward shooting movement toward the Set Point.
@@ -107,6 +119,31 @@ export function labeledImages(frames: string[], timestamps: number[], mimeType: 
     { type: "text" as const, text: `IMAGE index=${index}; original video timestamp=${timestamps[index]}ms. The next image has this label.` },
     { type: "image_url" as const, image_url: { url: `data:${mimeType};base64,${b64}`, detail: "high" as const } },
   ]);
+}
+
+export async function verifyRelease(
+  frames: string[],
+  timestamps: number[],
+  mimeType: string,
+  setPointIdx: number,
+  proposedReleaseIdx: number,
+  request: (messages: ReturnType<typeof labeledImages>, correction: string | undefined, jsonMode: boolean) =>
+    Promise<{ raw: string; finish?: string }>,
+  diagnostic: (event: { attempt: number; raw: string; finish?: string; validation?: string }) => void,
+): Promise<number> {
+  const firstAfterSetPoint = setPointIdx + 1;
+  // Examine the first release transition, not a later rebound/return in the
+  // same clip. Allow four later 100ms samples to correct an early contact pick.
+  const end = Math.min(frames.length, proposedReleaseIdx + 5);
+  const releaseFrames = frames.slice(firstAfterSetPoint, end);
+  if (!releaseFrames.length || proposedReleaseIdx <= setPointIdx ||
+      proposedReleaseIdx >= frames.length || timestamps.length !== frames.length) throw new FrameSelectionError();
+  const releaseMessages = labeledImages(releaseFrames, timestamps.slice(firstAfterSetPoint, end), mimeType);
+  const [offset] = await selectWithCorrection(releaseFrames.length, 1,
+    (correction, jsonMode) => request(releaseMessages, correction, jsonMode),
+    diagnostic,
+    "release");
+  return firstAfterSetPoint + offset;
 }
 
 export function unsupportedJsonFormat(error: unknown): boolean {
