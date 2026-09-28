@@ -19,28 +19,36 @@ function FilmingAnglePreview({ color, bgColor }: { color: string; bgColor: strin
   const dotAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
+    const armLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(armAnim, { toValue: 1, duration: 600, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+        Animated.timing(armAnim, { toValue: 1, duration: 600, easing: Easing.out(Easing.quad), useNativeDriver: true, isInteraction: false }),
         Animated.delay(400),
-        Animated.timing(armAnim, { toValue: 0, duration: 500, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        Animated.timing(armAnim, { toValue: 0, duration: 500, easing: Easing.in(Easing.quad), useNativeDriver: true, isInteraction: false }),
         Animated.delay(600),
       ])
-    ).start();
+    );
 
-    Animated.loop(
+    const pulseLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true, isInteraction: false }),
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 800, useNativeDriver: true, isInteraction: false }),
       ])
-    ).start();
+    );
 
-    Animated.loop(
+    const dotLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(dotAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(dotAnim, { toValue: 0, duration: 700, useNativeDriver: true }),
+        Animated.timing(dotAnim, { toValue: 1, duration: 700, useNativeDriver: true, isInteraction: false }),
+        Animated.timing(dotAnim, { toValue: 0, duration: 700, useNativeDriver: true, isInteraction: false }),
       ])
-    ).start();
+    );
+    armLoop.start();
+    pulseLoop.start();
+    dotLoop.start();
+    return () => {
+      armLoop.stop();
+      pulseLoop.stop();
+      dotLoop.stop();
+    };
   }, []);
 
   const armRotate = armAnim.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "-38deg"] });
@@ -119,6 +127,7 @@ interface Props {
   visible: boolean;
   onConfirm: () => void;
   onDismiss: () => void;
+  onClosed: () => void;
 }
 
 function SlowMoIcon({ color }: { color: string }) {
@@ -169,16 +178,20 @@ function DistanceIcon({ color }: { color: string }) {
   );
 }
 
-export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
+export function FilmingTipsSheet({ visible, onConfirm, onDismiss, onClosed }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [dontShow, setDontShow] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const confirmingRef = useRef(false);
   const slideAnim = useRef(new Animated.Value(400)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       setDontShow(false);
+      confirmingRef.current = false;
+      setConfirming(false);
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 0,
@@ -210,10 +223,21 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
   }, [visible]);
 
   const handleConfirm = async () => {
-    if (dontShow) {
-      await AsyncStorage.setItem(DONT_SHOW_KEY, "true");
+    if (confirmingRef.current) return;
+    confirmingRef.current = true;
+    setConfirming(true);
+    try {
+      if (dontShow) {
+        await AsyncStorage.setItem(DONT_SHOW_KEY, "true");
+      }
+    } catch (error) {
+      console.warn("Could not save filming tips preference:", error);
     }
     onConfirm();
+  };
+
+  const handleDismiss = () => {
+    if (!confirmingRef.current) onDismiss();
   };
 
   const accentColor = colors.primary;
@@ -224,13 +248,14 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
       transparent
       animationType="none"
       statusBarTranslucent
-      onRequestClose={onDismiss}
+      onRequestClose={handleDismiss}
+      onDismiss={onClosed}
     >
       <Animated.View
         style={[styles.backdrop, { opacity: backdropAnim }]}
         pointerEvents="none"
       />
-      <Pressable style={styles.backdropPress} onPress={onDismiss} />
+      <Pressable style={styles.backdropPress} onPress={handleDismiss} />
 
       <Animated.View
         style={[
@@ -332,6 +357,7 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss }: Props) {
             },
           ]}
           onPress={handleConfirm}
+          disabled={confirming}
         >
           <Feather name="upload" size={18} color="#000" />
           <Text style={[styles.ctaText, { color: colors.primaryForeground }]}>

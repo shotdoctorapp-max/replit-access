@@ -2,3 +2,4 @@
 - [EAS async-storage codegen fix](eas-async-storage-codegen.md) — OBSOLETE deletion hack (broke Xcode compile, removed Aug 2026); see eas-pnpm-lessons.md lesson 11
 - [Expo web Clerk context](expo-web-clerk-context.md) — Expo’s Clerk bridge needs a web-only browser provider and unified hooks for programmatic preview sessions.
 - [Frame accuracy evidence](frame-accuracy-evidence.md) — source-frame accuracy and requested thumbnail/sample positions require different verification.
+- [React Native modal dismissal](react-native-modal-dismissal.md) — Modal.onDismiss is iOS-only in RN 0.81; Android needs a separate post-close handoff before native dialogs.

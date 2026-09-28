@@ -117,6 +117,7 @@ export default function HomeScreen() {
     total: number;
   } | null>(null);
   const [showTipsSheet, setShowTipsSheet] = useState(false);
+  const pendingUploadFromTips = useRef(false);
 
   const progressAnim = useRef(new RNAnimated.Value(0)).current;
   const cardOpacity = useRef(new RNAnimated.Value(0)).current;
@@ -362,6 +363,27 @@ export default function HomeScreen() {
       );
     }
   };
+
+  const finishTipsUpload = () => {
+    if (!pendingUploadFromTips.current) return;
+    pendingUploadFromTips.current = false;
+    showUploadOptions();
+  };
+
+  // React Native only fires Modal.onDismiss on iOS. Android's animationType is
+  // "none"; wait until the hidden modal has been committed off screen before
+  // presenting its native upload dialog.
+  React.useEffect(() => {
+    if (Platform.OS !== "android" || showTipsSheet || !pendingUploadFromTips.current) return;
+    let nextFrame: number | undefined;
+    const frame = requestAnimationFrame(() => {
+      nextFrame = requestAnimationFrame(finishTipsUpload);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (nextFrame !== undefined) cancelAnimationFrame(nextFrame);
+    };
+  }, [showTipsSheet]);
 
   const analyzeVideo = async (videoUri: string, durationMs?: number) => {
     const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
@@ -929,10 +951,15 @@ export default function HomeScreen() {
     <FilmingTipsSheet
       visible={showTipsSheet}
       onConfirm={() => {
+        if (pendingUploadFromTips.current) return;
+        pendingUploadFromTips.current = true;
         setShowTipsSheet(false);
-        showUploadOptions();
       }}
-      onDismiss={() => setShowTipsSheet(false)}
+      onDismiss={() => {
+        pendingUploadFromTips.current = false;
+        setShowTipsSheet(false);
+      }}
+      onClosed={finishTipsUpload}
     />
     </View>
   );
