@@ -4,7 +4,6 @@ import { openrouter } from "../../lib/integrations-openrouter-ai/src/index";
 import {
   FrameSelectionError,
   SET_RELEASE_SELECTION_PROMPT,
-  VERIFY_RELEASE_PROMPT,
   labeledImages,
   selectWithCorrection,
   validateSetReleaseIndices,
@@ -49,8 +48,8 @@ for (const clip of clips) {
     try {
       const release = await verifyRelease(frames.slice(0, 8), timestamps.slice(0, 8),
         "image/jpeg", 5, 7,
-        (images, correction, jsonMode) => request(VERIFY_RELEASE_PROMPT, images, correction, jsonMode),
-        event => console.log(JSON.stringify({ clip: clip.path, phase: "contact-only", ...event })));
+        (images, correction, jsonMode, prompt) => request(prompt, images, correction, jsonMode),
+        event => console.log(JSON.stringify({ clip: clip.path, context: "contact-only", ...event })));
       throw new Error(`Contact-only clip incorrectly selected Release at sample ${release}`);
     } catch (error) {
       if (!(error instanceof FrameSelectionError)) throw error;
@@ -66,8 +65,8 @@ for (const clip of clips) {
       event => console.log(JSON.stringify({ clip: clip.path, phase: "initial", ...event })),
       "setPoint,release", validateSetReleaseIndices);
     const release = await verifyRelease(frames, timestamps, "image/jpeg", setPoint, proposedRelease,
-      (images, correction, jsonMode) => request(VERIFY_RELEASE_PROMPT, images, correction, jsonMode),
-      event => console.log(JSON.stringify({ clip: clip.path, phase: "verified", ...event })));
+      (images, correction, jsonMode, prompt) => request(prompt, images, correction, jsonMode),
+      event => console.log(JSON.stringify({ clip: clip.path, context: "verified", ...event })));
     console.log(JSON.stringify({
       clip: clip.path, model, sampleCount: frames.length,
       selectedSampleIndices: { setPoint, proposedRelease, release },

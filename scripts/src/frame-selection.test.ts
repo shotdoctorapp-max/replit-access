@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
-import { DIP_SELECTION_PROMPT, SET_RELEASE_SELECTION_PROMPT, VERIFY_RELEASE_PROMPT, FrameSelectionError, labeledImages, parseIndices, safeSelectionDiagnostic, selectWithCorrection, providerFailure, rhythmShotContext, validateDipBeforeSetPoint, validateSetReleaseIndices, verifyRelease } from "../../artifacts/api-server/src/lib/frameSelection";
+import { DIP_SELECTION_PROMPT, SET_RELEASE_SELECTION_PROMPT, VERIFY_RELEASE_PROMPT, confirmReleasePrompt, FrameSelectionError, labeledImages, parseIndices, safeSelectionDiagnostic, selectWithCorrection, providerFailure, rhythmShotContext, validateDipBeforeSetPoint, validateSetReleaseIndices, verifyRelease } from "../../artifacts/api-server/src/lib/frameSelection";
 import { RHYTHM_SYSTEM_PROMPT } from "../../artifacts/api-server/src/lib/prompts";
 import { MAX_SELECTION_IMAGES, planFrameTimes, validateFrameMapping } from "../../artifacts/mobile/utils/frameSampling";
 
@@ -41,6 +41,9 @@ test("Set Point is loaded before extension and Release requires separation plus 
   assert.match(VERIFY_RELEASE_PROMPT, /Blurry, obscured or ambiguous contact does NOT count/);
   assert.match(VERIFY_RELEASE_PROMPT, /rebound/);
   assert.match(VERIFY_RELEASE_PROMPT, /return \{"indices":\[\]\}/);
+  assert.match(confirmReleasePrompt(2), /image index=2/);
+  assert.match(confirmReleasePrompt(2), /EVERY shooting fingertip/);
+  assert.match(confirmReleasePrompt(2), /later returning ball/);
 
   const context = rhythmShotContext([1, 3, 4], [5000, 5100, 5200, 5300, 5400]);
   assert.match(context, /Dip index=1 @ 5100ms/);
@@ -56,14 +59,21 @@ test("Set Point is loaded before extension and Release requires separation plus 
 test("independent Release check replaces contact with earliest clear later sample", async () => {
   const times = Array.from({ length: 9 }, (_, i) => 3000 + i * 100);
   const labels: string[] = [];
+  const phases: string[] = [];
   const release = await verifyRelease(times.map(String), times, "image/jpeg", 3, 5,
-    async messages => {
-      labels.push(...messages.filter(m => m.type === "text").map(m => m.text));
+    async (messages, _correction, _jsonMode, prompt) => {
+      if (prompt === VERIFY_RELEASE_PROMPT) {
+        labels.push(...messages.filter(m => m.type === "text").map(m => m.text));
       // Initial selector called frame 5 Release, but frame 5 still touches
       // the ball; the earliest visibly separated, snapped frame is frame 7.
-      return { raw: '{"indices":[3]}', finish: "stop" };
-    }, () => {});
+        return { raw: '{"indices":[3]}', finish: "stop" };
+      }
+      assert.match(prompt, /image index=2/);
+      assert.equal(messages.filter(m => m.type === "image_url").length, 4);
+      return { raw: '{"indices":[2]}', finish: "stop" };
+    }, event => phases.push(event.phase));
   assert.equal(release, 7);
+  assert.deepEqual(phases, ["sequence", "candidate"]);
   assert.equal(labels.length, 5);
   assert.match(labels[0], /index=0; original video timestamp=3400ms/);
   assert.match(labels[3], /index=3; original video timestamp=3700ms/);
@@ -71,8 +81,39 @@ test("independent Release check replaces contact with earliest clear later sampl
 
 test("Release stays earlier when the independent check finds an earlier clear sample", async () => {
   const release = await verifyRelease(["0", "1", "2", "3", "4", "5"], [0, 100, 200, 300, 400, 500], "image/jpeg", 2, 5,
-    async () => ({ raw: '{"indices":[0]}', finish: "stop" }), () => {});
+    async (_messages, _correction, _jsonMode, prompt) =>
+      ({ raw: prompt === VERIFY_RELEASE_PROMPT ? '{"indices":[0]}' : '{"indices":[1]}', finish: "stop" }), () => {});
   assert.equal(release, 3);
+});
+
+test("contact or ambiguous candidate is never accepted after sequence proposal", async () => {
+  const frames = ["0", "1", "2", "3", "4", "5", "6"];
+  const times = frames.map((_, i) => i * 100);
+  let candidateChecks = 0;
+  await assert.rejects(
+    verifyRelease(frames, times, "image/jpeg", 2, 4,
+      async (_images, _correction, _jsonMode, prompt) => {
+        if (prompt === VERIFY_RELEASE_PROMPT) return { raw: '{"indices":[2]}', finish: "stop" };
+        candidateChecks++;
+        return { raw: '{"indices":[]}', finish: "stop" };
+      }, () => {}),
+    FrameSelectionError,
+  );
+  assert.equal(candidateChecks, 1);
+  let wrongCandidateChecks = 0;
+  await assert.rejects(
+    verifyRelease(frames, times, "image/jpeg", 2, 4,
+      async (_images, _correction, _jsonMode, prompt) => {
+        if (prompt === VERIFY_RELEASE_PROMPT) return { raw: '{"indices":[2]}', finish: "stop" };
+        wrongCandidateChecks++;
+        // An earlier valid image is a terminal objection, not an invitation
+        // to ask again until the model agrees with the proposed frame.
+        return { raw: wrongCandidateChecks === 1 ? '{"indices":[0]}' : '{"indices":[1]}', finish: "stop" };
+      },
+      () => {}),
+    FrameSelectionError,
+  );
+  assert.equal(wrongCandidateChecks, 1);
 });
 
 test("no clearly separated Release fails instead of labeling a contact sample", async () => {
@@ -82,7 +123,7 @@ test("no clearly separated Release fails instead of labeling a contact sample", 
       async () => { attempts++; return { raw: '{"indices":[]}', finish: "stop" }; }, () => {}),
     FrameSelectionError,
   );
-  assert.equal(attempts, 3);
+  assert.equal(attempts, 1);
 });
 
 test("Release verification excludes late return frames beyond the first release transition", async () => {

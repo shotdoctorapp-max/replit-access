@@ -3,7 +3,7 @@ import { requireAuth } from "@clerk/express";
 import { batchProcess, openrouter } from "@workspace/integrations-openrouter-ai";
 import { BIOMECHANICS_SYSTEM_PROMPT, RHYTHM_SYSTEM_PROMPT } from "../lib/prompts";
 import { analysisRateLimit } from "../middlewares/analysisRateLimit";
-import { DIP_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, SET_RELEASE_SELECTION_PROMPT, VERIFY_RELEASE_PROMPT, FrameSelectionError, labeledImages, selectWithCorrection, rhythmShotContext, providerFailure, validateDipBeforeSetPoint, validateSetReleaseIndices, verifyRelease } from "../lib/frameSelection";
+import { DIP_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, SET_RELEASE_SELECTION_PROMPT, FrameSelectionError, labeledImages, selectWithCorrection, rhythmShotContext, providerFailure, validateDipBeforeSetPoint, validateSetReleaseIndices, verifyRelease } from "../lib/frameSelection";
 
 const router = Router();
 const ANALYSIS_MODEL = process.env.ANALYSIS_MODEL ?? "google/gemini-2.5-flash";
@@ -101,14 +101,14 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       // The first pass only proposes Release. Independently review the actual
       // supplied samples after Set Point; syntactically valid contact is not Release.
       const releaseIdx = await verifyRelease(frames, timestamps, mimeType, setPointIdx, proposedReleaseIdx,
-        async (releaseMessages, correction, jsonMode) => {
+        async (releaseMessages, correction, jsonMode, prompt) => {
           const [response] = await batchProcess([0], () => openrouter.chat.completions.create({
             model: ANALYSIS_MODEL,
             max_tokens: 8192,
             temperature: 0,
             ...(jsonMode ? { response_format: { type: "json_object" as const } } : {}),
             messages: [
-              { role: "system", content: VERIFY_RELEASE_PROMPT },
+              { role: "system", content: prompt },
               { role: "user", content: releaseMessages },
               ...(correction ? [{ role: "user" as const, content: correction }] : []),
             ],

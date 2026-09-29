@@ -14,3 +14,9 @@ A second vision pass over every remaining post-Set-Point image is not inherently
 **Why:** A model can mistake "ball separate from hand" during a rebound or return for the first shooting release, even under a strict visual prompt.
 
 **How to apply:** Evaluate the first release transition and neighboring samples rather than treating any later gap as a release. If the transition is unclear, fail explicitly; don't assume a later separated frame is correct. Continue distinguishing requested seek positions from decoded source-frame PTS.
+
+Do not infer that a TestFlight analysis used the current workspace's API just because the fix is merged.
+
+**Why:** On September 29, 2026, the production selection logs matched the screenshot's phase positions but did not contain the independent verification log that the workspace code always emits. A successful merge was not evidence that the published service had that change.
+
+**How to apply:** Correlate the reported session's timestamp and phase indices with production logs, check for version-specific behavior, and confirm the API has been republished before judging a fix on a fresh TestFlight session. A saved session can still show old selected thumbnails.

@@ -41,6 +41,14 @@ Do not assume an image is post-release merely because it follows Set Point. Blur
 If no supplied image clearly meets all three cues, return {"indices":[]} rather than guessing or selecting the last frame.
 Return ONLY JSON {"indices":[index]} with exactly one 0-based index matching the supplied image labels, or {"indices":[]} when uncertain.`;
 
+export function confirmReleasePrompt(candidateIndex: number) {
+  return `These chronological images show the first shooting motion around a proposed Release.
+Inspect image index=${candidateIndex} closely and compare its ball-to-SHOOTING-hand boundary with the preceding and following images.
+Confirm this exact candidate ONLY if empty background is visibly present between the ball and EVERY shooting fingertip, the arm is extended, the wrist is snapped down, and the ball is moving away on the first outbound release.
+The ball merely being above the hand is NOT proof of separation. If the ball edge touches or overlaps ANY fingertip, the boundary is blurred or hidden, the wrist is still pushing, an earlier image already satisfies all cues, or this is a later returning ball, REJECT the candidate.
+Do not pick another image here. Return ONLY {"indices":[${candidateIndex}]} if every cue is clearly verified, otherwise {"indices":[]}.`;
+}
+
 export const DIP_SELECTION_PROMPT = `Identify the Dip of the SAME basketball shot in these labeled chronological images.
 Dip is defined ONLY by BALL POSITION: the final frame where the ball is at its lowest visible vertical position
 immediately before it begins sustained upward shooting movement toward the Set Point.
@@ -102,6 +110,18 @@ export function parseIndices(raw: string, count: number, expected = 3): number[]
   return indices;
 }
 
+function explicitlyUncertain(raw: string): boolean {
+  const text = raw.trim().replace(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i, "$1").trim();
+  try {
+    const value: unknown = JSON.parse(text);
+    return !!value && typeof value === "object" && !Array.isArray(value) &&
+      Object.keys(value).length === 1 && "indices" in value &&
+      Array.isArray(value.indices) && value.indices.length === 0;
+  } catch {
+    return false;
+  }
+}
+
 export function validateSetReleaseIndices(indices: number[]) {
   if (indices.length !== 2 || indices[0] < 2) {
     throw new Error("Set Point must leave at least two earlier frames for Dip motion evidence");
@@ -127,9 +147,9 @@ export async function verifyRelease(
   mimeType: string,
   setPointIdx: number,
   proposedReleaseIdx: number,
-  request: (messages: ReturnType<typeof labeledImages>, correction: string | undefined, jsonMode: boolean) =>
+  request: (messages: ReturnType<typeof labeledImages>, correction: string | undefined, jsonMode: boolean, prompt: string) =>
     Promise<{ raw: string; finish?: string }>,
-  diagnostic: (event: { attempt: number; raw: string; finish?: string; validation?: string }) => void,
+  diagnostic: (event: { attempt: number; raw: string; finish?: string; validation?: string; phase: "sequence" | "candidate" }) => void,
 ): Promise<number> {
   const firstAfterSetPoint = setPointIdx + 1;
   // Examine the first release transition, not a later rebound/return in the
@@ -140,10 +160,25 @@ export async function verifyRelease(
       proposedReleaseIdx >= frames.length || timestamps.length !== frames.length) throw new FrameSelectionError();
   const releaseMessages = labeledImages(releaseFrames, timestamps.slice(firstAfterSetPoint, end), mimeType);
   const [offset] = await selectWithCorrection(releaseFrames.length, 1,
-    (correction, jsonMode) => request(releaseMessages, correction, jsonMode),
-    diagnostic,
-    "release");
-  return firstAfterSetPoint + offset;
+    (correction, jsonMode) => request(releaseMessages, correction, jsonMode, VERIFY_RELEASE_PROMPT),
+    event => diagnostic({ ...event, phase: "sequence" }),
+    "release", undefined, true);
+  const candidate = firstAfterSetPoint + offset;
+  // The sequence pass can still confidently call a touching ball "Release".
+  // Check the candidate again with just its immediate temporal neighbors;
+  // never substitute another frame on a failed confirmation.
+  const start = Math.max(setPointIdx, candidate - 2);
+  const stop = Math.min(end, candidate + 2);
+  const confirmation = labeledImages(frames.slice(start, stop), timestamps.slice(start, stop), mimeType);
+  const localCandidate = candidate - start;
+  await selectWithCorrection(stop - start, 1,
+    (correction, jsonMode) => request(confirmation, correction, jsonMode, confirmReleasePrompt(localCandidate)),
+    event => diagnostic({ ...event, phase: "candidate" }),
+    "release",
+    selected => {
+      if (selected[0] !== localCandidate) throw new Error("Only the proposed Release candidate can be confirmed");
+    }, true);
+  return candidate;
 }
 
 export function unsupportedJsonFormat(error: unknown): boolean {
@@ -174,6 +209,7 @@ export async function selectWithCorrection(
   diagnostic: (event: { attempt: number; raw: string; finish?: string; validation?: string }) => void,
   labels = expected === 3 ? "dip,setPoint,release" : expected === 2 ? "setPoint,release" : "shot",
   validate?: (indices: number[]) => void,
+  stopOnUncertain = false,
 ): Promise<number[]> {
   let correction: string | undefined;
   let jsonMode = true;
@@ -186,15 +222,21 @@ export async function selectWithCorrection(
       jsonMode = false;
       result = await request(correction, false);
     }
+    let parsedSuccessfully = false;
     try {
       if (result.finish !== "stop") throw new Error("Response incomplete or refused");
       const indices = parseIndices(result.raw, count, expected);
+      parsedSuccessfully = true;
       validate?.(indices);
       diagnostic({ attempt, raw: safeSelectionDiagnostic(result.raw), finish: result.finish });
       return indices;
     } catch (error) {
       const validation = (error as Error).message;
       diagnostic({ attempt, raw: safeSelectionDiagnostic(result.raw), finish: result.finish, validation });
+      // Do not coach an explicitly uncertain vision response into a confident
+      // Release on retry. Retries here are for malformed or incomplete output.
+      if (stopOnUncertain && result.finish === "stop" &&
+          (explicitlyUncertain(result.raw) || parsedSuccessfully)) throw new FrameSelectionError();
       correction = `Previous response was invalid: ${validation}. Reinspect the labeled images. Return exactly {"indices":[${labels}]} with ${expected} increasing integers in [0,${count - 1}]. If the phases are not visible return an empty indices array; never invent phases.`;
     }
   }
