@@ -8,11 +8,11 @@ import Animated, {
 } from "react-native-reanimated";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useColors } from "@/hooks/useColors";
-import { scoreToTier, tierColor, TIER_ICONS } from "@/utils/grading";
+import { componentTierColor, knownTier, TIER_ICONS } from "@/utils/grading";
 
 interface ComponentBarProps {
   label: string;
-  score: number;
+  score?: number;
   feedback: string;
   delay?: number;
 }
@@ -41,18 +41,18 @@ function parseBullets(text: string): string[] {
 export function ComponentBar({ label, score, feedback, delay = 0 }: ComponentBarProps) {
   const colors = useColors();
   const width = useSharedValue(0);
+  const tier = knownTier(score);
 
   useEffect(() => {
-    width.value = withDelay(delay, withTiming(score / 100, { duration: 800 }));
+    width.value = withDelay(delay, withTiming(tier && typeof score === "number" ? score / 100 : 0, { duration: 800 }));
   }, [score, delay]);
 
   const barStyle = useAnimatedStyle(() => ({
     width: `${width.value * 100}%`,
   }));
 
-  const barColor = tierColor(score);
-  const tier = scoreToTier(score);
-  const bulletIcon = TIER_ICONS[tier] as any;
+  const barColor = componentTierColor(score);
+  const bulletIcon = tier ? TIER_ICONS[tier] as any : "help-circle-outline";
   const bullets = parseBullets(feedback);
 
   const isElite = tier === "Elite";
@@ -61,11 +61,11 @@ export function ComponentBar({ label, score, feedback, delay = 0 }: ComponentBar
     <View style={[styles.container, { borderColor: barColor + "30", backgroundColor: barColor + "08" }]}>
       <View style={styles.header}>
         <Text style={[styles.label, { color: colors.foreground }]}>{label}</Text>
-        <View style={[styles.gradePill, { backgroundColor: barColor + "25", borderColor: barColor + "60" }]}>
+        <View style={[styles.gradePill, { backgroundColor: barColor + "25", borderColor: barColor }]}>
           {isElite && (
             <MaterialCommunityIcons name="crown" size={11} color={barColor} style={styles.pillIcon} />
           )}
-          <Text style={[styles.grade, { color: barColor }]}>{tier}</Text>
+          <Text style={[styles.grade, { color: colors.foreground }]}>{tier ?? "Unscored"}</Text>
         </View>
       </View>
 

@@ -23,7 +23,7 @@ import { ComponentBar } from "@/components/ComponentBar";
 import { DrillCard } from "@/components/DrillCard";
 import { RhythmTimeline } from "@/components/RhythmTimeline";
 import { FrameAnnotationOverlay } from "@/components/FrameAnnotationOverlay";
-import { scoreToTier, tierColor, TIER_ICONS, scoreSeverity } from "@/utils/grading";
+import { scoreToTier, tierColor, TIER_ICONS, TIER_COLORS, UNSCORED_COLOR, knownTier, componentTierColor, frameTierSummary, scoreSeverity } from "@/utils/grading";
 
 const COMPONENT_LABELS: Record<string, string> = {
   stance: "Stance & Base",
@@ -318,21 +318,6 @@ export default function AnalysisScreen() {
     return allAnnotations.filter((a) => a.frameIndex === activeFrameIdx);
   }, [allAnnotations, activeFrameIdx]);
 
-  function worstSeverityForFrame(frameIdx: number): FrameAnnotation["severity"] | null {
-    const frameAnns = allAnnotations.filter((a) => a.frameIndex === frameIdx);
-    if (frameAnns.length === 0) return null;
-    if (frameAnns.some((a) => a.severity === "issue")) return "issue";
-    if (frameAnns.some((a) => a.severity === "warning")) return "warning";
-    return "good";
-  }
-
-  function severityToColor(s: FrameAnnotation["severity"] | null): string {
-    if (s === "issue") return colors.destructive;
-    if (s === "warning") return colors.warning;
-    if (s === "good") return colors.success;
-    return colors.border;
-  }
-
   return (
     <View style={[styles.screenWrap, { backgroundColor: colors.background }]}>
     <ScrollView
@@ -371,7 +356,7 @@ export default function AnalysisScreen() {
             containerWidth={imageLayout.width}
             containerHeight={imageLayout.height}
             imageUri={heroUri ?? ""}
-            componentFeedback={analysis.components as Record<string, { score: number; feedback: string; adjustments?: string[] }>}
+            componentFeedback={analysis.components}
           />
         )}
 
@@ -419,18 +404,15 @@ export default function AnalysisScreen() {
             {(session.keyFrameUris ?? []).map((uri, i) => {
               const label = session.keyFrameLabels?.[i] ?? `Frame ${i + 1}`;
               const isActive = activeFrameIdx === i;
-              const frameSeverity = worstSeverityForFrame(i);
-              const severityBorderColor =
-                allAnnotations.length > 0 && frameSeverity
-                  ? severityToColor(frameSeverity)
-                  : null;
-              const borderColor = isActive
-                ? colors.primary
-                : severityBorderColor ?? colors.border;
+              const frameAnnotations = allAnnotations.filter(a => a.frameIndex === i);
+              const summaryTier = frameTierSummary(frameAnnotations, analysis.components);
+              const borderColor = summaryTier ? TIER_COLORS[summaryTier] : UNSCORED_COLOR;
               return (
                 <Pressable
                   key={i}
                   style={styles.frameThumbWrapper}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${label}, weakest annotated component: ${summaryTier ?? "unscored"}`}
                   onPress={() => {
                     setHeroUri(uri);
                     setActiveFrameIdx(i);
@@ -438,7 +420,7 @@ export default function AnalysisScreen() {
                 >
                   <View style={[
                     styles.frameThumb,
-                    { borderColor },
+                    { borderColor, borderWidth: isActive ? 3 : 2 },
                   ]}>
                     {!failedFrameIdxs.has(i) ? (
                       <Image
@@ -451,16 +433,17 @@ export default function AnalysisScreen() {
                         <MaterialCommunityIcons name="image-off-outline" size={14} color="#555" />
                       </View>
                     )}
-                    {isActive && (
-                      <View style={[styles.frameThumbActive, { backgroundColor: colors.primary + "33" }]} />
-                    )}
+                    {isActive && <View style={[styles.frameThumbActive, { backgroundColor: borderColor + "33" }]} />}
                   </View>
                   <Text style={[
                     styles.frameThumbLabel,
-                    { color: isActive ? colors.primary : colors.mutedForeground },
+                    { color: colors.foreground },
                   ]}>{label}{session.keyFrameTimestamps?.[i] !== undefined
                     ? ` · ${(session.keyFrameTimestamps[i] / 1000).toFixed(2)}s`
                     : ""}</Text>
+                  <Text style={[styles.frameThumbTier, { color: colors.foreground, borderColor, backgroundColor: colors.surface1 }]}>
+                    {summaryTier ?? "Unscored"}
+                  </Text>
                 </Pressable>
               );
             })}
@@ -536,11 +519,12 @@ export default function AnalysisScreen() {
           <View style={styles.bodyMapGrid}>
             {BODY_ZONES.map(({ key, label, icon }) => {
               const component = analysis.components?.[key as keyof typeof analysis.components];
-              const score = component?.score ?? 0;
-              const zoneColor = tierColor(score);
+              const score = component?.score;
+              const tier = knownTier(score);
+              const zoneColor = componentTierColor(score);
               const isExpanded = expandedBodyZone === key;
-              const isIssue = score < 85;
-              const isMajorIssue = score < 70;
+              const isIssue = tier !== null && typeof score === "number" && score < 85;
+              const isMajorIssue = tier !== null && typeof score === "number" && score < 70;
               const isSeen = seenZones.has(key);
               const showHint = isIssue && !isSeen;
               const dotColor = tierColor(score);
@@ -559,8 +543,8 @@ export default function AnalysisScreen() {
                     },
                   ]}
                 >
-                  <View style={[styles.bodyZoneScoreBadge, { backgroundColor: zoneColor }]}>
-                    <Text style={styles.bodyZoneScoreText} adjustsFontSizeToFit numberOfLines={1}>{scoreToTier(score)}</Text>
+                  <View style={[styles.bodyZoneScoreBadge, { backgroundColor: colors.surface2, borderWidth: 1, borderColor: zoneColor }]}>
+                    <Text style={[styles.bodyZoneScoreText, { color: colors.foreground }]} adjustsFontSizeToFit numberOfLines={1}>{tier ?? "Unscored"}</Text>
                   </View>
                   {showHint && (
                     <View style={styles.notificationDotWrapper}>
@@ -584,26 +568,26 @@ export default function AnalysisScreen() {
           {expandedBodyZone && (() => {
             const comp = analysis.components?.[expandedBodyZone as keyof typeof analysis.components];
             if (!comp) return null;
-            const color = tierColor(comp.score);
+            const tier = knownTier(comp.score);
+            const color = componentTierColor(comp.score);
             const feedback = typeof comp.feedback === "string"
               ? comp.feedback.split(/(?<=\.)\s+/).map((s) => s.replace(/\.$/, "").trim()).filter((s) => s.length > 2)
               : [];
-            const adjustments: string[] = comp.score < 85 ? (comp.adjustments ?? []) : [];
+            const adjustments: string[] = tier && comp.score < 85 ? (comp.adjustments ?? []) : [];
             const zoneLabel = COMPONENT_LABELS[expandedBodyZone] ?? expandedBodyZone;
-            const severity = scoreSeverity(comp.score);
-            const severityColor = severity === "Critical" ? "#FF4444" : severity === "Moderate" ? "#FF9500" : "#FFD700";
+            const severity = tier ? scoreSeverity(comp.score) : null;
             return (
               <View style={[styles.bodyZoneExpanded, { backgroundColor: color + "12", borderColor: color + "40" }]}>
                 <View style={styles.bodyZoneExpandedHeader}>
-                  <Text style={[styles.bodyZoneExpandedTitle, { color }]}>{zoneLabel}</Text>
+                  <Text style={[styles.bodyZoneExpandedTitle, { color: colors.foreground }]}>{zoneLabel}</Text>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    {severity !== "Good" && (
-                      <View style={[styles.severityBadge, { backgroundColor: severityColor + "22", borderColor: severityColor + "80" }]}>
-                        <Text style={[styles.severityBadgeText, { color: severityColor }]}>{severity}</Text>
+                    {severity && severity !== "Good" && (
+                      <View style={[styles.severityBadge, { backgroundColor: color + "22", borderColor: color }]}>
+                        <Text style={[styles.severityBadgeText, { color: colors.foreground }]}>{severity}</Text>
                       </View>
                     )}
                     <View style={[styles.zoneGradeBadge, { backgroundColor: color + "33", borderColor: color }]}>
-                      <Text style={[styles.zoneGradeText, { color }]} adjustsFontSizeToFit numberOfLines={1}>{scoreToTier(comp.score)}</Text>
+                      <Text style={[styles.zoneGradeText, { color: colors.foreground }]} adjustsFontSizeToFit numberOfLines={1}>{tier ?? "Unscored"}</Text>
                     </View>
                   </View>
                 </View>
@@ -616,7 +600,7 @@ export default function AnalysisScreen() {
                     <View key={i} style={[styles.zonePopupItem, { borderLeftColor: color }]}>
                       {parts.length >= 2 ? (
                         <>
-                          <Text style={[styles.zonePopupIssue, { color }]}>{parts[0]}</Text>
+                          <Text style={[styles.zonePopupIssue, { color: colors.foreground }]}>{parts[0]}</Text>
                           <Text style={[styles.zonePopupFix, { color: colors.foreground }]}>{parts.slice(1).join(" — ")}</Text>
                         </>
                       ) : (
@@ -817,6 +801,14 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.5,
     textTransform: "uppercase",
+  },
+  frameThumbTier: {
+    fontSize: 10,
+    fontFamily: "Inter_600SemiBold",
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
   },
   annotationMarker: {
     position: "absolute",

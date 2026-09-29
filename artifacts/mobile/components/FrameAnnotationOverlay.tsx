@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image as RNImage, Pressable, StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import type { FrameAnnotation } from "@/context/SessionContext";
+import { componentTierColor, knownTier } from "@/utils/grading";
 
 interface Props {
   annotations: FrameAnnotation[];
   containerWidth: number;
   containerHeight: number;
   imageUri: string;
-  componentFeedback?: Record<string, { score: number; feedback: string; adjustments?: string[] }>;
+  componentFeedback?: Record<string, { score?: number; feedback?: string; adjustments?: string[] } | undefined>;
 }
 
 interface RenderedRect {
@@ -98,15 +99,6 @@ function applyRepulsion(
   }
 
   return pts;
-}
-
-function severityColor(
-  severity: FrameAnnotation["severity"],
-  colors: ReturnType<typeof useColors>
-): string {
-  if (severity === "good") return colors.success;
-  if (severity === "warning") return colors.warning;
-  return colors.destructive;
 }
 
 function computeCalloutPosition(
@@ -235,7 +227,7 @@ function ConnectorLine({
         width: length,
         height: 2,
         backgroundColor: color,
-        opacity: 0.55,
+        opacity: 0.9,
         borderRadius: 1,
         transform: [{ rotate: `${angle}deg` }],
       }}
@@ -288,18 +280,20 @@ export function FrameAnnotationOverlay({
   const adjustedPositions = applyRepulsion(rawPositions, rect);
 
   const selectedAnnotation = annotations.find((a) => a.zone === selectedZone);
+  const selectedScore = selectedAnnotation ? componentFeedback?.[selectedAnnotation.zone]?.score : undefined;
   const selectedColor = selectedAnnotation
-    ? severityColor(selectedAnnotation.severity, colors)
+    ? componentTierColor(selectedScore)
     : colors.primary;
   const selectedIdx = selectedAnnotation
     ? annotations.findIndex((a) => a.zone === selectedZone)
     : -1;
 
   const CARD_WIDTH = 210;
-  const cardHeight =
-    selectedAnnotation && componentFeedback?.[selectedAnnotation.zone]?.adjustments?.[0]
-      ? 110
-      : 80;
+  const selectedAdjustment = selectedAnnotation && typeof selectedScore === "number" &&
+    knownTier(selectedScore) !== null && selectedScore < 85
+    ? componentFeedback?.[selectedAnnotation.zone]?.adjustments?.[0]
+    : undefined;
+  const cardHeight = selectedAdjustment ? 110 : 80;
 
   const calloutPos =
     selectedAnnotation && selectedIdx !== -1
@@ -340,13 +334,16 @@ export function FrameAnnotationOverlay({
       {/* 3. Dot markers — rendered above the backdrop so they intercept their own taps */}
       {annotations.map((ann, idx) => {
         const { cx, cy } = adjustedPositions[idx];
-        const color = severityColor(ann.severity, colors);
+        const score = componentFeedback?.[ann.zone]?.score;
+        const color = componentTierColor(score);
         const isSelected = selectedZone === ann.zone;
 
         return (
           <Pressable
             key={`${ann.zone}-${idx}`}
             style={[styles.markerHitArea, { left: cx - 24, top: cy - 24 }]}
+            accessibilityRole="button"
+            accessibilityLabel={`${ann.label}, ${knownTier(score) ?? "unscored"}`}
             onPress={() =>
               setSelectedZone((prev) => (prev === ann.zone ? null : ann.zone))
             }
@@ -368,7 +365,8 @@ export function FrameAnnotationOverlay({
           containerWidth={containerWidth}
           containerHeight={containerHeight}
           feedback={componentFeedback?.[selectedAnnotation.zone]?.feedback}
-          firstAdjustment={componentFeedback?.[selectedAnnotation.zone]?.adjustments?.[0]}
+          firstAdjustment={selectedAdjustment}
+          tier={knownTier(selectedScore)}
           colors={colors}
         />
       )}
@@ -385,6 +383,7 @@ function CalloutCard({
   containerHeight,
   feedback,
   firstAdjustment,
+  tier,
   colors,
 }: {
   annotation: FrameAnnotation;
@@ -395,6 +394,7 @@ function CalloutCard({
   containerHeight: number;
   feedback?: string;
   firstAdjustment?: string;
+  tier: string | null;
   colors: ReturnType<typeof useColors>;
 }) {
   const cardWidth = 210;
@@ -415,14 +415,17 @@ function CalloutCard({
           top,
           width: cardWidth,
           backgroundColor: colors.surface1 + "f2",
-          borderColor: color + "80",
+          borderColor: color,
         },
       ]}
     >
       <View style={styles.calloutHeader}>
         <View style={[styles.calloutDot, { backgroundColor: color }]} />
-        <Text style={[styles.calloutLabel, { color }]} numberOfLines={1}>
+        <Text style={[styles.calloutLabel, { color: colors.foreground }]} numberOfLines={1}>
           {annotation.label}
+        </Text>
+        <Text style={[styles.calloutTier, { color: colors.foreground, borderColor: color }]}>
+          {tier ?? "Unscored"}
         </Text>
       </View>
       {shortFeedback && (
@@ -435,7 +438,7 @@ function CalloutCard({
       )}
       {firstAdjustment && (
         <View style={[styles.calloutTipRow, { borderTopColor: color + "30" }]}>
-          <Text style={[styles.calloutTipLabel, { color }]}>Tip: </Text>
+          <Text style={[styles.calloutTipLabel, { color: colors.foreground }]}>Tip: </Text>
           <Text style={[styles.calloutTipText, { color: colors.foreground }]} numberOfLines={3}>
             {firstAdjustment}
           </Text>
@@ -476,6 +479,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_700Bold",
     flex: 1,
+  },
+  calloutTier: {
+    fontSize: 9,
+    fontFamily: "Inter_600SemiBold",
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
   },
   calloutFeedback: {
     fontSize: 11,
