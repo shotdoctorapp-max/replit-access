@@ -4,6 +4,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { BIOMECHANICS_SYSTEM_PROMPT } from "../lib/prompts";
 import { AnalyzeFormResponse } from "@workspace/api-zod";
 import { analysisRateLimit } from "../middlewares/analysisRateLimit";
+import { calculateShotScore, ScoringEvidenceError } from "../lib/scoring";
 
 const router = Router();
 
@@ -33,7 +34,7 @@ router.post("/analyze", requireAuth(), analysisRateLimit, async (req, res) => {
             },
             {
               type: "text",
-              text: "Analyze this basketball shooting form image. Evaluate all 8 biomechanical components using the coaching framework provided. Pay close attention to: whether elbows are IN or flaring, guide hand placement (side only, not underneath), grip gap between ball and palm (no huge gap), loaded wrist, 65° hand angle, right-eyebrow set point, ball not covering the face, pushing ball UP at release, wrist snap quality, arm staying high, eyes tracking ball post-release, and relaxed shoulders. Return ONLY valid JSON as specified.",
+              text: "Assess only shooting mechanics directly visible in this photo. Do not infer hidden feet, unseen release motion, spin, gaze or shot outcome. Return score:null for any component that cannot be assessed, not a default score. Return ONLY valid JSON as specified.",
             },
           ],
         },
@@ -42,29 +43,37 @@ router.post("/analyze", requireAuth(), analysisRateLimit, async (req, res) => {
 
     const content = response.choices[0]?.message?.content ?? "{}";
 
-    let rawAnalysis: unknown;
+    let rawAnalysis;
     try {
+      if (response.choices[0]?.finish_reason !== "stop") throw new Error("Incomplete analysis");
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       rawAnalysis = JSON.parse(jsonMatch ? jsonMatch[0] : content);
     } catch {
-      req.log.error({ content }, "Failed to parse AI response as JSON");
+      req.log.error("Failed to parse complete AI response as JSON");
       res.status(500).json({ error: "Failed to parse analysis response" });
       return;
     }
 
+    const score = calculateShotScore(rawAnalysis?.components);
+    rawAnalysis.overallScore = score.overallScore;
+    req.log.info(score, "Evidence-based photo score calculation");
     const parsed = AnalyzeFormResponse.safeParse({
       analysis: rawAnalysis,
       timestamp: new Date().toISOString(),
     });
 
     if (!parsed.success) {
-      req.log.warn({ errors: parsed.error.issues, rawAnalysis }, "AI response failed schema validation — passing through raw");
-      res.json({ analysis: rawAnalysis, timestamp: new Date().toISOString() });
+      req.log.warn({ errors: parsed.error.issues }, "AI response failed schema validation");
+      res.status(422).json({ error: "The analysis was incomplete. Please use a clearer view and try again." });
       return;
     }
 
     res.json(parsed.data);
   } catch (err) {
+    if (err instanceof ScoringEvidenceError) {
+      res.status(422).json({ error: err.message, code: "SCORING_EVIDENCE_INSUFFICIENT", retryable: false });
+      return;
+    }
     req.log.error({ err }, "Error analyzing shooting form");
     res.status(500).json({ error: "Analysis failed. Please try again." });
   }

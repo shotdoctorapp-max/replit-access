@@ -20,3 +20,9 @@ Do not infer that a TestFlight analysis used the current workspace's API just be
 **Why:** On September 29, 2026, the production selection logs matched the screenshot's phase positions but did not contain the independent verification log that the workspace code always emits. A successful merge was not evidence that the published service had that change.
 
 **How to apply:** Correlate the reported session's timestamp and phase indices with production logs, check for version-specific behavior, and confirm the API has been republished before judging a fix on a fresh TestFlight session. A saved session can still show old selected thumbnails.
+
+Stable model numbers do not establish that the underlying coaching observation is true.
+
+**Why:** Repeated fixed-image scoring probes reproduced hidden-foot placement and post-release arm-drop claims. A single Release image cannot prove a later drop or hold duration, even when repeated requests agree.
+
+**How to apply:** Check visibility and temporal support independently of numeric repeatability. Treat canned output examples as potential diagnostic anchors, not evidence. Never accept a stable score as a substitute for an observable cue.

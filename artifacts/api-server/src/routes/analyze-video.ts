@@ -3,6 +3,7 @@ import { requireAuth } from "@clerk/express";
 import { batchProcess, openrouter } from "@workspace/integrations-openrouter-ai";
 import { BIOMECHANICS_SYSTEM_PROMPT, RHYTHM_SYSTEM_PROMPT } from "../lib/prompts";
 import { analysisRateLimit } from "../middlewares/analysisRateLimit";
+import { calculateShotScore, reliableRhythm, ScoringEvidenceError } from "../lib/scoring";
 import { DIP_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, SET_RELEASE_SELECTION_PROMPT, FrameSelectionError, labeledImages, selectWithCorrection, rhythmShotContext, providerFailure, validateDipBeforeSetPoint, validateSetReleaseIndices, verifyRelease } from "../lib/frameSelection";
 
 const router = Router();
@@ -160,6 +161,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         const response = await openrouter.chat.completions.create({
           model: ANALYSIS_MODEL,
           max_tokens: 8192,
+          temperature: 0,
           messages: [
             { role: "system", content: RHYTHM_SYSTEM_PROMPT },
             {
@@ -196,9 +198,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       }
     }
 
-    const rhythmPhasesIdentified = rhythm !== null &&
-      ((typeof rhythm.dipFrame === "number" && rhythm.dipFrame >= 0) ||
-       (typeof rhythm.armExtendFrame === "number" && rhythm.armExtendFrame >= 0));
+    const rhythmReliable = reliableRhythm(rhythm, indices);
     // Phase selection, never rhythm percentages, owns all displayed/annotated indices.
     if (rhythm && frames.length > 1) {
       rhythm.dipFrame = dipIdx;
@@ -222,11 +222,11 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         },
         {
           type: "text",
-          text: `PRIMARY ANALYSIS FRAME: original index=${bestFrameIndex}, timestamp=${timestamps[bestFrameIndex]}ms. Use for all 8 component scores and feedback. Evaluate all 8 biomechanical components using the coaching framework provided. Pay close attention to: whether elbows are IN or flaring, guide hand placement (side only, not underneath), grip gap between ball and palm (no huge gap — controlled finger-pad grip), loaded wrist, 65° hand angle, right-eyebrow set point, ball not covering the face, pushing ball UP at release, wrist snap quality, arm staying high, eyes tracking ball post-release, and relaxed shoulders.`,
+          text: `SET POINT OVERVIEW: original index=${bestFrameIndex}, timestamp=${timestamps[bestFrameIndex]}ms. Do not score all mechanics from this image alone. Use the labeled Dip image for stance/hipAlignment/balance, Set Point for elbowPosition/gripPosition/setPoint, and Release for followThrough/eyeTracking. Compare phases only where motion is actually visible. Never infer hidden feet, fingertip contact, gaze, ball spin, shot outcome, or repeatability from one static view. Use score:null for any component that cannot be assessed from the supplied evidence.`,
         },
         {
           type: "image_url",
-          image_url: { url: `data:${mimeType};base64,${frames[dipIdx]}`, detail: "low" },
+          image_url: { url: `data:${mimeType};base64,${frames[dipIdx]}`, detail: "high" },
         },
         {
           type: "text",
@@ -234,7 +234,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         },
         {
           type: "image_url",
-          image_url: { url: `data:${mimeType};base64,${frames[setPointIdx]}`, detail: "low" },
+          image_url: { url: `data:${mimeType};base64,${frames[setPointIdx]}`, detail: "high" },
         },
         {
           type: "text",
@@ -242,7 +242,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         },
         {
           type: "image_url",
-          image_url: { url: `data:${mimeType};base64,${frames[releaseIdx]}`, detail: "low" },
+          image_url: { url: `data:${mimeType};base64,${frames[releaseIdx]}`, detail: "high" },
         },
         {
           type: "text",
@@ -251,7 +251,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       );
 
       // Inject rhythm context so the biomechanics summary can reference it
-      if (rhythm && typeof rhythm.rhythmScore === "number") {
+      if (rhythmReliable && rhythm) {
         biomechanicsUserContent.push({
           type: "text",
           text: `RHYTHM CONTEXT: This shooter's rhythm was also analyzed separately. rhythmScore: ${rhythm.rhythmScore}/100, pattern: "${rhythm.pattern}". If rhythmScore < 70, mention rhythm in your summary as a factor dragging down the overall score.`,
@@ -270,7 +270,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         },
         {
           type: "text",
-          text: "Analyze this basketball shooting form image. Evaluate all 8 biomechanical components using the coaching framework provided. Pay close attention to: whether elbows are IN or flaring, guide hand placement (side only, not underneath), grip gap between ball and palm (no huge gap — controlled finger-pad grip), loaded wrist, 65° hand angle, right-eyebrow set point, ball not covering the face, pushing ball UP at release, wrist snap quality, arm staying high, eyes tracking ball post-release, and relaxed shoulders.",
+          text: "Evaluate only mechanics directly visible in this basketball photo. A photo cannot establish unseen motion, spin, gaze, release consistency or shot outcome. Set score:null for any component not assessable from this view; do not fill missing evidence with an average score.",
         },
         {
           type: "text",
@@ -285,6 +285,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         const response = await openrouter.chat.completions.create({
           model: ANALYSIS_MODEL,
           max_tokens: 8192,
+          temperature: 0,
           messages: [
             { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },
             { role: "user", content },
@@ -300,6 +301,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     const content = analysisResponse.choices[0]?.message?.content ?? "{}";
     let analysis;
     try {
+      if (analysisResponse.choices[0]?.finish_reason !== "stop") throw new Error("Incomplete analysis");
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       analysis = JSON.parse(jsonMatch ? jsonMatch[0] : content);
     } catch {
@@ -308,25 +310,15 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       return;
     }
 
-    // Rhythm reliability gate: if the AI couldn't identify any key frame positions
-    // (both dipFrame and armExtendFrame are -1 or missing), the rhythmScore is
-    // almost certainly unreliable — the model couldn't see the shot phases clearly.
-    // In that case, suppress rhythm from the response entirely so it doesn't drag
-    // down the overall score or show a misleading "Rhythm score: 0" banner.
-    const rhythmReliable =
-      rhythm !== null &&
-      typeof rhythm?.rhythmScore === "number" &&
-      rhythmPhasesIdentified;
-
     req.log.info(
       { rhythmReliable, dipFrame: rhythm?.dipFrame, armExtendFrame: rhythm?.armExtendFrame, rhythmScore: rhythm?.rhythmScore },
       "Rhythm reliability check"
     );
 
-    // Blend rhythm into overall score only when reliable (rhythm = 15% weight)
-    if (rhythmReliable && typeof analysis.overallScore === "number") {
-      analysis.overallScore = Math.round(analysis.overallScore * 0.85 + (rhythm!.rhythmScore as number) * 0.15);
-    }
+    const score = calculateShotScore(analysis?.components, rhythmReliable ? rhythm!.rhythmScore : null);
+    req.log.info({ ...score, modelOverallScore: typeof analysis.overallScore === "number" ? analysis.overallScore : null,
+      rhythmIncluded: rhythmReliable }, "Evidence-based score calculation");
+    analysis.overallScore = score.overallScore;
 
     req.log.info({ model: ANALYSIS_MODEL, providerCostUsd }, "Analysis provider cost");
     res.json({
@@ -340,6 +332,10 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     });
   } catch (err) {
     req.log.warn({ model: ANALYSIS_MODEL, providerCostUsd }, "Partial analysis provider cost");
+    if (err instanceof ScoringEvidenceError) {
+      res.status(422).json({ error: err.message, code: "SCORING_EVIDENCE_INSUFFICIENT", retryable: false });
+      return;
+    }
     if (err instanceof FrameSelectionError) {
       res.status(422).json({ error: err.message, code: "FRAME_SELECTION_UNCERTAIN", retryable: true });
       return;
