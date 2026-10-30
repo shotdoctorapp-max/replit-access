@@ -45,8 +45,9 @@ export interface ComponentScore {
   /**
      * @minimum 0
      * @maximum 100
+     * @nullable
      */
-  score: number;
+  score: number | null;
   feedback: string;
   /** 2-4 actionable correction steps; only present when score < 75 */
   adjustments?: string[];
@@ -91,8 +92,9 @@ export interface AnalysisResult {
   /**
      * @minimum 0
      * @maximum 100
+     * @nullable
      */
-  overallScore: number;
+  overallScore: number | null;
   summary: string;
   components: AnalysisComponents;
   keyStrengths: string[];

@@ -29,8 +29,8 @@ function SessionItem({ session, onPress, onDelete }: {
   const scoreColor = tierColor(score);
   const tier = scoreToTier(score);
 
-  const weakest = Object.entries(session.analysis.components).sort(
-    ([, a], [, b]) => a.score - b.score
+  const weakest = Object.entries(session.analysis.components).filter(([, c]) => typeof c.score === "number").sort(
+    ([, a], [, b]) => a.score! - b.score!
   )[0];
   const weakestLabel = weakest
     ? weakest[0].replace(/([A-Z])/g, " $1").toLowerCase()
@@ -112,12 +112,10 @@ export default function HistoryScreen() {
     ]);
   };
 
-  const avgScore =
-    sessions.length > 0
-      ? Math.round(sessions.reduce((a, s) => a + s.analysis.overallScore, 0) / sessions.length)
-      : 0;
+  const scores = sessions.map(s => s.analysis.overallScore).filter((s): s is number => typeof s === "number");
+  const avgScore = scores.length ? Math.round(scores.reduce((a, s) => a + s, 0) / scores.length) : null;
   const avgTier = scoreToTier(avgScore);
-  const bestScore = sessions.length > 0 ? Math.max(...sessions.map(s => s.analysis.overallScore)) : 0;
+  const bestScore = scores.length ? Math.max(...scores) : null;
   const bestTier = scoreToTier(bestScore);
 
   return (

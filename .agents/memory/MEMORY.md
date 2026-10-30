@@ -3,3 +3,4 @@
 - [Expo web Clerk context](expo-web-clerk-context.md) — Expo’s Clerk bridge needs a web-only browser provider and unified hooks for programmatic preview sessions.
 - [Frame accuracy evidence](frame-accuracy-evidence.md) — distinguish source PTS, requested samples, displayed thumbnails, and published API provenance.
 - [React Native modal dismissal](react-native-modal-dismissal.md) — Modal.onDismiss is iOS-only in RN 0.81; Android needs a separate post-close handoff before native dialogs.
+- [Incomplete scoring policy](scoring-policy.md) — show assessable components without an overall total when any mechanics lack evidence.

@@ -32,11 +32,13 @@ and whether rhythm was included. They do not log images or coaching text.
 
 ## Evidence requirements
 
-All eight scores must be finite numbers in [0,100] with nonempty feedback. No coercion,
-zero/default fill, or denominator changes are allowed. Unassessable components return null
-from the model and cause an explicit 422 response instead of a fabricated total. This can
-reject cropped footage or a single photo that cannot show all mechanics; a neutral score
-would misrepresent missing evidence as observed performance.
+Each component must contain a finite score in [0,100] or explicit null, with nonempty feedback.
+No coercion, zero/default fill, or denominator changes are allowed. Unassessable components
+retain null and explain missing evidence; assessable components are returned normally.
+If any component is null, overallScore is null, even when rhythm is available.
+The app displays Unscored rather than a tier or zero for the total, preserves these sessions
+on reload, and excludes null totals from average/best statistics. Malformed or unexplained
+component objects still cause a 422 response. Saved numeric totals are not rewritten.
 
 Rhythm is included only if its original Dip/Set Point/Release indices match the selected
 shot, its pattern is known, observations are present, its score is finite and bounded, and both motion indices exist
@@ -71,13 +73,17 @@ It is diagnostic, not an automatic golden-score test. Run:
 
 After removing leading examples, the repeated three-frame samples correctly left eye
 tracking unscored in both clips and stance unscored in the cropped clip. Consequently
-neither clip yields an accepted overall total under the completeness gate. We cannot
+both clips now return partial analyses with null overall totals. We cannot
 claim a validated numeric ranking or total-score stability from these samples.
 
-On the full-body clip the largest component range was 7 points (Set Point), exceeding
-the proposed 5-point monitoring tolerance; the cropped clip's largest range was 5 points.
-The model also claimed an arm drop that the single post-release sample cannot establish.
-The prompt now explicitly prohibits that inference. These findings are calibration
-limitations, not evidence that the remaining component judgments are ground truth.
+Before the final temporal-evidence instruction, the full-body clip's largest component
+range was 7 points (Set Point), exceeding the proposed 5-point monitoring tolerance;
+the cropped clip's largest range was 5 points. The model claimed an unsupported arm drop.
+After explicitly prohibiting that inference, a further three-run probe measured a maximum
+component range of 5 points on the full-body clip and zero on the cropped clip. Missing
+gaze/feet remained correctly unscored. However, the full-body clip again received claims
+of incomplete wrist snap/extension despite the inspected Release image showing both.
+Thus repeatability improved in this small probe, but semantic calibration is not complete.
+These findings are limitations, not evidence that remaining component judgments are ground truth.
 Clearer, independently annotated footage is required before claiming semantic accuracy
 or stable, explainably different overall totals.

@@ -109,46 +109,46 @@ export const analyzeVideoResponseOneAnalysisComponentsEyeTrackingScoreMax = 100;
 
 export const AnalyzeVideoResponse = zod.union([zod.object({
   "analysis": zod.object({
-  "overallScore": zod.number().min(analyzeVideoResponseOneAnalysisOverallScoreMin).max(analyzeVideoResponseOneAnalysisOverallScoreMax),
+  "overallScore": zod.number().min(analyzeVideoResponseOneAnalysisOverallScoreMin).max(analyzeVideoResponseOneAnalysisOverallScoreMax).nullable(),
   "summary": zod.string(),
   "components": zod.object({
   "stance": zod.object({
-  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsStanceScoreMin).max(analyzeVideoResponseOneAnalysisComponentsStanceScoreMax),
+  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsStanceScoreMin).max(analyzeVideoResponseOneAnalysisComponentsStanceScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "hipAlignment": zod.object({
-  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsHipAlignmentScoreMin).max(analyzeVideoResponseOneAnalysisComponentsHipAlignmentScoreMax),
+  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsHipAlignmentScoreMin).max(analyzeVideoResponseOneAnalysisComponentsHipAlignmentScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "elbowPosition": zod.object({
-  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsElbowPositionScoreMin).max(analyzeVideoResponseOneAnalysisComponentsElbowPositionScoreMax),
+  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsElbowPositionScoreMin).max(analyzeVideoResponseOneAnalysisComponentsElbowPositionScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "gripPosition": zod.object({
-  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsGripPositionScoreMin).max(analyzeVideoResponseOneAnalysisComponentsGripPositionScoreMax),
+  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsGripPositionScoreMin).max(analyzeVideoResponseOneAnalysisComponentsGripPositionScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "setPoint": zod.object({
-  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsSetPointScoreMin).max(analyzeVideoResponseOneAnalysisComponentsSetPointScoreMax),
+  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsSetPointScoreMin).max(analyzeVideoResponseOneAnalysisComponentsSetPointScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "followThrough": zod.object({
-  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsFollowThroughScoreMin).max(analyzeVideoResponseOneAnalysisComponentsFollowThroughScoreMax),
+  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsFollowThroughScoreMin).max(analyzeVideoResponseOneAnalysisComponentsFollowThroughScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "balance": zod.object({
-  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsBalanceScoreMin).max(analyzeVideoResponseOneAnalysisComponentsBalanceScoreMax),
+  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsBalanceScoreMin).max(analyzeVideoResponseOneAnalysisComponentsBalanceScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "eyeTracking": zod.object({
-  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsEyeTrackingScoreMin).max(analyzeVideoResponseOneAnalysisComponentsEyeTrackingScoreMax),
+  "score": zod.number().min(analyzeVideoResponseOneAnalysisComponentsEyeTrackingScoreMin).max(analyzeVideoResponseOneAnalysisComponentsEyeTrackingScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 })
@@ -222,46 +222,46 @@ export const analyzeFormResponseAnalysisComponentsEyeTrackingScoreMax = 100;
 
 export const AnalyzeFormResponse = zod.object({
   "analysis": zod.object({
-  "overallScore": zod.number().min(analyzeFormResponseAnalysisOverallScoreMin).max(analyzeFormResponseAnalysisOverallScoreMax),
+  "overallScore": zod.number().min(analyzeFormResponseAnalysisOverallScoreMin).max(analyzeFormResponseAnalysisOverallScoreMax).nullable(),
   "summary": zod.string(),
   "components": zod.object({
   "stance": zod.object({
-  "score": zod.number().min(analyzeFormResponseAnalysisComponentsStanceScoreMin).max(analyzeFormResponseAnalysisComponentsStanceScoreMax),
+  "score": zod.number().min(analyzeFormResponseAnalysisComponentsStanceScoreMin).max(analyzeFormResponseAnalysisComponentsStanceScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "hipAlignment": zod.object({
-  "score": zod.number().min(analyzeFormResponseAnalysisComponentsHipAlignmentScoreMin).max(analyzeFormResponseAnalysisComponentsHipAlignmentScoreMax),
+  "score": zod.number().min(analyzeFormResponseAnalysisComponentsHipAlignmentScoreMin).max(analyzeFormResponseAnalysisComponentsHipAlignmentScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "elbowPosition": zod.object({
-  "score": zod.number().min(analyzeFormResponseAnalysisComponentsElbowPositionScoreMin).max(analyzeFormResponseAnalysisComponentsElbowPositionScoreMax),
+  "score": zod.number().min(analyzeFormResponseAnalysisComponentsElbowPositionScoreMin).max(analyzeFormResponseAnalysisComponentsElbowPositionScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "gripPosition": zod.object({
-  "score": zod.number().min(analyzeFormResponseAnalysisComponentsGripPositionScoreMin).max(analyzeFormResponseAnalysisComponentsGripPositionScoreMax),
+  "score": zod.number().min(analyzeFormResponseAnalysisComponentsGripPositionScoreMin).max(analyzeFormResponseAnalysisComponentsGripPositionScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "setPoint": zod.object({
-  "score": zod.number().min(analyzeFormResponseAnalysisComponentsSetPointScoreMin).max(analyzeFormResponseAnalysisComponentsSetPointScoreMax),
+  "score": zod.number().min(analyzeFormResponseAnalysisComponentsSetPointScoreMin).max(analyzeFormResponseAnalysisComponentsSetPointScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "followThrough": zod.object({
-  "score": zod.number().min(analyzeFormResponseAnalysisComponentsFollowThroughScoreMin).max(analyzeFormResponseAnalysisComponentsFollowThroughScoreMax),
+  "score": zod.number().min(analyzeFormResponseAnalysisComponentsFollowThroughScoreMin).max(analyzeFormResponseAnalysisComponentsFollowThroughScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "balance": zod.object({
-  "score": zod.number().min(analyzeFormResponseAnalysisComponentsBalanceScoreMin).max(analyzeFormResponseAnalysisComponentsBalanceScoreMax),
+  "score": zod.number().min(analyzeFormResponseAnalysisComponentsBalanceScoreMin).max(analyzeFormResponseAnalysisComponentsBalanceScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 }),
   "eyeTracking": zod.object({
-  "score": zod.number().min(analyzeFormResponseAnalysisComponentsEyeTrackingScoreMin).max(analyzeFormResponseAnalysisComponentsEyeTrackingScoreMax),
+  "score": zod.number().min(analyzeFormResponseAnalysisComponentsEyeTrackingScoreMin).max(analyzeFormResponseAnalysisComponentsEyeTrackingScoreMax).nullable(),
   "feedback": zod.string(),
   "adjustments": zod.array(zod.string()).optional().describe('2-4 actionable correction steps; only present when score < 75')
 })

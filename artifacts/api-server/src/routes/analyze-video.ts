@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "@clerk/express";
+import { AnalyzeFormResponse } from "@workspace/api-zod";
 import { batchProcess, openrouter } from "@workspace/integrations-openrouter-ai";
 import { BIOMECHANICS_SYSTEM_PROMPT, RHYTHM_SYSTEM_PROMPT } from "../lib/prompts";
 import { analysisRateLimit } from "../middlewares/analysisRateLimit";
@@ -319,10 +320,16 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     req.log.info({ ...score, modelOverallScore: typeof analysis.overallScore === "number" ? analysis.overallScore : null,
       rhythmIncluded: rhythmReliable }, "Evidence-based score calculation");
     analysis.overallScore = score.overallScore;
+    const validated = AnalyzeFormResponse.safeParse({ analysis, timestamp: new Date().toISOString() });
+    if (!validated.success) {
+      req.log.warn({ errors: validated.error.issues }, "Video analysis failed schema validation");
+      res.status(422).json({ error: "The analysis was incomplete. Please try again." });
+      return;
+    }
 
     req.log.info({ model: ANALYSIS_MODEL, providerCostUsd }, "Analysis provider cost");
     res.json({
-      analysis,
+      analysis: validated.data.analysis,
       rhythm: rhythmReliable ? rhythm : null,
       bestFrameIndex,
       totalFrames: frames.length,

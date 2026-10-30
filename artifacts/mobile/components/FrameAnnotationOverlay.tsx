@@ -9,7 +9,7 @@ interface Props {
   containerWidth: number;
   containerHeight: number;
   imageUri: string;
-  componentFeedback?: Record<string, { score?: number; feedback?: string; adjustments?: string[] } | undefined>;
+  componentFeedback?: Record<string, { score?: number | null; feedback?: string; adjustments?: string[] } | undefined>;
 }
 
 interface RenderedRect {

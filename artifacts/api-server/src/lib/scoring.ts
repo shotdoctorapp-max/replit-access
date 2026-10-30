@@ -16,21 +16,25 @@ function validScore(value: unknown): value is number {
 }
 
 /** Equal component weights (1/8). Reliable rhythm retains the existing 15%.
- * Missing components fail explicitly: neither a default score nor a changing
- * denominator can make an incomplete shot appear better. Only the total rounds.
+ * Explicitly unassessable components retain feedback but suppress the total.
+ * Neither a default score nor a changing denominator fills missing evidence.
  */
 export function calculateShotScore(components: unknown, reliableRhythmScore: unknown = null) {
   if (!components || typeof components !== "object" || Array.isArray(components)) throw new ScoringEvidenceError();
   const source = components as Record<string, { score?: unknown; feedback?: unknown } | undefined>;
   const scores = COMPONENT_KEYS.map(key => {
     const component = source[key];
-    if (!validScore(component?.score) || typeof component?.feedback !== "string" || !component.feedback.trim()) {
+    if (!component || (component.score !== null && !validScore(component.score)) ||
+        typeof component.feedback !== "string" || !component.feedback.trim()) {
       throw new ScoringEvidenceError();
     }
     return component.score;
   });
   if (reliableRhythmScore !== null && !validScore(reliableRhythmScore)) throw new ScoringEvidenceError();
-  const biomechanicsMean = scores.reduce((sum, score) => sum + score, 0) / COMPONENT_KEYS.length;
+  if (scores.some(score => score === null)) {
+    return { overallScore: null, biomechanicsMean: null, componentScores: scores };
+  }
+  const biomechanicsMean = (scores as number[]).reduce((sum, score) => sum + score, 0) / COMPONENT_KEYS.length;
   const total = reliableRhythmScore === null
     ? biomechanicsMean
     : biomechanicsMean * (1 - RHYTHM_WEIGHT) + (reliableRhythmScore as number) * RHYTHM_WEIGHT;

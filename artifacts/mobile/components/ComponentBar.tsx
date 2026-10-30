@@ -12,7 +12,7 @@ import { componentTierColor, knownTier, TIER_ICONS } from "@/utils/grading";
 
 interface ComponentBarProps {
   label: string;
-  score?: number;
+  score?: number | null;
   feedback: string;
   delay?: number;
 }

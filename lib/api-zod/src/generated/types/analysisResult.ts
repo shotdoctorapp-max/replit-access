@@ -13,8 +13,9 @@ export interface AnalysisResult {
   /**
      * @minimum 0
      * @maximum 100
+     * @nullable
      */
-  overallScore: number;
+  overallScore: number | null;
   summary: string;
   components: AnalysisComponents;
   keyStrengths: string[];

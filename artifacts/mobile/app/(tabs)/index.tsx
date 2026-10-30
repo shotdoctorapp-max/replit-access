@@ -174,13 +174,14 @@ export default function HomeScreen() {
   }, [stage]);
 
   const recentSessions = sessions.slice(0, 3);
+  const scoredSessions = sessions.filter(s => typeof s.analysis.overallScore === "number");
   const avgScore =
-    sessions.length > 0
+    scoredSessions.length > 0
       ? Math.round(
-          sessions.reduce((acc, s) => acc + s.analysis.overallScore, 0) /
-            sessions.length
+          scoredSessions.reduce((acc, s) => acc + s.analysis.overallScore!, 0) /
+            scoredSessions.length
         )
-      : 0;
+      : null;
 
   const handleShare = async () => {
     try {

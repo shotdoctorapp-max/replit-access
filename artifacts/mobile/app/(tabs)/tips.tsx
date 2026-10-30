@@ -145,9 +145,9 @@ export default function TipsScreen() {
     >;
 
     for (const key of componentKeys) {
-      avgComponents[key] = Math.round(
-        sessions.reduce((acc, s) => acc + s.analysis.components[key].score, 0) / sessions.length
-      );
+      const scores = sessions.map(s => s.analysis.components[key].score)
+        .filter((score): score is number => typeof score === "number");
+      if (scores.length) avgComponents[key] = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
     }
 
     const allDrills = sessions.flatMap((s) => s.analysis.drillRecommendations);
@@ -163,8 +163,8 @@ export default function TipsScreen() {
 
   const weakestArea =
     sessions.length > 0
-      ? Object.entries(sessions[sessions.length > 1 ? sessions.length - 1 : 0].analysis.components).sort(
-          ([, a], [, b]) => a.score - b.score
+      ? Object.entries(sessions[sessions.length > 1 ? sessions.length - 1 : 0].analysis.components).filter(([, c]) => typeof c.score === "number").sort(
+          ([, a], [, b]) => a.score! - b.score!
         )[0]
       : null;
 

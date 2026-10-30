@@ -28,7 +28,7 @@ export function componentTierColor(score: unknown): string {
  */
 export function frameTierSummary(
   annotations: readonly { zone: string }[],
-  components: Record<string, { score?: number } | undefined> | undefined,
+  components: Record<string, { score?: number | null } | undefined> | undefined,
 ): Tier | null {
   const scores = annotations.map(a => components?.[a.zone]?.score)
     .filter((s): s is number => knownTier(s) !== null);
@@ -51,7 +51,11 @@ export const TIER_ICONS: Record<Tier, string> = {
   Beginner:   "seed-outline",
 };
 
-export function scoreToTier(score: number): Tier {
+export function scoreToTier(score: number): Tier;
+export function scoreToTier(score: null): "Unscored";
+export function scoreToTier(score: number | null): Tier | "Unscored";
+export function scoreToTier(score: number | null): Tier | "Unscored" {
+  if (score === null) return "Unscored";
   if (score >= 85) return "Elite";
   if (score >= 70) return "Pro";
   if (score >= 55) return "Rising";
@@ -60,8 +64,8 @@ export function scoreToTier(score: number): Tier {
 }
 
 /** Returns the tier color hex string for a given numeric score. */
-export function tierColor(score: number): string {
-  return TIER_COLORS[scoreToTier(score)];
+export function tierColor(score: number | null | undefined): string {
+  return componentTierColor(score);
 }
 
 /** Returns the severity level for a given numeric score. */

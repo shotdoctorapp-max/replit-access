@@ -209,7 +209,7 @@ export default function AnalysisScreen() {
   }
 
   const { analysis } = session;
-  const overallScore = analysis.overallScore ?? 0;
+  const overallScore = analysis.overallScore;
   const scoreColor = tierColor(overallScore);
   const overallTier = scoreToTier(overallScore);
   const initialKeyFrameUri =
@@ -305,7 +305,7 @@ export default function AnalysisScreen() {
     session.isVideo && session.keyFrameUris && session.keyFrameUris.length > 1;
 
   const sortedComponents = Object.entries(analysis.components ?? {}).sort(
-    ([, a], [, b]) => (a?.score ?? 0) - (b?.score ?? 0)
+    ([, a], [, b]) => (a?.score ?? Infinity) - (b?.score ?? Infinity)
   );
 
   const allAnnotations: FrameAnnotation[] = analysis.annotations ?? [];
@@ -485,7 +485,12 @@ export default function AnalysisScreen() {
             <MaterialCommunityIcons name="whistle" size={14} color={colors.primary} style={{ marginTop: 2, flexShrink: 0 }} />
             <Text style={[styles.coachParagraphText, { color: colors.foreground }]}>{analysis.summary}</Text>
           </View>
-          {session.rhythm && typeof session.rhythm.rhythmScore === "number" && session.rhythm.rhythmScore < 70 && (
+          {overallScore === null && (
+            <Text style={{ color: colors.mutedForeground, marginTop: 12 }}>
+              No overall score: some mechanics aren’t clearly visible. Available component scores are shown below; unscored feedback explains what’s missing. Film your full body and keep your hands and release visible.
+            </Text>
+          )}
+          {overallScore !== null && session.rhythm && typeof session.rhythm.rhythmScore === "number" && session.rhythm.rhythmScore < 70 && (
             <View style={styles.rhythmNote}>
               <MaterialCommunityIcons name="metronome" size={13} color="#f59e0b" />
               <Text style={[styles.rhythmNoteText, { color: colors.mutedForeground }]}>
@@ -573,9 +578,9 @@ export default function AnalysisScreen() {
             const feedback = typeof comp.feedback === "string"
               ? comp.feedback.split(/(?<=\.)\s+/).map((s) => s.replace(/\.$/, "").trim()).filter((s) => s.length > 2)
               : [];
-            const adjustments: string[] = tier && comp.score < 85 ? (comp.adjustments ?? []) : [];
+            const adjustments: string[] = tier && comp.score !== null && comp.score < 85 ? (comp.adjustments ?? []) : [];
             const zoneLabel = COMPONENT_LABELS[expandedBodyZone] ?? expandedBodyZone;
-            const severity = tier ? scoreSeverity(comp.score) : null;
+            const severity = tier && comp.score !== null ? scoreSeverity(comp.score) : null;
             return (
               <View style={[styles.bodyZoneExpanded, { backgroundColor: color + "12", borderColor: color + "40" }]}>
                 <View style={styles.bodyZoneExpandedHeader}>

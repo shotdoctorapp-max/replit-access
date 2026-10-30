@@ -65,7 +65,7 @@ async function cleanStaleCacheUris(
 }
 
 export interface ComponentScore {
-  score: number;
+  score: number | null;
   feedback: string;
   adjustments?: string[];
 }
@@ -98,7 +98,7 @@ export interface RhythmAnalysis {
 }
 
 export interface AnalysisResult {
-  overallScore: number;
+  overallScore: number | null;
   summary: string;
   components: {
     stance: ComponentScore;
@@ -163,7 +163,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
                 // imageUri may be "" after stale-cache cleanup — allow that
                 typeof s.imageUri === "string" &&
                 s.analysis &&
-                typeof s.analysis.overallScore === "number" &&
+                (typeof s.analysis.overallScore === "number" || s.analysis.overallScore === null) &&
                 s.analysis.components &&
                 Array.isArray(s.analysis.keyStrengths) &&
                 Array.isArray(s.analysis.priorityFixes) &&
