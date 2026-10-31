@@ -28,6 +28,8 @@ import type {
   CreateBugReportRequest,
   HealthStatus,
   LocateShotResponse,
+  PhasePreparation,
+  RefinedReleaseResult,
   VideoAnalysisResult,
   WaitlistResult,
   WaitlistSignup
@@ -362,9 +364,9 @@ export const getAnalyzeVideoUrl = () => {
  * Accepts extracted video frames, performs frame selection and rhythm analysis, then returns full biomechanics feedback. Requires authentication.
  * @summary Analyze shooting form from video frames
  */
-export const analyzeVideo = async (analyzeVideoRequest: AnalyzeVideoRequest, options?: RequestInit): Promise<VideoAnalysisResult | LocateShotResponse> => {
+export const analyzeVideo = async (analyzeVideoRequest: AnalyzeVideoRequest, options?: RequestInit): Promise<VideoAnalysisResult | LocateShotResponse | PhasePreparation | RefinedReleaseResult> => {
 
-  return customFetch<VideoAnalysisResult | LocateShotResponse>(getAnalyzeVideoUrl(),
+  return customFetch<VideoAnalysisResult | LocateShotResponse | PhasePreparation | RefinedReleaseResult>(getAnalyzeVideoUrl(),
   {
     ...options,
     method: 'POST',

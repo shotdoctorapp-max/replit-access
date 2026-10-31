@@ -108,13 +108,13 @@ function FilmingAnglePreview({ color, bgColor }: { color: string; bgColor: strin
           </View>
 
           <View style={[previewStyles.angleArc, { borderColor: color + "55" }]} />
-          <Text style={[previewStyles.angleLabel, { color: color + "cc" }]}>90°</Text>
+          <Text style={[previewStyles.angleLabel, { color: color + "cc" }]}>45°</Text>
         </View>
       </View>
 
       <View style={previewStyles.captionRow}>
         <View style={[previewStyles.captionBadge, { backgroundColor: color + "20", borderColor: color + "40" }]}>
-          <Text style={[previewStyles.captionText, { color }]}>Side-on  •  Waist–chest height  •  10–15 ft away</Text>
+          <Text style={[previewStyles.captionText, { color }]}>45° front, shooting-hand side • Chest height • 10–15 ft</Text>
         </View>
       </View>
     </View>
@@ -158,7 +158,7 @@ function AngleIcon({ color }: { color: string }) {
         <View style={[diagramStyles.playerBody, { backgroundColor: color + "cc" }]} />
         <View style={[diagramStyles.playerHead, { backgroundColor: color + "cc" }]} />
         <View style={[diagramStyles.sideArrow, { borderTopColor: color }]} />
-        <Text style={[diagramStyles.sideLabel, { color: color }]}>SIDE</Text>
+        <Text style={[diagramStyles.sideLabel, { color: color }]}>45° FRONT</Text>
       </View>
     </View>
   );
@@ -317,10 +317,10 @@ export function FilmingTipsSheet({ visible, onConfirm, onDismiss, onClosed }: Pr
               Side / Profile View
             </Text>
             <Text style={[styles.tipBody, { color: colors.mutedForeground }]}>
-              Film from the side so the AI can see your full shooting motion
+              Film 45° in front, on your shooting-hand side
             </Text>
             <Text style={[styles.tipSub, { color: colors.mutedForeground }]}>
-              Camera at waist–chest height, 90° side-on to the basket
+              Camera at chest height, full body in frame, 10–15 ft away
             </Text>
           </View>
 
@@ -511,6 +511,7 @@ const diagramStyles = StyleSheet.create({
     borderTopWidth: 8,
     borderLeftColor: "transparent",
     borderRightColor: "transparent",
+    transform: [{ rotate: "-45deg" }],
   },
   sideLabel: {
     position: "absolute",
@@ -843,6 +844,7 @@ const previewStyles = StyleSheet.create({
     flexDirection: "row",
     gap: 4,
     alignItems: "center",
+    transform: [{ rotate: "45deg" }],
   },
   dot: {
     width: 4,

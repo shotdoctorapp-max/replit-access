@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, Image as RNImage, Pressable, StyleSheet, Text, View } from "react-native";
 import { useColors } from "@/hooks/useColors";
 import type { FrameAnnotation } from "@/context/SessionContext";
-import { componentTierColor, knownTier } from "@/utils/grading";
+import { componentTierColor, knownTier, scoreToTier } from "@/utils/grading";
 
 interface Props {
   annotations: FrameAnnotation[];
@@ -289,8 +289,7 @@ export function FrameAnnotationOverlay({
     : -1;
 
   const CARD_WIDTH = 210;
-  const selectedAdjustment = selectedAnnotation && typeof selectedScore === "number" &&
-    knownTier(selectedScore) !== null && selectedScore < 85
+  const selectedAdjustment = selectedAnnotation && scoreToTier(selectedScore).needsWork
     ? componentFeedback?.[selectedAnnotation.zone]?.adjustments?.[0]
     : undefined;
   const cardHeight = selectedAdjustment ? 110 : 80;

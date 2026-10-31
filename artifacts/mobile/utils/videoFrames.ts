@@ -28,10 +28,11 @@ export async function extractFrames(
   videoUri: string,
   durationMs?: number,
   anchorMs?: number,
+  requestedTimes?: number[],
 ): Promise<ExtractedFrames> {
   if (Platform.OS === "web") {
     throw new Error(
-      "Video frame extraction is not supported on web. Please use the photo option."
+      "Open Shot Doctor on your iPhone or Android device to analyze a video."
     );
   }
 
@@ -61,7 +62,7 @@ export async function extractFrames(
 
   if (!videoAccessible) {
     throw new Error(
-      "Could not open this video. Please try recording directly with the 'Record Shot' button, or use the photo option instead."
+      "Could not open this video. Try exporting it from Photos → Share → Save to Files, then choose Browse Files."
     );
   }
 
@@ -84,7 +85,9 @@ export async function extractFrames(
       player.release();
     }
   }
-  const { timestamps, coarse } = planFrameTimes(durationMs, anchorMs);
+  const { timestamps, coarse } = requestedTimes
+    ? { timestamps: requestedTimes, coarse: false }
+    : planFrameTimes(durationMs, anchorMs);
   const validFrames: string[] = [];
   const validUris: string[] = [];
   const validTimestamps: number[] = [];

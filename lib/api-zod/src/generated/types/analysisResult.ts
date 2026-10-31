@@ -6,10 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AnalysisComponents } from './analysisComponents';
+import type { AnalysisResultShootingArmSide } from './analysisResultShootingArmSide';
 import type { DrillRecommendation } from './drillRecommendation';
 import type { FrameAnnotation } from './frameAnnotation';
 
 export interface AnalysisResult {
+  shootingArmSide?: AnalysisResultShootingArmSide;
+  elbowVisible?: boolean;
   /**
      * @minimum 0
      * @maximum 100

@@ -72,7 +72,7 @@ Return ONLY JSON {"indices":[shotIndex]}, one numeric integer matching a supplie
 If no shot is visible, return {"indices":[]}.`;
 
 export function rhythmShotContext(indices: number[], timestamps: number[]) {
-  return `Analyze ONLY the selected same shot: Dip index=${indices[0]} @ ${timestamps[indices[0]]}ms; Set Point index=${indices[1]} @ ${timestamps[indices[1]]}ms (loaded roughly-90-degree elbow before extension); Release index=${indices[2]} @ ${timestamps[indices[2]]}ms (earliest clear ball separation with extended arm and snapped wrist). Return these phase indices unchanged. Use preceding frames only to establish the rise leading into THIS shot; ignore any other shot. If rise timing cannot be identified, use -1 rather than choosing another shot.`;
+  return `Analyze ONLY the selected same shot: Dip index=${indices[0]} @ ${timestamps[indices[0]]}ms; Set Point index=${indices[1]} @ ${timestamps[indices[1]]}ms (loaded elbow before extension); followThroughFrame=${indices[2]} @ ${timestamps[indices[2]]}ms (earliest clear ball separation with extended arm and wrist snapped forward/down). Return Dip, Set Point and followThroughFrame unchanged. Determine armExtendFrame separately as extension ONSET for rhythm only. Determine ballLeavesHandFrame from visible separation. Use preceding frames only for THIS shot's rise; ignore any other shot. If timing cannot be identified, use -1.`;
 }
 
 export function providerFailure(error: unknown) {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { COMPONENT_KEYS, calculateShotScore, reliableRhythm, ScoringEvidenceError } from "../../artifacts/api-server/src/lib/scoring";
+import { COMPONENT_KEYS, calculateShotScore, enforceElbowEvidence, reliableRhythm, ScoringEvidenceError } from "../../artifacts/api-server/src/lib/scoring";
 import { BIOMECHANICS_SYSTEM_PROMPT } from "../../artifacts/api-server/src/lib/prompts";
 import { AnalyzeFormResponse } from "../../lib/api-zod/src/generated/api";
 import { knownTier, scoreToTier, tierColor, UNSCORED_COLOR } from "../../artifacts/mobile/utils/grading";
@@ -8,13 +8,13 @@ import { knownTier, scoreToTier, tierColor, UNSCORED_COLOR } from "../../artifac
 const components = (scores: number[]) => Object.fromEntries(COMPONENT_KEYS.map((key, i) =>
   [key, { score: scores[i], feedback: "Visible mechanical cue" }]));
 
-test("total uses all eight equal component weights and the existing reliable rhythm share", () => {
+test("total uses the requested 1.5x component weights and reliable 15% rhythm share", () => {
   const input = components([50, 60, 70, 80, 90, 100, 40, 30]);
-  assert.equal(calculateShotScore(input).overallScore, 65);
-  assert.equal(calculateShotScore(input, 20).overallScore, 58);
-  assert.equal(calculateShotScore(input, 0).overallScore, 55);
-  assert.equal(calculateShotScore(input, 100).overallScore, 70);
-  assert.equal(calculateShotScore(input).biomechanicsMean, 65);
+  assert.equal(calculateShotScore(input).overallScore, 68);
+  assert.equal(calculateShotScore(input, 20).overallScore, 61);
+  assert.equal(calculateShotScore(input, 0).overallScore, 58);
+  assert.equal(calculateShotScore(input, 100).overallScore, 73);
+  assert.equal(calculateShotScore(input).biomechanicsMean, 650 / 9.5);
 });
 
 test("round only the final value; no tier or model total can change the result", () => {
@@ -25,18 +25,25 @@ test("round only the final value; no tier or model total can change the result",
   assert.equal(calculateShotScore(components(Array(8).fill(0)), 0).overallScore, 0);
 });
 
+test("mostly Pro/Elite mechanics plus low rhythm cannot collapse to a fake zero", () => {
+  const screenshotLike = components([85, 85, 60, 85, 85, 85, 85, 0]);
+  assert.equal(calculateShotScore(screenshotLike, 20).overallScore, 64);
+  assert.throws(() => calculateShotScore({ ...screenshotLike, stance: { score: "Elite", feedback: "Invalid model score" } }, 20),
+    ScoringEvidenceError);
+});
+
 test("changing visible component evidence affects the total without manufactured jitter", () => {
   const original = components(Array(8).fill(60));
   const changed = { ...original, followThrough: { score: 92, feedback: "Clearly extended arm and finished wrist" } };
   const before = JSON.stringify(changed);
   assert.equal(calculateShotScore(original).overallScore, 60);
-  assert.equal(calculateShotScore(changed).overallScore, 64);
+  assert.equal(calculateShotScore(changed).overallScore, 65);
   assert.deepEqual(calculateShotScore(changed), calculateShotScore(changed));
   assert.equal(JSON.stringify(changed), before);
 });
 
 test("missing, nonnumeric, out-of-range, or unexplained evidence cannot produce a total", () => {
-  for (const score of [undefined, NaN, Infinity, -1, 101, "72"]) {
+  for (const score of [undefined, null, NaN, Infinity, -1, 101, "72"]) {
     const input = { ...components(Array(8).fill(72)), stance: { score, feedback: "Cropped feet" } };
     assert.throws(() => calculateShotScore(input), ScoringEvidenceError);
   }
@@ -48,19 +55,27 @@ test("missing, nonnumeric, out-of-range, or unexplained evidence cannot produce 
   assert.throws(() => calculateShotScore(components(Array(8).fill(72)), NaN), ScoringEvidenceError);
 });
 
-test("explicit missing evidence preserves component scores and suppresses the total even with rhythm", () => {
-  const input = { ...components(Array(8).fill(72)), stance: { score: null, feedback: "Feet are cropped" } };
+test("only an explicitly unobservable elbow is excluded without inventing a score", () => {
+  const input = { ...components(Array(8).fill(72)), elbowPosition: { score: null, feedback: "Can't see from this angle" } };
   const before = JSON.stringify(input);
   for (const rhythm of [null, 90]) {
     const result = calculateShotScore(input, rhythm);
-    assert.equal(result.overallScore, null);
-    assert.equal(result.biomechanicsMean, null);
-    assert.equal(result.componentScores[0], null);
+    assert.equal(result.overallScore, rhythm === null ? 72 : 75);
+    assert.equal(result.biomechanicsMean, 72);
+    assert.equal(result.componentScores[2], null);
     assert.equal(result.componentScores[1], 72);
   }
   assert.equal(JSON.stringify(input), before);
   const none = Object.fromEntries(COMPONENT_KEYS.map(key => [key, { score: null, feedback: "Not visible" }]));
-  assert.equal(calculateShotScore(none).overallScore, null);
+  assert.throws(() => calculateShotScore(none), ScoringEvidenceError);
+  const model = { shootingArmSide: "image-left", elbowVisible: false,
+    components: components(Array(8).fill(80)),
+    annotations: [{ zone: "elbowPosition", label: "Incorrect hidden-elbow diagnosis" }, { zone: "stance", label: "Visible base" }] };
+  enforceElbowEvidence(model);
+  assert.equal(model.components.elbowPosition.score, null);
+  assert.deepEqual(model.components.elbowPosition, { score: null, feedback: "Can't see from this angle" });
+  assert.deepEqual(model.annotations, [{ zone: "stance", label: "Visible base" }]);
+  assert.throws(() => enforceElbowEvidence({ components: input }), ScoringEvidenceError);
 });
 
 test("partial results survive the API contract and JSON round trip without inventing a grade", () => {
@@ -73,7 +88,7 @@ test("partial results survive the API contract and JSON round trip without inven
   assert.equal(parsed.analysis.overallScore, null);
   assert.equal(parsed.analysis.components.stance.score, 72);
   assert.equal(parsed.analysis.components.eyeTracking.score, null);
-  assert.equal(scoreToTier(null), "Unscored");
+  assert.equal(scoreToTier(null).label, "—");
   assert.equal(knownTier(null), null);
   assert.equal(tierColor(null), UNSCORED_COLOR);
   const old = { ...response, analysis: { ...response.analysis, components: scored, overallScore: 83 } };
@@ -91,6 +106,10 @@ test("rhythm requires original matched shot phases, known pattern, valid score a
   }
   assert.equal(reliableRhythm(rhythm, [0]), false);
   assert.equal(reliableRhythm(null, [2, 5, 8]), false);
+  const current = { ...rhythm, armExtendFrame: 6, ballLeavesHandFrame: 7, followThroughFrame: 8 };
+  assert.equal(reliableRhythm(current, [2, 5, 8]), true);
+  assert.equal(reliableRhythm({ ...current, followThroughFrame: 7 }, [2, 5, 8]), false);
+  assert.equal(reliableRhythm({ ...current, armExtendFrame: -1 }, [2, 5, 8]), false);
 });
 
 test("rubric requires observed phase evidence, permits missing scores, and removes leading diagnoses", () => {

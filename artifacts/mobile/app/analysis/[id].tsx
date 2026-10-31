@@ -93,11 +93,11 @@ function RhythmSection({ rhythm, sessionId }: { rhythm: RhythmAnalysis; sessionI
   const colors = useColors();
   const meta = PATTERN_META[rhythm.pattern] ?? PATTERN_META["unknown"];
   const patternColor = colors[meta.colorKey];
-  const rhythmTier = scoreToTier(rhythm.rhythmScore ?? 0);
+  const rhythmTier = scoreToTier(rhythm.rhythmScore).label;
   // Use last observation as the coaching cue (most actionable sentence)
   const obs = rhythm.observations ?? [];
   const coachingCue = obs[obs.length - 1] ?? null;
-  const adjustments: string[] = (rhythm.rhythmScore ?? 100) < 85 ? (rhythm.adjustments ?? []) : [];
+  const adjustments: string[] = scoreToTier(rhythm.rhythmScore).needsWork ? (rhythm.adjustments ?? []) : [];
 
   const adjStorageKey = `hoopform_rhythm_adj_done_${sessionId}`;
   const [doneSteps, setDoneSteps] = useState<Set<string>>(new Set());
@@ -211,7 +211,7 @@ export default function AnalysisScreen() {
   const { analysis } = session;
   const overallScore = analysis.overallScore;
   const scoreColor = tierColor(overallScore);
-  const overallTier = scoreToTier(overallScore);
+  const overallTier = scoreToTier(overallScore).label;
   const initialKeyFrameUri =
     session.isVideo && session.keyFrameUris && session.keyFrameUris.length > 0
       ? session.keyFrameUris[0]
@@ -466,7 +466,8 @@ export default function AnalysisScreen() {
             <View style={[styles.videoBadge, { backgroundColor: colors.success + "20", borderColor: colors.success + "50" }]}>
               <Feather name="video" size={11} color={colors.success} />
               <Text style={[styles.videoBadgeText, { color: colors.success }]}>
-                Frame {(session.bestFrameIndex ?? 0) + 1}/{session.totalFrames ?? 8}
+                {typeof session.bestFrameIndex === "number" && typeof session.totalFrames === "number"
+                  ? `Frame ${session.bestFrameIndex + 1}/${session.totalFrames}` : "Frame position unavailable"}
               </Text>
             </View>
           )}
@@ -507,7 +508,7 @@ export default function AnalysisScreen() {
             {(() => {
               const issueCount = BODY_ZONES.filter(({ key }) => {
                 const comp = analysis.components?.[key as keyof typeof analysis.components];
-                return (comp?.score ?? 100) < 85;
+                return scoreToTier(comp?.score).needsWork;
               }).length;
               return issueCount > 0 ? (
                 <View style={[styles.bodyMapIssueBadge, { backgroundColor: colors.destructive + "22", borderColor: colors.destructive + "66" }]}>
@@ -528,8 +529,8 @@ export default function AnalysisScreen() {
               const tier = knownTier(score);
               const zoneColor = componentTierColor(score);
               const isExpanded = expandedBodyZone === key;
-              const isIssue = tier !== null && typeof score === "number" && score < 85;
-              const isMajorIssue = tier !== null && typeof score === "number" && score < 70;
+              const isIssue = scoreToTier(score).needsWork;
+              const isMajorIssue = scoreToTier(score).severity === "Critical";
               const isSeen = seenZones.has(key);
               const showHint = isIssue && !isSeen;
               const dotColor = tierColor(score);
@@ -549,7 +550,9 @@ export default function AnalysisScreen() {
                   ]}
                 >
                   <View style={[styles.bodyZoneScoreBadge, { backgroundColor: colors.surface2, borderWidth: 1, borderColor: zoneColor }]}>
-                    <Text style={[styles.bodyZoneScoreText, { color: colors.foreground }]} adjustsFontSizeToFit numberOfLines={1}>{tier ?? "Unscored"}</Text>
+                    <Text style={[styles.bodyZoneScoreText, { color: colors.foreground }]} adjustsFontSizeToFit numberOfLines={1}>
+                      {key === "elbowPosition" && analysis.elbowVisible === false ? "Can't see from this angle" : tier ?? "—"}
+                    </Text>
                   </View>
                   {showHint && (
                     <View style={styles.notificationDotWrapper}>
@@ -578,7 +581,7 @@ export default function AnalysisScreen() {
             const feedback = typeof comp.feedback === "string"
               ? comp.feedback.split(/(?<=\.)\s+/).map((s) => s.replace(/\.$/, "").trim()).filter((s) => s.length > 2)
               : [];
-            const adjustments: string[] = tier && comp.score !== null && comp.score < 85 ? (comp.adjustments ?? []) : [];
+            const adjustments: string[] = scoreToTier(comp.score).needsWork ? (comp.adjustments ?? []) : [];
             const zoneLabel = COMPONENT_LABELS[expandedBodyZone] ?? expandedBodyZone;
             const severity = tier && comp.score !== null ? scoreSeverity(comp.score) : null;
             return (

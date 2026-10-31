@@ -17,28 +17,28 @@ evidence that a diagnosis is correct.
 
 ## Formula
 
-All eight components have equal weight in the biomechanics mean:
-stance, hip alignment, elbow position, grip, set point, follow-through, balance, eye tracking.
+Follow-through, elbow position and set point have weight 1.5; the other five components
+have weight 1. The full denominator is 9.5. An explicitly unobservable elbow is excluded
+with its weight, leaving denominator 8; no other missing score is excluded.
 
-- Without reliable rhythm: `round(sum(component scores) / 8)`.
-- With reliable rhythm: `round((sum(component scores) / 8) × 0.85 + rhythmScore × 0.15)`.
-- Thus each component contributes 12.5% without rhythm, or 10.625% with rhythm.
+- Biomechanics mean: `sum(score × weight) / sum(included weights)`.
+- Without reliable rhythm: `round(biomechanics mean)`.
+- With reliable rhythm: `round(biomechanics mean × 0.85 + rhythmScore × 0.15)`.
+- Clamp the final total to 0–100.
 - Round once, at the end. Scores may have fractional values.
 - Never use a tier, desired overall score, or model-written overall score as an input.
 
-This preserves the existing 15% rhythm contribution without inventing unequal component
-importance. Logs contain only numeric component scores, the unrounded mean, final total,
-and whether rhythm was included. They do not log images or coaching text.
+This applies the user's requested component weights and existing 15% rhythm contribution.
+Normal logs contain numeric component scores, unrounded mean, final total, and rhythm inclusion.
+Rejected analyses log raw model JSON for diagnosis, never frames or authentication tokens.
 
 ## Evidence requirements
 
-Each component must contain a finite score in [0,100] or explicit null, with nonempty feedback.
-No coercion, zero/default fill, or denominator changes are allowed. Unassessable components
-retain null and explain missing evidence; assessable components are returned normally.
-If any component is null, overallScore is null, even when rhythm is available.
-The app displays Unscored rather than a tier or zero for the total, preserves these sessions
-on reload, and excludes null totals from average/best statistics. Malformed or unexplained
-component objects still cause a 422 response. Saved numeric totals are not rewritten.
+Scores must be finite numbers in [0,100] with nonempty feedback. An explicitly invisible
+shooting elbow may be null and is excluded with "Can't see from this angle"; any other
+invalid/missing score causes 422 rather than a fake zero. No coercion or random offset.
+Legacy saved partial results remain readable, missing totals display "—", and null totals
+stay excluded from averages/best statistics. Saved numeric totals are not rewritten.
 
 Rhythm is included only if its original Dip/Set Point/Release indices match the selected
 shot, its pattern is known, observations are present, its score is finite and bounded, and both motion indices exist
@@ -46,7 +46,8 @@ within the supplied shot. Invalid/unknown rhythm is omitted, and biomechanics ge
 The summary receives rhythm context only after this check.
 
 The production video model is unchanged. Video rhythm and biomechanics requests now use
-temperature 0. That reduces sampling variation, but does not guarantee identical model
+temperature 0.2 for biomechanics (selection/refinement remain deterministic-temperature requests).
+This does not guarantee identical model
 outputs across providers or model updates. Identical validated inputs always yield the same
 total (zero aggregation tolerance). Live model stability must be measured separately; a
 working monitoring tolerance is a range of at most 5 points per component and 3 points in
@@ -69,7 +70,7 @@ It is diagnostic, not an automatic golden-score test. Run:
 
 `pnpm --filter @workspace/scripts exec tsx src/score-calibration-probe.ts`
 
-### Current live findings
+### Historical live findings (before weighted scoring, handedness and 33ms refinement)
 
 After removing leading examples, the repeated three-frame samples correctly left eye
 tracking unscored in both clips and stance unscored in the cropped clip. Consequently

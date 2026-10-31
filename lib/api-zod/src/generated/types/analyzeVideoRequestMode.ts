@@ -15,4 +15,6 @@ export type AnalyzeVideoRequestMode = typeof AnalyzeVideoRequestMode[keyof typeo
 export const AnalyzeVideoRequestMode = {
   analyze: 'analyze',
   locate: 'locate',
+  prepare: 'prepare',
+  'refine-release': 'refine-release',
 } as const;

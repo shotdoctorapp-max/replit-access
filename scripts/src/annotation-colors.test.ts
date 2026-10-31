@@ -1,18 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  TIER_COLORS, UNSCORED_COLOR, componentTierColor, frameTierSummary, knownTier,
+  TIER_COLORS, UNSCORED_COLOR, componentTierColor, frameTierSummary, knownTier, scoreToTier,
 } from "../../artifacts/mobile/utils/grading";
 
-test("all five tier colors follow the agreed palette at their score thresholds", () => {
+test("four-tier palette and issue decisions share exactly one descriptor", () => {
   assert.deepEqual(TIER_COLORS, {
-    Elite: "#FFD700",
-    Pro: "#A8B2C1",
-    Rising: "#4A9EFF",
-    Developing: "#CD7F32",
-    Beginner: "#6B7280",
+    Elite: "#A855F7",
+    Pro: "#22C55E",
+    Rising: "#F59E0B",
+    Beginner: "#EF4444",
   });
-  for (const [score, tier] of [[85, "Elite"], [70, "Pro"], [55, "Rising"], [40, "Developing"], [0, "Beginner"]] as const) {
+  for (const [score, tier] of [[85, "Elite"], [70, "Pro"], [55, "Rising"], [40, "Beginner"], [0, "Beginner"]] as const) {
     assert.equal(knownTier(score), tier);
     assert.equal(componentTierColor(score), TIER_COLORS[tier]);
   }
@@ -35,7 +34,7 @@ test("each frame summarizes its weakest scored annotated component, ignoring leg
     [{ zone: "elbowPosition", severity: "good" }, { zone: "gripPosition", severity: "issue" }],
     [{ zone: "followThrough", severity: "good" }],
   ];
-  assert.deepEqual(frames.map(a => frameTierSummary(a, components)), ["Developing", "Rising", "Beginner"]);
+  assert.deepEqual(frames.map(a => frameTierSummary(a, components)), ["Beginner", "Rising", "Beginner"]);
   assert.equal(frameTierSummary([{ zone: "stance" }], components), "Elite");
   assert.equal(frameTierSummary([{ zone: "gripPosition" }], components), "Pro");
   assert.equal(frameTierSummary([{ zone: "missing" }], components), null);

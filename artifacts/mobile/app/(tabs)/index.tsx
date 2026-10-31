@@ -30,7 +30,9 @@ import { ScoreRing } from "@/components/ScoreRing";
 import { scoreToTier, tierColor } from "@/utils/grading";
 import { extractFrames } from "@/utils/videoFrames";
 import { validateFrameMapping } from "@/utils/frameSampling";
-import { analyzeVideo as requestVideoAnalysis } from "@workspace/api-client-react";
+import { getShootingHand } from "@/utils/shootingHand";
+import { planReleaseTimes, mergeRefinedRelease } from "@/utils/releaseRefinement";
+import { analyzeVideo as requestVideoAnalysis, createBugReport } from "@workspace/api-client-react";
 import { FilmingTipsSheet, shouldShowFilmingTips } from "@/components/FilmingTipsSheet";
 import { CourtBackground } from "@/components/CourtBackground";
 
@@ -210,7 +212,7 @@ export default function HomeScreen() {
   const pickFromLibrary = async () => {
     if (!checkShotsOrPaywall()) return;
     if (Platform.OS === "web") {
-      Alert.alert("Mobile Only", "Video analysis requires the Expo Go app.");
+      Alert.alert("Mobile Only", "Open Shot Doctor on your iPhone or Android device to analyze a video.");
       return;
     }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -238,64 +240,30 @@ export default function HomeScreen() {
     try {
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsEditing: false,
+        preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Current,
+        videoExportPreset: ImagePicker.VideoExportPreset.Passthrough,
       });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       // Log the full error so device logs (Xcode / EAS) can pinpoint the cause
       console.error("pickFromLibrary error:", errMsg, err);
 
-      // Detect known failure patterns:
-      // • iCloud offloading — video not on device, NSItemProvider export fails
-      // • PHPhotosErrorDomain / error 3164 — same iCloud class of errors
-      // • Format/codec — older H.264 profiles or .MOV containers the item provider
-      //   can't transcode; shows up as "UTType", "format", or "codec" in the message
-      // • NSItemProvider / loadFileRepresentation — broad export failure catch-all
-      const isICloud =
-        errMsg.includes("iCloud") ||
-        errMsg.includes("PHPhotosErrorDomain") ||
-        errMsg.includes("3164") ||
-        errMsg.includes("not available locally") ||
-        errMsg.includes("download");
-      const isFormat =
-        errMsg.includes("UTType") ||
-        errMsg.includes("format") ||
-        errMsg.includes("codec") ||
-        errMsg.includes("AVAsset") ||
-        errMsg.includes("NSItemProvider") ||
-        errMsg.includes("loadFileRepresentation");
-
-      if (isICloud) {
-        Alert.alert(
-          "Video not on this device",
-          "This video is stored in iCloud and hasn't downloaded yet. Open Photos, tap the video to download it, then try again — or use Browse Files to pick it directly from iCloud Drive.",
-          [
-            { text: "Browse Files Instead", onPress: pickFromFiles },
-            { text: "OK", style: "cancel" },
-          ]
-        );
-      } else if (isFormat) {
-        Alert.alert(
-          "Couldn't read this video",
-          "This video format isn't supported by the picker. Try 'Browse Files (iCloud/Downloads)' instead — it handles more formats.",
-          [
-            { text: "Browse Files Instead", onPress: pickFromFiles },
-            { text: "OK", style: "cancel" },
-          ]
-        );
-      } else {
-        Alert.alert(
-          "Couldn't open library",
-          "Something went wrong loading this video. Try 'Browse Files (iCloud/Downloads)' instead.",
-          [
-            { text: "Browse Files Instead", onPress: pickFromFiles },
-            { text: "OK", style: "cancel" },
-          ]
-        );
-      }
+      reportPickerFailure(errMsg);
       return;
     }
-    if (result.canceled || !result.assets[0]) return;
+    if (result.canceled) return;
+    if (!result.assets?.[0]) {
+      reportPickerFailure("Photos returned no video asset after selection.");
+      return;
+    }
     const asset = result.assets[0];
+    if (typeof asset.uri !== "string" || !asset.uri) {
+      reportPickerFailure("Photos returned a video asset without a readable URI.");
+      return;
+    }
+    // Scheme only: no filenames, Photos asset IDs or local paths in diagnostic logs.
+    console.info("shotdoctor.picker.result", { scheme: asset.uri.split(":")[0], platform: Platform.OS });
     let uri = asset.uri;
     if (uri.startsWith("file://")) {
       try {
@@ -307,7 +275,19 @@ export default function HomeScreen() {
         // Copy failed — proceed with original temp URI
       }
     }
-    await analyzeVideo(uri, asset.duration ?? undefined);
+    // Current/Passthrough may return the real-time source, not the edited slow-mo
+    // composition. Read duration from the returned native file, not Photos metadata.
+    await analyzeVideo(uri);
+  };
+
+  const reportPickerFailure = (message: string) => {
+    void createBugReport({
+      message: `Photos picker: ${message}`.slice(0, 2000),
+      deviceInfo: { platform: Platform.OS, representation: "current", exportPreset: "passthrough" },
+    }).catch(error => console.warn("Picker bug report could not be sent", error instanceof Error ? error.message : "Unknown error"));
+    Alert.alert("Couldn't open library",
+      `${message}\n\nSlow-mo videos stored in iCloud: open Photos → Share → Save to Files, then pick it here.`,
+      [{ text: "Browse Files", onPress: pickFromFiles }, { text: "OK", style: "cancel" }]);
   };
 
   // METHOD 2: Files / iCloud Drive via DocumentPicker
@@ -317,7 +297,7 @@ export default function HomeScreen() {
   const pickFromFiles = async () => {
     if (!checkShotsOrPaywall()) return;
     if (Platform.OS === "web") {
-      Alert.alert("Mobile Only", "Video analysis requires the Expo Go app.");
+      Alert.alert("Mobile Only", "Open Shot Doctor on your iPhone or Android device to analyze a video.");
       return;
     }
     let docResult: DocumentPicker.DocumentPickerResult;
@@ -387,6 +367,8 @@ export default function HomeScreen() {
   }, [showTipsSheet]);
 
   const analyzeVideo = async (videoUri: string, durationMs?: number) => {
+    const shootingHand = await getShootingHand();
+    if (!shootingHand) return;
     const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
     const MAX_DURATION_SECONDS = 60;
 
@@ -481,7 +463,7 @@ export default function HomeScreen() {
       const requestOptions = { headers: token ? { Authorization: `Bearer ${token}` } : undefined };
       if (extracted.coarse) {
         const location = await requestVideoAnalysis({
-          frames: extracted.base64Frames, timestamps: extracted.timestamps, mimeType: "image/jpeg", mode: "locate",
+          frames: extracted.base64Frames, timestamps: extracted.timestamps, shootingHand, mimeType: "image/jpeg", mode: "locate",
         }, requestOptions);
         if (!("shotIndex" in location) || !Number.isInteger(location.shotIndex) ||
             location.totalFrames !== extracted.timestamps.length ||
@@ -491,9 +473,28 @@ export default function HomeScreen() {
         }
         extracted = await extractFrames(resolvedUri, extracted.durationMs, location.shotTimestamp);
       }
-      const { base64Frames, thumbnailUris, timestamps } = extracted;
+      const preparation = await requestVideoAnalysis({
+        frames: extracted.base64Frames, timestamps: extracted.timestamps, shootingHand, mimeType: "image/jpeg", mode: "prepare",
+      }, requestOptions);
+      if (!("keyFrameIndices" in preparation)) throw new Error("Incomplete shot preparation.");
+      const preparedIndices = validateFrameMapping(preparation.keyFrameIndices, preparation.keyFrameTimestamps,
+        preparation.totalFrames, extracted.timestamps, extracted.thumbnailUris);
+      const requestedTimes = planReleaseTimes(extracted.timestamps[preparedIndices[2]], extracted.durationMs,
+        extracted.timestamps[preparedIndices[1]]);
+      const fine = await extractFrames(resolvedUri, extracted.durationMs, undefined, requestedTimes);
+      const refinement = await requestVideoAnalysis({
+        frames: fine.base64Frames, timestamps: fine.timestamps, shootingHand, mimeType: "image/jpeg", mode: "refine-release",
+      }, requestOptions);
+      if (!("releaseIndex" in refinement) || !Number.isInteger(refinement.releaseIndex) ||
+          refinement.releaseIndex < 0 || refinement.releaseIndex >= fine.timestamps.length ||
+          refinement.totalFrames !== fine.timestamps.length ||
+          refinement.releaseTimestamp !== fine.timestamps[refinement.releaseIndex]) {
+        throw new Error("The refined Release could not be matched to this video.");
+      }
+      const finalFrames = mergeRefinedRelease(extracted, preparedIndices, fine, refinement.releaseIndex);
+      const { base64Frames, thumbnailUris, timestamps } = finalFrames;
       const data = await requestVideoAnalysis({
-        frames: base64Frames, timestamps, mimeType: "image/jpeg", mode: "analyze",
+        frames: base64Frames, timestamps, shootingHand, phaseIndices: finalFrames.phaseIndices, mimeType: "image/jpeg", mode: "analyze",
       }, requestOptions);
       if (!("analysis" in data)) throw new Error("Incomplete analysis response. Please retry.");
       const selectedIndices = validateFrameMapping(data.keyFrameIndices, data.keyFrameTimestamps,
@@ -524,7 +525,7 @@ export default function HomeScreen() {
       // Keep all three positions; never compress the annotation index space.
       const keyFrameEntries = candidateFrames;
 
-      // Copy key frame thumbnails to stable cache paths
+      // Persist key frames in Documents, not the purgeable cache.
       const keyFrameUris: string[] = [];
       const keyFrameLabels: string[] = [];
       for (let i = 0; i < keyFrameEntries.length; i++) {
@@ -538,14 +539,14 @@ export default function HomeScreen() {
         keyFrameLabels.push(label);
       }
 
-      // Copy original video to stable cache path (best-effort)
+      // Persist the source video before consuming or saving this session.
       let cachedVideoUri: string | undefined;
       try {
-        const videoDestUri = `${FileSystem.cacheDirectory}shotdoc_video_${sessionId}.mp4`;
+        const videoDestUri = `${FileSystem.documentDirectory}shotdoc_video_${sessionId}.mp4`;
         await FileSystem.copyAsync({ from: resolvedUri, to: videoDestUri });
         cachedVideoUri = videoDestUri;
       } catch {
-        // non-fatal — video playback simply won't appear for this session
+        throw new Error("The video could not be saved to your device. Check available storage and try again; this session has not been saved.");
       }
 
       const session: Session = {
@@ -836,7 +837,7 @@ export default function HomeScreen() {
           {recentSessions.map((session) => {
             const score = session.analysis.overallScore;
             const scoreColor = tierColor(score);
-            const grade = scoreToTier(score);
+            const grade = scoreToTier(score).label;
             return (
               <Pressable
                 key={session.id}

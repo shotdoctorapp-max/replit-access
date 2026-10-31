@@ -1,77 +1,40 @@
-export type Tier = "Elite" | "Pro" | "Rising" | "Developing" | "Beginner";
+export type Tier = "Elite" | "Pro" | "Rising" | "Beginner";
 export type Severity = "Critical" | "Moderate" | "Minor" | "Good";
-
 export const TIER_COLORS: Record<Tier, string> = {
-  Elite:      "#FFD700",
-  Pro:        "#A8B2C1",
-  Rising:     "#4A9EFF",
-  Developing: "#CD7F32",
-  Beginner:   "#6B7280",
+  Beginner: "#EF4444", Rising: "#F59E0B", Pro: "#22C55E", Elite: "#A855F7",
 };
-
-/** A distinct neutral state for an annotation whose component has no usable score. */
 export const UNSCORED_COLOR = "#9CA3AF";
-
+export const TIER_ICONS: Record<Tier, string> = {
+  Elite: "crown", Pro: "star", Rising: "trending-up", Beginner: "seed-outline",
+};
+const TIERS: { minimum: number; label: Tier; needsWork: boolean; severity: Severity }[] = [
+  { minimum: 85, label: "Elite", needsWork: false, severity: "Good" },
+  { minimum: 70, label: "Pro", needsWork: false, severity: "Good" },
+  { minimum: 55, label: "Rising", needsWork: true, severity: "Moderate" },
+  { minimum: 0, label: "Beginner", needsWork: true, severity: "Critical" },
+];
+export function scoreToTier(value: unknown): {
+  label: Tier | "—"; color: string; needsWork: boolean; score: number | null; severity: Severity | null;
+} {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 100) {
+    return { label: "—", color: UNSCORED_COLOR, needsWork: false, score: null, severity: null };
+  }
+  const tier = TIERS.find(t => value >= t.minimum)!;
+  return { label: tier.label, color: TIER_COLORS[tier.label], needsWork: tier.needsWork, score: value, severity: tier.severity };
+}
+// Compatibility helpers delegate to the single descriptor; no parallel thresholds.
 export function knownTier(score: unknown): Tier | null {
-  return typeof score === "number" && Number.isFinite(score) && score >= 0 && score <= 100
-    ? scoreToTier(score)
-    : null;
+  const { label } = scoreToTier(score);
+  return label === "—" ? null : label;
 }
-
-export function componentTierColor(score: unknown): string {
-  const tier = knownTier(score);
-  return tier ? TIER_COLORS[tier] : UNSCORED_COLOR;
-}
-
-/** Frame-strip summary: weakest *known* tier among components annotated on this frame.
- * Unscored annotations stay neutral individually; a frame with no scored components is neutral.
- */
+export const componentTierColor = (score: unknown) => scoreToTier(score).color;
+export const tierColor = componentTierColor;
+export const scoreSeverity = (score: unknown) => scoreToTier(score).severity;
 export function frameTierSummary(
   annotations: readonly { zone: string }[],
   components: Record<string, { score?: number | null } | undefined> | undefined,
 ): Tier | null {
   const scores = annotations.map(a => components?.[a.zone]?.score)
     .filter((s): s is number => knownTier(s) !== null);
-  return scores.length ? scoreToTier(Math.min(...scores)) : null;
-}
-
-export const SEVERITY_COLORS: Record<Severity, string> = {
-  Critical: "#FF4444",
-  Moderate: "#FF9500",
-  Minor:    "#FFD700",
-  Good:     "#00C853",
-};
-
-/** Icon name (MaterialCommunityIcons) for each tier */
-export const TIER_ICONS: Record<Tier, string> = {
-  Elite:      "crown",
-  Pro:        "star",
-  Rising:     "trending-up",
-  Developing: "dumbbell",
-  Beginner:   "seed-outline",
-};
-
-export function scoreToTier(score: number): Tier;
-export function scoreToTier(score: null): "Unscored";
-export function scoreToTier(score: number | null): Tier | "Unscored";
-export function scoreToTier(score: number | null): Tier | "Unscored" {
-  if (score === null) return "Unscored";
-  if (score >= 85) return "Elite";
-  if (score >= 70) return "Pro";
-  if (score >= 55) return "Rising";
-  if (score >= 40) return "Developing";
-  return "Beginner";
-}
-
-/** Returns the tier color hex string for a given numeric score. */
-export function tierColor(score: number | null | undefined): string {
-  return componentTierColor(score);
-}
-
-/** Returns the severity level for a given numeric score. */
-export function scoreSeverity(score: number): Severity {
-  if (score < 55) return "Critical";
-  if (score < 70) return "Moderate";
-  if (score < 85) return "Minor";
-  return "Good";
+  return scores.length ? knownTier(Math.min(...scores)) : null;
 }

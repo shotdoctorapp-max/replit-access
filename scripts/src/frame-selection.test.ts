@@ -48,11 +48,11 @@ test("Set Point is loaded before extension and Release requires separation plus 
   const context = rhythmShotContext([1, 3, 4], [5000, 5100, 5200, 5300, 5400]);
   assert.match(context, /Dip index=1 @ 5100ms/);
   assert.match(context, /Set Point index=3 @ 5300ms/);
-  assert.match(context, /Release index=4 @ 5400ms/);
+  assert.match(context, /followThroughFrame=4 @ 5400ms/);
   assert.match(context, /earliest clear ball separation/);
   assert.match(context, /ignore any other shot/);
-  assert.match(RHYTHM_SYSTEM_PROMPT, /earliest clear post-release frame/);
-  assert.match(RHYTHM_SYSTEM_PROMPT, /wrist snapped forward\/down/);
+  assert.match(RHYTHM_SYSTEM_PROMPT, /armExtendFrame.*onset.*rhythm timing only/);
+  assert.match(RHYTHM_SYSTEM_PROMPT, /followThroughFrame.*wrist fully flexed downward/);
   assert.doesNotMatch(RHYTHM_SYSTEM_PROMPT, /LAST frame where fingertips still contact/);
 });
 

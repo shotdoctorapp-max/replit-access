@@ -4,6 +4,21 @@ export const COMPONENT_KEYS = [
 ] as const;
 
 export const RHYTHM_WEIGHT = 0.15;
+export function enforceElbowEvidence(analysis: any) {
+  if (!analysis || typeof analysis.elbowVisible !== "boolean" ||
+      !["image-left", "image-right"].includes(analysis.shootingArmSide) || !analysis.components?.elbowPosition) {
+    throw new ScoringEvidenceError();
+  }
+  if (!analysis.elbowVisible) {
+    analysis.components.elbowPosition = { score: null, feedback: "Can't see from this angle" };
+    if (Array.isArray(analysis.annotations)) {
+      analysis.annotations = analysis.annotations.filter((annotation: { zone?: unknown } | null) =>
+        annotation?.zone !== "elbowPosition");
+    }
+  }
+}
+export const COMPONENT_WEIGHTS = Object.fromEntries(COMPONENT_KEYS.map(key =>
+  [key, ["followThrough", "elbowPosition", "setPoint"].includes(key) ? 1.5 : 1])) as Record<typeof COMPONENT_KEYS[number], number>;
 
 export class ScoringEvidenceError extends Error {
   constructor() {
@@ -15,30 +30,29 @@ function validScore(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
 }
 
-/** Equal component weights (1/8). Reliable rhythm retains the existing 15%.
- * Explicitly unassessable components retain feedback but suppress the total.
- * Neither a default score nor a changing denominator fills missing evidence.
+/** Weighted evidence composite; an explicitly unobservable elbow is the only
+ * excluded component. All other missing/invalid evidence fails, never defaults.
+ * Rhythm contributes 15% only when independently validated. Round once.
  */
 export function calculateShotScore(components: unknown, reliableRhythmScore: unknown = null) {
   if (!components || typeof components !== "object" || Array.isArray(components)) throw new ScoringEvidenceError();
   const source = components as Record<string, { score?: unknown; feedback?: unknown } | undefined>;
   const scores = COMPONENT_KEYS.map(key => {
     const component = source[key];
-    if (!component || (component.score !== null && !validScore(component.score)) ||
+    if (!component || (!(key === "elbowPosition" && component.score === null) && !validScore(component.score)) ||
         typeof component.feedback !== "string" || !component.feedback.trim()) {
       throw new ScoringEvidenceError();
     }
     return component.score;
   });
   if (reliableRhythmScore !== null && !validScore(reliableRhythmScore)) throw new ScoringEvidenceError();
-  if (scores.some(score => score === null)) {
-    return { overallScore: null, biomechanicsMean: null, componentScores: scores };
-  }
-  const biomechanicsMean = (scores as number[]).reduce((sum, score) => sum + score, 0) / COMPONENT_KEYS.length;
+  const denominator = COMPONENT_KEYS.reduce((sum, key, i) => sum + (scores[i] === null ? 0 : COMPONENT_WEIGHTS[key]), 0);
+  const biomechanicsMean = COMPONENT_KEYS.reduce((sum, key, i) =>
+    sum + (scores[i] === null ? 0 : (scores[i] as number) * COMPONENT_WEIGHTS[key]), 0) / denominator;
   const total = reliableRhythmScore === null
     ? biomechanicsMean
     : biomechanicsMean * (1 - RHYTHM_WEIGHT) + (reliableRhythmScore as number) * RHYTHM_WEIGHT;
-  return { overallScore: Math.round(total), biomechanicsMean, componentScores: scores };
+  return { overallScore: Math.round(Math.max(0, Math.min(100, total))), biomechanicsMean, componentScores: scores };
 }
 
 /** Check the model's ORIGINAL phase evidence before authoritative indices replace it. */
@@ -50,9 +64,12 @@ export function reliableRhythm(
   const [dip, setPoint, release] = selected;
   if (selected.length !== 3 || !validScore(r.rhythmScore) ||
       !["synchronized", "set-then-drive", "disconnected"].includes(String(r.pattern)) ||
-      r.dipFrame !== dip || r.setPointFrame !== setPoint || r.armExtendFrame !== release ||
+      r.dipFrame !== dip || r.setPointFrame !== setPoint ||
+      (r.followThroughFrame ?? r.armExtendFrame) !== release ||
       !Array.isArray(r.observations) || r.observations.length === 0 ||
       !r.observations.every(o => typeof o === "string" && o.trim())) return false;
+  if (r.followThroughFrame !== undefined && ![r.armExtendFrame, r.ballLeavesHandFrame].every(index =>
+    typeof index === "number" && Number.isInteger(index) && index >= setPoint && index <= release)) return false;
   return [r.ballRiseFrame, r.bodyRiseFrame].every(index =>
     typeof index === "number" && Number.isInteger(index) && index >= 0 && index <= release);
 }

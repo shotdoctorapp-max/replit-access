@@ -8,10 +8,13 @@
 
 export * from './analysisComponents';
 export * from './analysisResult';
+export * from './analysisResultShootingArmSide';
 export * from './analyzeRequest';
+export * from './analyzeRequestShootingHand';
 export * from './analyzeResponse';
 export * from './analyzeVideoRequest';
 export * from './analyzeVideoRequestMode';
+export * from './analyzeVideoRequestShootingHand';
 export * from './bugReportResult';
 export * from './componentScore';
 export * from './confirmWaitlistParams';
@@ -22,6 +25,8 @@ export * from './frameAnnotation';
 export * from './frameAnnotationSeverity';
 export * from './healthStatus';
 export * from './locateShotResponse';
+export * from './phasePreparation';
+export * from './refinedReleaseResult';
 export * from './videoAnalysisResult';
 export * from './videoAnalysisResultRhythm';
 export * from './waitlistResult';

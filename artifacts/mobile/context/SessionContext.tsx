@@ -86,6 +86,8 @@ export interface DrillRecommendation {
 }
 
 export interface RhythmAnalysis {
+  ballLeavesHandFrame?: number;
+  followThroughFrame?: number;
   pattern: "synchronized" | "set-then-drive" | "disconnected" | "unknown";
   dipFrame?: number;
   ballRiseFrame: number;
@@ -98,6 +100,8 @@ export interface RhythmAnalysis {
 }
 
 export interface AnalysisResult {
+  shootingArmSide?: "image-left" | "image-right";
+  elbowVisible?: boolean;
   overallScore: number | null;
   summary: string;
   components: {

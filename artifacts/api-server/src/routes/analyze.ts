@@ -4,13 +4,17 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { BIOMECHANICS_SYSTEM_PROMPT } from "../lib/prompts";
 import { AnalyzeFormResponse } from "@workspace/api-zod";
 import { analysisRateLimit } from "../middlewares/analysisRateLimit";
-import { calculateShotScore, ScoringEvidenceError } from "../lib/scoring";
+import { calculateShotScore, enforceElbowEvidence, ScoringEvidenceError } from "../lib/scoring";
 
 const router = Router();
 
 router.post("/analyze", requireAuth(), analysisRateLimit, async (req, res) => {
   try {
-    const { imageBase64, mimeType = "image/jpeg" } = req.body;
+    const { imageBase64, mimeType = "image/jpeg", shootingHand } = req.body;
+    if (!["right", "left"].includes(shootingHand)) {
+      res.status(400).json({ error: "Choose your shooting hand before analyzing." });
+      return;
+    }
 
     if (!imageBase64) {
       res.status(400).json({ error: "imageBase64 is required" });
@@ -34,7 +38,7 @@ router.post("/analyze", requireAuth(), analysisRateLimit, async (req, res) => {
             },
             {
               type: "text",
-              text: "Assess only shooting mechanics directly visible in this photo. Do not infer hidden feet, unseen release motion, spin, gaze or shot outcome. Return score:null for any component that cannot be assessed, not a default score. Return ONLY valid JSON as specified.",
+              text: `The shooter is ${shootingHand.toUpperCase()}-handed. Identify the shooting hand behind/under the ball, not the guide hand at the side. Grade ONLY the shooting elbow and output shootingArmSide and elbowVisible first. Assess only visible evidence. Return score:null for unassessable components, never a default.`,
             },
           ],
         },
@@ -54,6 +58,7 @@ router.post("/analyze", requireAuth(), analysisRateLimit, async (req, res) => {
       return;
     }
 
+    enforceElbowEvidence(rawAnalysis);
     const score = calculateShotScore(rawAnalysis?.components);
     rawAnalysis.overallScore = score.overallScore;
     req.log.info(score, "Evidence-based photo score calculation");

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { AnalyzeVideoRequestMode } from './analyzeVideoRequestMode';
+import type { AnalyzeVideoRequestShootingHand } from './analyzeVideoRequestShootingHand';
 
 export interface AnalyzeVideoRequest {
   /**
@@ -19,4 +20,11 @@ export interface AnalyzeVideoRequest {
   mimeType?: string;
   /** Locate returns a coarse shot anchor only; analyze returns validated final phases */
   mode?: AnalyzeVideoRequestMode;
+  shootingHand: AnalyzeVideoRequestShootingHand;
+  /**
+     * Dip, Set Point and independently refined Release positions in the final supplied array
+     * @minItems 3
+     * @maxItems 3
+     */
+  phaseIndices?: number[];
 }

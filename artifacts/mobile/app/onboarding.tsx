@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { CourtBackground } from "@/components/CourtBackground";
+import { SHOOTING_HAND_KEY, type ShootingHand } from "@/utils/shootingHand";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const STORAGE_KEY = "@shotdoc_onboarding_done";
@@ -36,7 +37,7 @@ const SLIDES: Slide[] = [
     id: "2",
     icon: "video-outline",
     headline: "Record or Upload",
-    body: "Film a slow-mo clip from the side. 10 seconds is all it takes.",
+    body: "Film 45° in front, on your shooting-hand side. Full body in frame, camera at chest height, 10–15 ft away.",
   },
   {
     id: "3",
@@ -50,6 +51,8 @@ const SLIDES: Slide[] = [
     headline: "Track Your Progress",
     body: "See how your shot improves with every session.",
   },
+  { id: "hand", icon: "hand-back-right-outline", headline: "Which hand do you shoot with?",
+    body: "We’ll identify your shooting arm separately from your guide arm." },
 ];
 
 const GREEN = "#00C853";
@@ -60,10 +63,17 @@ export default function OnboardingScreen() {
   const { height: windowHeight } = useWindowDimensions();
   const flatListRef = useRef<FlatList<Slide>>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [shootingHand, setShootingHand] = useState<ShootingHand | null>(null);
 
   const isLast = activeIndex === SLIDES.length - 1;
 
   const finish = async () => {
+    if (!shootingHand) {
+      flatListRef.current?.scrollToIndex({ index: SLIDES.length - 1, animated: true });
+      setActiveIndex(SLIDES.length - 1);
+      return;
+    }
+    await AsyncStorage.setItem(SHOOTING_HAND_KEY, shootingHand);
     await AsyncStorage.setItem(STORAGE_KEY, "true");
     router.replace("/(auth)/sign-in");
   };
@@ -95,6 +105,18 @@ export default function OnboardingScreen() {
       </View>
       <Text style={styles.headline}>{item.headline}</Text>
       <Text style={styles.body}>{item.body}</Text>
+      {item.id === "2" && <Text style={[styles.body, { color: GREEN }]}>Camera ↗ 45° → Shooter → Basket</Text>}
+      {item.id === "hand" && (
+        <View style={{ flexDirection: "row", gap: 16, marginTop: 24 }}>
+          {(["right", "left"] as const).map(hand => (
+            <Pressable key={hand} accessibilityRole="radio" accessibilityState={{ checked: shootingHand === hand }}
+              onPress={() => setShootingHand(hand)}
+              style={{ padding: 16, borderWidth: 2, borderRadius: 12, borderColor: shootingHand === hand ? GREEN : MUTED }}>
+              <Text style={{ color: shootingHand === hand ? GREEN : MUTED }}>{hand === "right" ? "Right" : "Left"}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
     </View>
   );
 

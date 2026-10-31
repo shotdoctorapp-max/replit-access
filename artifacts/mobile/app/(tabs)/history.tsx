@@ -27,7 +27,7 @@ function SessionItem({ session, onPress, onDelete }: {
   const [imgFailed, setImgFailed] = useState(false);
   const score = session.analysis.overallScore;
   const scoreColor = tierColor(score);
-  const tier = scoreToTier(score);
+  const tier = scoreToTier(score).label;
 
   const weakest = Object.entries(session.analysis.components).filter(([, c]) => typeof c.score === "number").sort(
     ([, a], [, b]) => a.score! - b.score!
@@ -114,9 +114,9 @@ export default function HistoryScreen() {
 
   const scores = sessions.map(s => s.analysis.overallScore).filter((s): s is number => typeof s === "number");
   const avgScore = scores.length ? Math.round(scores.reduce((a, s) => a + s, 0) / scores.length) : null;
-  const avgTier = scoreToTier(avgScore);
+  const avgTier = scoreToTier(avgScore).label;
   const bestScore = scores.length ? Math.max(...scores) : null;
-  const bestTier = scoreToTier(bestScore);
+  const bestTier = scoreToTier(bestScore).label;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

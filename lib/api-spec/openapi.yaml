@@ -139,6 +139,8 @@ paths:
                 oneOf:
                   - $ref: "#/components/schemas/VideoAnalysisResult"
                   - $ref: "#/components/schemas/LocateShotResponse"
+                  - $ref: "#/components/schemas/PhasePreparation"
+                  - $ref: "#/components/schemas/RefinedReleaseResult"
         "400":
           description: Bad request
         "401":
@@ -206,12 +208,49 @@ components:
           default: image/jpeg
         mode:
           type: string
-          enum: [analyze, locate]
+          enum: [analyze, locate, prepare, refine-release]
           default: analyze
           description: Locate returns a coarse shot anchor only; analyze returns validated final phases
+        shootingHand:
+          type: string
+          enum: [right, left]
+        phaseIndices:
+          type: array
+          items:
+            type: integer
+          minItems: 3
+          maxItems: 3
+          description: Dip, Set Point and independently refined Release positions in the final supplied array
       required:
         - frames
         - timestamps
+        - shootingHand
+
+    PhasePreparation:
+      type: object
+      properties:
+        keyFrameIndices:
+          type: array
+          items:
+            type: integer
+        keyFrameTimestamps:
+          type: array
+          items:
+            type: number
+        totalFrames:
+          type: integer
+      required: [keyFrameIndices, keyFrameTimestamps, totalFrames]
+
+    RefinedReleaseResult:
+      type: object
+      properties:
+        releaseIndex:
+          type: integer
+        releaseTimestamp:
+          type: number
+        totalFrames:
+          type: integer
+      required: [releaseIndex, releaseTimestamp, totalFrames]
 
     LocateShotResponse:
       type: object
@@ -297,8 +336,12 @@ components:
           type: string
         mimeType:
           type: string
+        shootingHand:
+          type: string
+          enum: [right, left]
       required:
         - imageBase64
+        - shootingHand
 
     ComponentScore:
       type: object
@@ -388,6 +431,11 @@ components:
     AnalysisResult:
       type: object
       properties:
+        shootingArmSide:
+          type: string
+          enum: [image-left, image-right]
+        elbowVisible:
+          type: boolean
         overallScore:
           type: ["integer", "null"]
           minimum: 0

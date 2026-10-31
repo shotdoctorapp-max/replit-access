@@ -70,12 +70,18 @@ export const analyzeVideoBodyFramesMax = 48;
 
 export const analyzeVideoBodyMimeTypeDefault = `image/jpeg`;
 export const analyzeVideoBodyModeDefault = `analyze`;
+export const analyzeVideoBodyPhaseIndicesMin = 3;
+export const analyzeVideoBodyPhaseIndicesMax = 3;
+
+
 
 export const AnalyzeVideoBody = zod.object({
   "frames": zod.array(zod.string()).min(1).max(analyzeVideoBodyFramesMax).describe('Base64-encoded JPEG frames extracted from the video'),
   "timestamps": zod.array(zod.number()).describe('Millisecond timestamps corresponding to each frame'),
   "mimeType": zod.string().default(analyzeVideoBodyMimeTypeDefault),
-  "mode": zod.enum(['analyze', 'locate']).default(analyzeVideoBodyModeDefault).describe('Locate returns a coarse shot anchor only; analyze returns validated final phases')
+  "mode": zod.enum(['analyze', 'locate', 'prepare', 'refine-release']).default(analyzeVideoBodyModeDefault).describe('Locate returns a coarse shot anchor only; analyze returns validated final phases'),
+  "shootingHand": zod.enum(['right', 'left']),
+  "phaseIndices": zod.array(zod.number()).min(analyzeVideoBodyPhaseIndicesMin).max(analyzeVideoBodyPhaseIndicesMax).optional().describe('Dip, Set Point and independently refined Release positions in the final supplied array')
 })
 
 export const analyzeVideoResponseOneAnalysisOverallScoreMin = 0;
@@ -109,6 +115,8 @@ export const analyzeVideoResponseOneAnalysisComponentsEyeTrackingScoreMax = 100;
 
 export const AnalyzeVideoResponse = zod.union([zod.object({
   "analysis": zod.object({
+  "shootingArmSide": zod.enum(['image-left', 'image-right']).optional(),
+  "elbowVisible": zod.boolean().optional(),
   "overallScore": zod.number().min(analyzeVideoResponseOneAnalysisOverallScoreMin).max(analyzeVideoResponseOneAnalysisOverallScoreMax).nullable(),
   "summary": zod.string(),
   "components": zod.object({
@@ -179,6 +187,14 @@ export const AnalyzeVideoResponse = zod.union([zod.object({
   "shotIndex": zod.number(),
   "shotTimestamp": zod.number(),
   "totalFrames": zod.number()
+}),zod.object({
+  "keyFrameIndices": zod.array(zod.number()),
+  "keyFrameTimestamps": zod.array(zod.number()),
+  "totalFrames": zod.number()
+}),zod.object({
+  "releaseIndex": zod.number(),
+  "releaseTimestamp": zod.number(),
+  "totalFrames": zod.number()
 })])
 
 
@@ -188,7 +204,8 @@ export const AnalyzeVideoResponse = zod.union([zod.object({
  */
 export const AnalyzeFormBody = zod.object({
   "imageBase64": zod.string(),
-  "mimeType": zod.string().optional()
+  "mimeType": zod.string().optional(),
+  "shootingHand": zod.enum(['right', 'left'])
 })
 
 export const analyzeFormResponseAnalysisOverallScoreMin = 0;
@@ -222,6 +239,8 @@ export const analyzeFormResponseAnalysisComponentsEyeTrackingScoreMax = 100;
 
 export const AnalyzeFormResponse = zod.object({
   "analysis": zod.object({
+  "shootingArmSide": zod.enum(['image-left', 'image-right']).optional(),
+  "elbowVisible": zod.boolean().optional(),
   "overallScore": zod.number().min(analyzeFormResponseAnalysisOverallScoreMin).max(analyzeFormResponseAnalysisOverallScoreMax).nullable(),
   "summary": zod.string(),
   "components": zod.object({

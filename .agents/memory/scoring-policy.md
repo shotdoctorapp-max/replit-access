@@ -1,9 +1,9 @@
 ---
 name: Incomplete scoring policy
-description: User-approved handling of missing shooting evidence
+description: Current scoring policy and the explicit unobservable-elbow exception
 ---
-When footage cannot support all eight scores, show available component scores without an overall total.
+New analyses must reject invalid/missing component scores rather than replacing them with zero. An explicitly unobservable shooting elbow is the exception: show it as unscored and exclude it from the composite.
 
-**Why:** The user explicitly selected this instead of rejecting the whole analysis.
+**Why:** The user's revised five-bug instructions superseded the earlier blanket partial-result policy. They explicitly require errors for invalid scores and a nullable elbow when lateral alignment cannot be observed.
 
-**How to apply:** Keep unavailable scores neutral with an explanation, preserve partial sessions, and exclude missing totals from aggregate statistics. Never replace missing evidence with zero or a default.
+**How to apply:** Do not rewrite saved results. Legacy missing totals remain neutral and excluded from aggregates. Never treat unknown evidence as poor mechanics or assume a shooting hand.

@@ -4,7 +4,8 @@ import { AnalyzeFormResponse } from "@workspace/api-zod";
 import { batchProcess, openrouter } from "@workspace/integrations-openrouter-ai";
 import { BIOMECHANICS_SYSTEM_PROMPT, RHYTHM_SYSTEM_PROMPT } from "../lib/prompts";
 import { analysisRateLimit } from "../middlewares/analysisRateLimit";
-import { calculateShotScore, reliableRhythm, ScoringEvidenceError } from "../lib/scoring";
+import { PREPARE_RELEASE_PROMPT, REFINE_RELEASE_PROMPT, validateRefinedRelease } from "../lib/releaseRefinement";
+import { calculateShotScore, enforceElbowEvidence, reliableRhythm, ScoringEvidenceError } from "../lib/scoring";
 import { DIP_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, SET_RELEASE_SELECTION_PROMPT, FrameSelectionError, labeledImages, selectWithCorrection, rhythmShotContext, providerFailure, validateDipBeforeSetPoint, validateSetReleaseIndices, verifyRelease } from "../lib/frameSelection";
 
 const router = Router();
@@ -17,12 +18,18 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     if (typeof cost === "number" && Number.isFinite(cost)) providerCostUsd += cost;
   };
   try {
-    const { frames, timestamps, mode = "analyze", mimeType = "image/jpeg" } = req.body as {
+    const { frames, timestamps, mode = "analyze", mimeType = "image/jpeg", shootingHand, phaseIndices } = req.body as {
       frames: string[];
       timestamps?: number[];
       mimeType?: string;
-      mode?: "locate" | "analyze";
+      mode?: "locate" | "analyze" | "prepare" | "refine-release";
+      shootingHand?: "right" | "left";
+      phaseIndices?: number[];
     };
+    if (!["right", "left"].includes(shootingHand!)) {
+      res.status(400).json({ error: "Choose your shooting hand before analyzing." });
+      return;
+    }
 
     if (!frames || !Array.isArray(frames) || frames.length === 0) {
       res.status(400).json({ error: "frames array is required" });
@@ -31,10 +38,11 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
 
     // Application bounds, not an asserted provider image limit.
     if (frames.length > 48 || (frames.length > 1 && frames.length < 3) ||
+        (frames.length === 1 && mode !== "analyze") ||
         frames.some(f => typeof f !== "string" || !f || f.length > 400_000) ||
         frames.reduce((sum, f) => sum + f.length, 0) > 10_000_000 ||
         !["image/jpeg", "image/png"].includes(mimeType) ||
-        !["locate", "analyze"].includes(mode)) {
+        !["locate", "analyze", "prepare", "refine-release"].includes(mode)) {
       res.status(400).json({ error: "Supply 3–48 bounded JPEG/PNG frames (or one photo), maximum 10 MB total." });
       return;
     }
@@ -44,9 +52,28 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       return;
     }
     if ((mode === "locate" && frames.length > 32) ||
-        (mode === "analyze" && frames.length > 1 &&
+        ((mode === "prepare" || (mode === "analyze" && !phaseIndices)) && frames.length > 1 &&
           timestamps.some((t, i) => i > 0 && Math.abs(t - timestamps[i - 1] - 100) > 1))) {
       res.status(400).json({ error: "Final phase selection requires consecutive 100ms samples. Use locate mode for a coarse shot window first." });
+      return;
+    }
+    if (mode === "refine-release") {
+      if (frames.length > 11 || frames.length < 3 ||
+          timestamps.some((t, i) => i > 0 && Math.abs(t - timestamps[i - 1] - 33) > 1)) {
+        res.status(400).json({ error: "Supply 3–11 consecutive 33ms images around the release transition." });
+        return;
+      }
+      const response = await openrouter.chat.completions.create({
+        model: ANALYSIS_MODEL, temperature: 0, max_tokens: 512,
+        response_format: { type: "json_object" },
+        messages: [{ role: "system", content: REFINE_RELEASE_PROMPT + ` Declared shooting hand: ${shootingHand ?? "not supplied"}. Identify the hand behind/under the ball, not the guide hand at the side.` },
+          { role: "user", content: labeledImages(frames, timestamps, mimeType) }],
+      }, { maxRetries: 0, timeout: 90_000 });
+      recordCost(response);
+      const releaseIndex = validateRefinedRelease(response.choices[0]?.message.content ?? "",
+        response.choices[0]?.finish_reason, frames.length);
+      req.log.info({ releaseIndex, releaseTimestamp: timestamps[releaseIndex], providerCostUsd }, "33ms Release refinement");
+      res.json({ releaseIndex, releaseTimestamp: timestamps[releaseIndex], totalFrames: frames.length });
       return;
     }
 
@@ -77,7 +104,15 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       res.json({ shotIndex: indices[0], shotTimestamp: timestamps[indices[0]], totalFrames: frames.length });
       return;
     }
-    if (frames.length > 1) {
+    if (mode === "analyze" && phaseIndices) {
+      if (!Array.isArray(phaseIndices) || phaseIndices.length !== 3 ||
+          phaseIndices.some((index, i) => !Number.isInteger(index) || index < 0 ||
+            index >= frames.length || (i > 0 && index <= phaseIndices[i - 1]))) {
+        res.status(400).json({ error: "Final phases must be three ordered, bounded frame indices." });
+        return;
+      }
+      indices = phaseIndices;
+    } else if (frames.length > 1) {
       const labeledFrameMessages = labeledImages(frames, timestamps, mimeType);
       const setReleaseIndices = await selectWithCorrection(frames.length, 2,
         async (correction, jsonMode) => {
@@ -87,7 +122,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
             temperature: 0,
             ...(jsonMode ? { response_format: { type: "json_object" as const } } : {}),
             messages: [
-              { role: "system", content: SET_RELEASE_SELECTION_PROMPT },
+              { role: "system", content: mode === "prepare" ? PREPARE_RELEASE_PROMPT : SET_RELEASE_SELECTION_PROMPT },
               { role: "user", content: labeledFrameMessages },
               ...(correction ? [{ role: "user" as const, content: correction }] : []),
             ],
@@ -102,7 +137,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       const [setPointIdx, proposedReleaseIdx] = setReleaseIndices;
       // The first pass only proposes Release. Independently review the actual
       // supplied samples after Set Point; syntactically valid contact is not Release.
-      const releaseIdx = await verifyRelease(frames, timestamps, mimeType, setPointIdx, proposedReleaseIdx,
+      const releaseIdx = mode === "prepare" ? proposedReleaseIdx : await verifyRelease(frames, timestamps, mimeType, setPointIdx, proposedReleaseIdx,
         async (releaseMessages, correction, jsonMode, prompt) => {
           const [response] = await batchProcess([0], () => openrouter.chat.completions.create({
             model: ANALYSIS_MODEL,
@@ -148,6 +183,10 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         selected => validateDipBeforeSetPoint(selected, setPointIdx));
       indices = [dipIdx, setPointIdx, releaseIdx];
     }
+    if (mode === "prepare") {
+      res.json({ keyFrameIndices: indices, keyFrameTimestamps: indices.map(i => timestamps[i]), totalFrames: frames.length });
+      return;
+    }
     const [dipIdx, setPointIdx = 0, releaseIdx = 0] = indices;
     const labeledFrameMessages = labeledImages(frames, timestamps, mimeType);
     const bestFrameIndex = setPointIdx;
@@ -188,7 +227,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     const rhythmResult = stepOneResults.find((result) => result.job === "rhythm")?.response ?? null;
 
     // Parse rhythm
-    let rhythm: { dipFrame?: number; setPointFrame?: number; armExtendFrame?: number; ballRiseFrame?: number; bodyRiseFrame?: number; pattern?: string; rhythmScore?: number; observations?: string[] } | null = null;
+    let rhythm: { dipFrame?: number; setPointFrame?: number; armExtendFrame?: number; ballLeavesHandFrame?: number; followThroughFrame?: number; ballRiseFrame?: number; bodyRiseFrame?: number; pattern?: string; rhythmScore?: number; observations?: string[] } | null = null;
     if (rhythmResult) {
       const rhythmContent = rhythmResult.choices[0]?.message?.content ?? "{}";
       try {
@@ -204,7 +243,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     if (rhythm && frames.length > 1) {
       rhythm.dipFrame = dipIdx;
       rhythm.setPointFrame = setPointIdx;
-      rhythm.armExtendFrame = releaseIdx;
+      rhythm.followThroughFrame = releaseIdx;
     }
     req.log.info({ bestFrameIndex, dipIdx, setPointIdx, releaseIdx }, "Step 2: running biomechanics with 3 key frames");
 
@@ -214,6 +253,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       | { type: "image_url"; image_url: { url: string; detail: "high" | "low" } }
       | { type: "text"; text: string }
     > = [];
+    biomechanicsUserContent.push({ type: "text", text: `The shooter is ${shootingHand!.toUpperCase()}-handed. The SHOOTING hand is behind/under the ball; the GUIDE hand is on the side. Grade ONLY the shooting arm's elbow. Identify shootingArmSide and elbowVisible before scoring.` });
 
     if (isVideoSession) {
       biomechanicsUserContent.push(
@@ -286,7 +326,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         const response = await openrouter.chat.completions.create({
           model: ANALYSIS_MODEL,
           max_tokens: 8192,
-          temperature: 0,
+          temperature: 0.2,
           messages: [
             { role: "system", content: BIOMECHANICS_SYSTEM_PROMPT },
             { role: "user", content },
@@ -316,7 +356,14 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       "Rhythm reliability check"
     );
 
-    const score = calculateShotScore(analysis?.components, rhythmReliable ? rhythm!.rhythmScore : null);
+    let score;
+    try {
+      enforceElbowEvidence(analysis);
+      score = calculateShotScore(analysis?.components, rhythmReliable ? rhythm!.rhythmScore : null);
+    } catch (error) {
+      req.log.warn({ rawAnalysisJson: content }, "Rejected biomechanics JSON: invalid evidence; no zero substituted");
+      throw error;
+    }
     req.log.info({ ...score, modelOverallScore: typeof analysis.overallScore === "number" ? analysis.overallScore : null,
       rhythmIncluded: rhythmReliable }, "Evidence-based score calculation");
     analysis.overallScore = score.overallScore;

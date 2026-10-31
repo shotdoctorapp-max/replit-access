@@ -14,6 +14,16 @@ export type AnalyzeVideoRequestMode = typeof AnalyzeVideoRequestMode[keyof typeo
 export const AnalyzeVideoRequestMode = {
   analyze: 'analyze',
   locate: 'locate',
+  prepare: 'prepare',
+  'refine-release': 'refine-release',
+} as const;
+
+export type AnalyzeVideoRequestShootingHand = typeof AnalyzeVideoRequestShootingHand[keyof typeof AnalyzeVideoRequestShootingHand];
+
+
+export const AnalyzeVideoRequestShootingHand = {
+  right: 'right',
+  left: 'left',
 } as const;
 
 export interface AnalyzeVideoRequest {
@@ -28,6 +38,25 @@ export interface AnalyzeVideoRequest {
   mimeType?: string;
   /** Locate returns a coarse shot anchor only; analyze returns validated final phases */
   mode?: AnalyzeVideoRequestMode;
+  shootingHand: AnalyzeVideoRequestShootingHand;
+  /**
+     * Dip, Set Point and independently refined Release positions in the final supplied array
+     * @minItems 3
+     * @maxItems 3
+     */
+  phaseIndices?: number[];
+}
+
+export interface PhasePreparation {
+  keyFrameIndices: number[];
+  keyFrameTimestamps: number[];
+  totalFrames: number;
+}
+
+export interface RefinedReleaseResult {
+  releaseIndex: number;
+  releaseTimestamp: number;
+  totalFrames: number;
 }
 
 export interface LocateShotResponse {
@@ -40,6 +69,14 @@ export interface LocateShotResponse {
  * Rhythm analysis result (present when 3+ frames provided)
  */
 export type VideoAnalysisResultRhythm = { [key: string]: unknown };
+
+export type AnalysisResultShootingArmSide = typeof AnalysisResultShootingArmSide[keyof typeof AnalysisResultShootingArmSide];
+
+
+export const AnalysisResultShootingArmSide = {
+  'image-left': 'image-left',
+  'image-right': 'image-right',
+} as const;
 
 export interface ComponentScore {
   /**
@@ -89,6 +126,8 @@ export interface FrameAnnotation {
 }
 
 export interface AnalysisResult {
+  shootingArmSide?: AnalysisResultShootingArmSide;
+  elbowVisible?: boolean;
   /**
      * @minimum 0
      * @maximum 100
@@ -137,9 +176,18 @@ export interface BugReportResult {
   createdAt: string;
 }
 
+export type AnalyzeRequestShootingHand = typeof AnalyzeRequestShootingHand[keyof typeof AnalyzeRequestShootingHand];
+
+
+export const AnalyzeRequestShootingHand = {
+  right: 'right',
+  left: 'left',
+} as const;
+
 export interface AnalyzeRequest {
   imageBase64: string;
   mimeType?: string;
+  shootingHand: AnalyzeRequestShootingHand;
 }
 
 export interface AnalyzeResponse {

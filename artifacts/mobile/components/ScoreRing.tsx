@@ -11,7 +11,7 @@ import { scoreToTier, tierColor } from "@/utils/grading";
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface ScoreRingProps {
-  score: number | null;
+  score?: number | null;
   size?: number;
   strokeWidth?: number;
   label?: string;
@@ -28,9 +28,10 @@ export function ScoreRing({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = useSharedValue(0);
+  const validScore = scoreToTier(score).score;
 
   useEffect(() => {
-    progress.value = withTiming(score === null ? 0 : score / 100, { duration: 1200 });
+    progress.value = withTiming(validScore === null ? 0 : validScore / 100, { duration: 1200 });
   }, [score]);
 
   const animatedProps = useAnimatedProps(() => ({
@@ -38,7 +39,7 @@ export function ScoreRing({
   }));
 
   const ringCol = tierColor(score);
-  const tier = scoreToTier(score);
+  const tier = scoreToTier(score).label;
 
   // Scale down font for the score number to leave room for tier name
   const scoreFontSize = Math.round(fontSize * 0.72);
@@ -72,7 +73,7 @@ export function ScoreRing({
           style={[styles.score, { color: ringCol, fontSize: scoreFontSize }]}
           numberOfLines={1}
         >
-          {score === null ? "—" : Math.round(score)}
+          {validScore === null ? "—" : Math.round(validScore)}
         </Text>
         <Text
           style={[styles.tier, { color: ringCol }]}
