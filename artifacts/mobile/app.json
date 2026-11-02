@@ -46,6 +46,12 @@
     },
     "plugins": [
       [
+        "./plugins/withPodsDeploymentTarget",
+        {
+          "deploymentTarget": "15.1"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {
