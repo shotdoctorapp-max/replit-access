@@ -45,7 +45,14 @@
       "bundler": "metro",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": [],
+    "plugins": [
+      [
+        "./plugins/withPodsDeploymentTarget",
+        {
+          "deploymentTarget": "15.1"
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     },
