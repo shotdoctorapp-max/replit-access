@@ -14,7 +14,7 @@
     "production": {
       "autoIncrement": true,
       "ios": {
-        "image": "latest"
+        "image": "sdk-54"
       },
       "env": {
         "EAS_BUILD_NO_EXPO_GO_WARNING": "true",

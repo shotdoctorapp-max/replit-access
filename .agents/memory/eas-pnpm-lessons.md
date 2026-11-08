@@ -76,3 +76,10 @@ Do not assume React Native's deployment-target adjustment covers resource bundle
 **Why:** EAS Xcode logs reported targets below the SDK's supported range even though the app's minimum was suitable; the usual React Native adjustment skips some resource targets.
 
 **How to apply:** When resolving this class of failure, cover project-level configurations and all Pod targets, including privacy/resource bundles and separately generated projects. Preserve higher minimum versions. Verify prebuild repeatability without committing generated native folders or changing dependencies.
+
+## 13. Match the build image to the Expo SDK, not the moving latest toolchain
+Keep this SDK 54 app on the SDK-specific iOS build image until a deliberate, supported scene-lifecycle migration.
+
+**Why:** An uploaded native crash report identified UIKit's `UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption` trap before React Native starts. Xcode 27 images enforce scene adoption; the SDK 54 template uses the older application lifecycle. Expo explicitly recommends `auto` or the matching SDK alias for older SDKs.
+
+**How to apply:** Do not restore `latest` just to get a newer compiler, and do not add an empty scene manifest as a workaround. An image change requires a new native binary, not a JavaScript update. Preserve the independent Pods deployment-target fix. Reference: https://docs.expo.dev/build-reference/infrastructure/
