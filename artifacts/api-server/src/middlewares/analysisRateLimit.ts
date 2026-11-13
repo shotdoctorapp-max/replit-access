@@ -21,7 +21,7 @@ setInterval(() => {
 export function analysisRateLimit(req: Request, res: Response, next: NextFunction): void {
   const { userId } = getAuth(req);
   if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
+    res.status(401).json({ ok: false, error: "Please sign in to analyze a video." });
     return;
   }
 
@@ -42,6 +42,7 @@ export function analysisRateLimit(req: Request, res: Response, next: NextFunctio
     const retryAfterSecs = Math.ceil(retryAfterMs / 1000);
     res.setHeader("Retry-After", String(retryAfterSecs));
     res.status(429).json({
+      ok: false,
       error: `Analysis limit reached. You can make ${MAX_CALLS_PER_WINDOW} analysis requests per hour. Try again in ${Math.ceil(retryAfterSecs / 60)} minute(s).`,
     });
     return;

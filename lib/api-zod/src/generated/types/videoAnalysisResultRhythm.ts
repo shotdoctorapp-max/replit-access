@@ -8,5 +8,6 @@
 
 /**
  * Rhythm analysis result (present when 3+ frames provided)
+ * @nullable
  */
-export type VideoAnalysisResultRhythm = { [key: string]: unknown };
+export type VideoAnalysisResultRhythm = { [key: string]: unknown } | null;

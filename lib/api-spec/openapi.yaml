@@ -143,14 +143,34 @@ paths:
                   - $ref: "#/components/schemas/RefinedReleaseResult"
         "400":
           description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAnalysisError"
         "401":
           description: Unauthorized — valid Clerk session required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAnalysisError"
         "429":
           description: Rate limit exceeded — too many analysis requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAnalysisError"
         "422":
           description: Recoverable uncertain phase selection; no frames were guessed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAnalysisError"
         "500":
           description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAnalysisError"
   /analyze:
     post:
       operationId: analyzeForm
@@ -188,6 +208,19 @@ components:
       bearerFormat: JWT
       description: Clerk session token
   schemas:
+    VideoAnalysisError:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          type: string
+        code:
+          type: string
+        retryable:
+          type: boolean
+      required: [ok, error]
     AnalyzeVideoRequest:
       type: object
       properties:
@@ -229,6 +262,12 @@ components:
     PhasePreparation:
       type: object
       properties:
+        ok:
+          type: boolean
+          enum: [true]
+        analysis:
+          type: object
+          additionalProperties: true
         keyFrameIndices:
           type: array
           items:
@@ -239,37 +278,52 @@ components:
             type: number
         totalFrames:
           type: integer
-      required: [keyFrameIndices, keyFrameTimestamps, totalFrames]
+      required: [ok, analysis, keyFrameIndices, keyFrameTimestamps, totalFrames]
 
     RefinedReleaseResult:
       type: object
       properties:
+        ok:
+          type: boolean
+          enum: [true]
+        analysis:
+          type: object
+          additionalProperties: true
         releaseIndex:
           type: integer
         releaseTimestamp:
           type: number
         totalFrames:
           type: integer
-      required: [releaseIndex, releaseTimestamp, totalFrames]
+      required: [ok, analysis, releaseIndex, releaseTimestamp, totalFrames]
 
     LocateShotResponse:
       type: object
       properties:
+        ok:
+          type: boolean
+          enum: [true]
+        analysis:
+          type: object
+          additionalProperties: true
         shotIndex:
           type: integer
         shotTimestamp:
           type: number
         totalFrames:
           type: integer
-      required: [shotIndex, shotTimestamp, totalFrames]
+      required: [ok, analysis, shotIndex, shotTimestamp, totalFrames]
 
     VideoAnalysisResult:
       type: object
       properties:
+        ok:
+          type: boolean
+          enum: [true]
         analysis:
           $ref: "#/components/schemas/AnalysisResult"
         rhythm:
-          type: object
+          type: [object, "null"]
           description: Rhythm analysis result (present when 3+ frames provided)
           additionalProperties: true
         bestFrameIndex:
@@ -290,6 +344,7 @@ components:
             type: number
           description: Original-video milliseconds aligned with keyFrameIndices
       required:
+        - ok
         - analysis
         - bestFrameIndex
         - totalFrames

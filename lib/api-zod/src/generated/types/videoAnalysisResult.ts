@@ -9,8 +9,12 @@ import type { AnalysisResult } from './analysisResult';
 import type { VideoAnalysisResultRhythm } from './videoAnalysisResultRhythm';
 
 export interface VideoAnalysisResult {
+  ok: true;
   analysis: AnalysisResult;
-  /** Rhythm analysis result (present when 3+ frames provided) */
+  /**
+     * Rhythm analysis result (present when 3+ frames provided)
+     * @nullable
+     */
   rhythm?: VideoAnalysisResultRhythm;
   /** 0-based index of the frame selected for primary analysis */
   bestFrameIndex: number;

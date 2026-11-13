@@ -29,6 +29,7 @@ import type { AnalysisResult, Session } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
 import { scoreToTier, tierColor } from "@/utils/grading";
 import { extractFrames } from "@/utils/videoFrames";
+import { isObject, analysisErrorMessage } from "@/utils/analysisErrors";
 import { validateFrameMapping } from "@/utils/frameSampling";
 import { getShootingHand } from "@/utils/shootingHand";
 import { planReleaseTimes, mergeRefinedRelease } from "@/utils/releaseRefinement";
@@ -465,7 +466,7 @@ export default function HomeScreen() {
         const location = await requestVideoAnalysis({
           frames: extracted.base64Frames, timestamps: extracted.timestamps, shootingHand, mimeType: "image/jpeg", mode: "locate",
         }, requestOptions);
-        if (!("shotIndex" in location) || !Number.isInteger(location.shotIndex) ||
+        if (!isObject(location) || !("shotIndex" in location) || !Number.isInteger(location.shotIndex) ||
             location.totalFrames !== extracted.timestamps.length ||
             location.shotIndex < 0 || location.shotIndex >= extracted.timestamps.length ||
             location.shotTimestamp !== extracted.timestamps[location.shotIndex]) {
@@ -476,7 +477,7 @@ export default function HomeScreen() {
       const preparation = await requestVideoAnalysis({
         frames: extracted.base64Frames, timestamps: extracted.timestamps, shootingHand, mimeType: "image/jpeg", mode: "prepare",
       }, requestOptions);
-      if (!("keyFrameIndices" in preparation)) throw new Error("Incomplete shot preparation.");
+      if (!isObject(preparation) || !("keyFrameIndices" in preparation)) throw new Error("Incomplete shot preparation.");
       const preparedIndices = validateFrameMapping(preparation.keyFrameIndices, preparation.keyFrameTimestamps,
         preparation.totalFrames, extracted.timestamps, extracted.thumbnailUris);
       const requestedTimes = planReleaseTimes(extracted.timestamps[preparedIndices[2]], extracted.durationMs,
@@ -485,7 +486,7 @@ export default function HomeScreen() {
       const refinement = await requestVideoAnalysis({
         frames: fine.base64Frames, timestamps: fine.timestamps, shootingHand, mimeType: "image/jpeg", mode: "refine-release",
       }, requestOptions);
-      if (!("releaseIndex" in refinement) || !Number.isInteger(refinement.releaseIndex) ||
+      if (!isObject(refinement) || !("releaseIndex" in refinement) || !Number.isInteger(refinement.releaseIndex) ||
           refinement.releaseIndex < 0 || refinement.releaseIndex >= fine.timestamps.length ||
           refinement.totalFrames !== fine.timestamps.length ||
           refinement.releaseTimestamp !== fine.timestamps[refinement.releaseIndex]) {
@@ -496,7 +497,8 @@ export default function HomeScreen() {
       const data = await requestVideoAnalysis({
         frames: base64Frames, timestamps, shootingHand, phaseIndices: finalFrames.phaseIndices, mimeType: "image/jpeg", mode: "analyze",
       }, requestOptions);
-      if (!("analysis" in data)) throw new Error("Incomplete analysis response. Please retry.");
+      if (!isObject(data) || !isObject(data.analysis) ||
+          !("bestFrameIndex" in data)) throw new Error("Incomplete analysis response. Please retry.");
       const selectedIndices = validateFrameMapping(data.keyFrameIndices, data.keyFrameTimestamps,
         data.totalFrames, timestamps, thumbnailUris);
       if (data.bestFrameIndex !== selectedIndices[1]) throw new Error("Analysis frame mismatch. Please retry.");
@@ -589,8 +591,9 @@ export default function HomeScreen() {
         });
       });
     } catch (err) {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      const message = err instanceof Error ? err.message : "Something went wrong";
+      console.error("Video analysis failed", err);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      const message = analysisErrorMessage(err);
       const isICloudError = message.includes("iCloud") || message.includes("PHPhotosErrorDomain") || message.includes("3164");
       Alert.alert(isICloudError ? "Video still in iCloud" : "Analysis Failed", message);
       activeAnimRef.current?.stop();

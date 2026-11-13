@@ -5,8 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { LocateShotResponseAnalysis } from './locateShotResponseAnalysis';
 
 export interface LocateShotResponse {
+  ok: true;
+  analysis: LocateShotResponseAnalysis;
   shotIndex: number;
   shotTimestamp: number;
   totalFrames: number;

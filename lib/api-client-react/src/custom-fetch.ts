@@ -359,6 +359,7 @@ export async function customFetch<T = unknown>(
   }
 
   const requestInfo = { method, url: resolveUrl(input) };
+  const isVideoAnalysis = /\/api\/analyze-video(?:\?|$)/.test(requestInfo.url);
 
   const response = await fetch(input, { ...init, method, headers });
 
@@ -367,5 +368,20 @@ export async function customFetch<T = unknown>(
     throw new ApiError(response, errorData, requestInfo);
   }
 
-  return (await parseSuccessBody(response, responseType, requestInfo)) as T;
+  // A JSON endpoint must never become a string merely because a proxy omitted
+  // or mislabeled Content-Type. React Native response.body may be undefined;
+  // read text and JSON.parse it rather than trusting compile-time return types.
+  const data = isVideoAnalysis
+    ? await parseJsonBody(response, requestInfo)
+    : await parseSuccessBody(response, responseType, requestInfo);
+  if (isVideoAnalysis && (
+    data === null || typeof data !== "object" || Array.isArray(data) ||
+    (Object.getPrototypeOf(data) !== Object.prototype && Object.getPrototypeOf(data) !== null)
+  )) {
+    throw new ResponseParseError(response, "", new Error("Expected an analysis response object"), requestInfo);
+  }
+  if (isVideoAnalysis && (data as Record<string, unknown>).ok === false) {
+    throw new ApiError(response, data, requestInfo);
+  }
+  return data as T;
 }

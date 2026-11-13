@@ -114,6 +114,7 @@ export const analyzeVideoResponseOneAnalysisComponentsEyeTrackingScoreMax = 100;
 
 
 export const AnalyzeVideoResponse = zod.union([zod.object({
+  "ok": zod.literal(true),
   "analysis": zod.object({
   "shootingArmSide": zod.enum(['image-left', 'image-right']).optional(),
   "elbowVisible": zod.boolean().optional(),
@@ -177,21 +178,27 @@ export const AnalyzeVideoResponse = zod.union([zod.object({
   "label": zod.string()
 })).optional()
 }),
-  "rhythm": zod.record(zod.string(), zod.unknown()).optional().describe('Rhythm analysis result (present when 3+ frames provided)'),
+  "rhythm": zod.record(zod.string(), zod.unknown()).nullish().describe('Rhythm analysis result (present when 3+ frames provided)'),
   "bestFrameIndex": zod.number().describe('0-based index of the frame selected for primary analysis'),
   "totalFrames": zod.number(),
   "timestamp": zod.string(),
   "keyFrameIndices": zod.array(zod.number()).describe('Indices of the dip, set-point, and release frames'),
   "keyFrameTimestamps": zod.array(zod.number()).describe('Original-video milliseconds aligned with keyFrameIndices')
 }),zod.object({
+  "ok": zod.literal(true),
+  "analysis": zod.record(zod.string(), zod.unknown()),
   "shotIndex": zod.number(),
   "shotTimestamp": zod.number(),
   "totalFrames": zod.number()
 }),zod.object({
+  "ok": zod.literal(true),
+  "analysis": zod.record(zod.string(), zod.unknown()),
   "keyFrameIndices": zod.array(zod.number()),
   "keyFrameTimestamps": zod.array(zod.number()),
   "totalFrames": zod.number()
 }),zod.object({
+  "ok": zod.literal(true),
+  "analysis": zod.record(zod.string(), zod.unknown()),
   "releaseIndex": zod.number(),
   "releaseTimestamp": zod.number(),
   "totalFrames": zod.number()

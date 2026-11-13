@@ -5,8 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { RefinedReleaseResultAnalysis } from './refinedReleaseResultAnalysis';
 
 export interface RefinedReleaseResult {
+  ok: true;
+  analysis: RefinedReleaseResultAnalysis;
   releaseIndex: number;
   releaseTimestamp: number;
   totalFrames: number;

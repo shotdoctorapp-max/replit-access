@@ -1,9 +1,10 @@
 import { Router } from "express";
-import { requireAuth } from "@clerk/express";
+import { z } from "zod";
 import { AnalyzeFormResponse } from "@workspace/api-zod";
 import { batchProcess, openrouter } from "@workspace/integrations-openrouter-ai";
 import { BIOMECHANICS_SYSTEM_PROMPT, RHYTHM_SYSTEM_PROMPT } from "../lib/prompts";
 import { analysisRateLimit } from "../middlewares/analysisRateLimit";
+import { videoSuccess } from "../lib/videoResponse";
 import { PREPARE_RELEASE_PROMPT, REFINE_RELEASE_PROMPT, validateRefinedRelease } from "../lib/releaseRefinement";
 import { calculateShotScore, enforceElbowEvidence, reliableRhythm, ScoringEvidenceError } from "../lib/scoring";
 import { DIP_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, SET_RELEASE_SELECTION_PROMPT, FrameSelectionError, labeledImages, selectWithCorrection, rhythmShotContext, providerFailure, validateDipBeforeSetPoint, validateSetReleaseIndices, verifyRelease } from "../lib/frameSelection";
@@ -11,7 +12,9 @@ import { DIP_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, SET_RELEASE_SELECTION_PROMPT,
 const router = Router();
 const ANALYSIS_MODEL = process.env.ANALYSIS_MODEL ?? "google/gemini-2.5-flash";
 
-router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res) => {
+// analysisRateLimit also verifies getAuth(req).userId and returns JSON 401.
+// requireAuth() redirects browsers to an HTML sign-in page instead.
+router.post("/analyze-video", analysisRateLimit, async (req, res) => {
   let providerCostUsd = 0;
   const recordCost = (response: unknown) => {
     const cost = (response as { usage?: { cost?: unknown } | null })?.usage?.cost;
@@ -27,12 +30,12 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       phaseIndices?: number[];
     };
     if (!["right", "left"].includes(shootingHand!)) {
-      res.status(400).json({ error: "Choose your shooting hand before analyzing." });
+      res.status(400).json({ ok: false, error: "Choose your shooting hand before analyzing." });
       return;
     }
 
     if (!frames || !Array.isArray(frames) || frames.length === 0) {
-      res.status(400).json({ error: "frames array is required" });
+      res.status(400).json({ ok: false, error: "frames array is required" });
       return;
     }
 
@@ -43,24 +46,24 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
         frames.reduce((sum, f) => sum + f.length, 0) > 10_000_000 ||
         !["image/jpeg", "image/png"].includes(mimeType) ||
         !["locate", "analyze", "prepare", "refine-release"].includes(mode)) {
-      res.status(400).json({ error: "Supply 3–48 bounded JPEG/PNG frames (or one photo), maximum 10 MB total." });
+      res.status(400).json({ ok: false, error: "Supply 3–48 bounded JPEG/PNG frames (or one photo), maximum 10 MB total." });
       return;
     }
     if (!Array.isArray(timestamps) || timestamps.length !== frames.length ||
         timestamps.some((t, i) => !Number.isFinite(t) || t < 0 || (i > 0 && t <= timestamps[i - 1]))) {
-      res.status(400).json({ error: "Provide one strictly increasing original-video timestamp in milliseconds per frame." });
+      res.status(400).json({ ok: false, error: "Provide one strictly increasing original-video timestamp in milliseconds per frame." });
       return;
     }
     if ((mode === "locate" && frames.length > 32) ||
         ((mode === "prepare" || (mode === "analyze" && !phaseIndices)) && frames.length > 1 &&
           timestamps.some((t, i) => i > 0 && Math.abs(t - timestamps[i - 1] - 100) > 1))) {
-      res.status(400).json({ error: "Final phase selection requires consecutive 100ms samples. Use locate mode for a coarse shot window first." });
+      res.status(400).json({ ok: false, error: "Final phase selection requires consecutive 100ms samples. Use locate mode for a coarse shot window first." });
       return;
     }
     if (mode === "refine-release") {
       if (frames.length > 11 || frames.length < 3 ||
           timestamps.some((t, i) => i > 0 && Math.abs(t - timestamps[i - 1] - 33) > 1)) {
-        res.status(400).json({ error: "Supply 3–11 consecutive 33ms images around the release transition." });
+        res.status(400).json({ ok: false, error: "Supply 3–11 consecutive 33ms images around the release transition." });
         return;
       }
       const response = await openrouter.chat.completions.create({
@@ -73,7 +76,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       const releaseIndex = validateRefinedRelease(response.choices[0]?.message.content ?? "",
         response.choices[0]?.finish_reason, frames.length);
       req.log.info({ releaseIndex, releaseTimestamp: timestamps[releaseIndex], providerCostUsd }, "33ms Release refinement");
-      res.json({ releaseIndex, releaseTimestamp: timestamps[releaseIndex], totalFrames: frames.length });
+      res.json(videoSuccess({ releaseIndex, releaseTimestamp: timestamps[releaseIndex], totalFrames: frames.length }));
       return;
     }
 
@@ -101,14 +104,14 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     }
     if (mode === "locate") {
       req.log.info({ model: ANALYSIS_MODEL, providerCostUsd }, "Analysis provider cost");
-      res.json({ shotIndex: indices[0], shotTimestamp: timestamps[indices[0]], totalFrames: frames.length });
+      res.json(videoSuccess({ shotIndex: indices[0], shotTimestamp: timestamps[indices[0]], totalFrames: frames.length }));
       return;
     }
     if (mode === "analyze" && phaseIndices) {
       if (!Array.isArray(phaseIndices) || phaseIndices.length !== 3 ||
           phaseIndices.some((index, i) => !Number.isInteger(index) || index < 0 ||
             index >= frames.length || (i > 0 && index <= phaseIndices[i - 1]))) {
-        res.status(400).json({ error: "Final phases must be three ordered, bounded frame indices." });
+        res.status(400).json({ ok: false, error: "Final phases must be three ordered, bounded frame indices." });
         return;
       }
       indices = phaseIndices;
@@ -184,7 +187,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       indices = [dipIdx, setPointIdx, releaseIdx];
     }
     if (mode === "prepare") {
-      res.json({ keyFrameIndices: indices, keyFrameTimestamps: indices.map(i => timestamps[i]), totalFrames: frames.length });
+      res.json(videoSuccess({ keyFrameIndices: indices, keyFrameTimestamps: indices.map(i => timestamps[i]), totalFrames: frames.length }));
       return;
     }
     const [dipIdx, setPointIdx = 0, releaseIdx = 0] = indices;
@@ -232,7 +235,17 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       const rhythmContent = rhythmResult.choices[0]?.message?.content ?? "{}";
       try {
         const jsonMatch = rhythmContent.match(/\{[\s\S]*\}/);
-        rhythm = JSON.parse(jsonMatch ? jsonMatch[0] : rhythmContent);
+        rhythm = z.object({
+          rhythmScore: z.number().min(0).max(100).optional(),
+          pattern: z.string().optional(),
+          observations: z.array(z.string()).optional(),
+          dipFrame: z.number().optional(),
+          armExtendFrame: z.number().optional(),
+          ballLeavesHandFrame: z.number().optional(),
+          followThroughFrame: z.number().optional(),
+          ballRiseFrame: z.number().optional(),
+          bodyRiseFrame: z.number().optional(),
+        }).passthrough().parse(JSON.parse(jsonMatch ? jsonMatch[0] : rhythmContent));
       } catch {
         req.log.warn("Failed to parse rhythm analysis");
       }
@@ -344,10 +357,11 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     try {
       if (analysisResponse.choices[0]?.finish_reason !== "stop") throw new Error("Incomplete analysis");
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      analysis = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+      analysis = AnalyzeFormResponse.shape.analysis.omit({ overallScore: true })
+        .passthrough().parse(JSON.parse(jsonMatch ? jsonMatch[0] : content));
     } catch {
       req.log.error("Failed to parse biomechanics JSON");
-      res.status(500).json({ error: "Failed to parse analysis response" });
+      res.status(422).json({ ok: false, error: "The analysis was incomplete. Please try again." });
       return;
     }
 
@@ -361,7 +375,7 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       enforceElbowEvidence(analysis);
       score = calculateShotScore(analysis?.components, rhythmReliable ? rhythm!.rhythmScore : null);
     } catch (error) {
-      req.log.warn({ rawAnalysisJson: content }, "Rejected biomechanics JSON: invalid evidence; no zero substituted");
+      req.log.warn("Rejected biomechanics JSON: invalid evidence; no zero substituted");
       throw error;
     }
     req.log.info({ ...score, modelOverallScore: typeof analysis.overallScore === "number" ? analysis.overallScore : null,
@@ -370,12 +384,12 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
     const validated = AnalyzeFormResponse.safeParse({ analysis, timestamp: new Date().toISOString() });
     if (!validated.success) {
       req.log.warn({ errors: validated.error.issues }, "Video analysis failed schema validation");
-      res.status(422).json({ error: "The analysis was incomplete. Please try again." });
+      res.status(422).json({ ok: false, error: "The analysis was incomplete. Please try again." });
       return;
     }
 
     req.log.info({ model: ANALYSIS_MODEL, providerCostUsd }, "Analysis provider cost");
-    res.json({
+    res.json(videoSuccess({
       analysis: validated.data.analysis,
       rhythm: rhythmReliable ? rhythm : null,
       bestFrameIndex,
@@ -383,21 +397,21 @@ router.post("/analyze-video", requireAuth(), analysisRateLimit, async (req, res)
       timestamp: new Date().toISOString(),
       keyFrameIndices: isVideoSession ? [dipIdx, setPointIdx, releaseIdx] : [0],
       keyFrameTimestamps: indices.map(i => timestamps[i]),
-    });
+    }));
   } catch (err) {
     req.log.warn({ model: ANALYSIS_MODEL, providerCostUsd }, "Partial analysis provider cost");
     if (err instanceof ScoringEvidenceError) {
-      res.status(422).json({ error: err.message, code: "SCORING_EVIDENCE_INSUFFICIENT", retryable: false });
+      res.status(422).json({ ok: false, error: err.message, code: "SCORING_EVIDENCE_INSUFFICIENT", retryable: false });
       return;
     }
     if (err instanceof FrameSelectionError) {
-      res.status(422).json({ error: err.message, code: "FRAME_SELECTION_UNCERTAIN", retryable: true });
+      res.status(422).json({ ok: false, error: err.message, code: "FRAME_SELECTION_UNCERTAIN", retryable: true });
       return;
     }
     const status = (err as { status?: number })?.status;
     req.log.error({ status }, "Video analysis provider request failed");
     const failure = providerFailure(err);
-    res.status(failure.status).json(failure.body);
+    res.status(failure.status).json({ ...failure.body, ok: false });
   }
 });
 

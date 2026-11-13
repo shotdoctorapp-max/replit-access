@@ -5,6 +5,13 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface VideoAnalysisError {
+  ok: false;
+  error: string;
+  code?: string;
+  retryable?: boolean;
+}
+
 /**
  * Locate returns a coarse shot anchor only; analyze returns validated final phases
  */
@@ -47,19 +54,31 @@ export interface AnalyzeVideoRequest {
   phaseIndices?: number[];
 }
 
+export type PhasePreparationAnalysis = { [key: string]: unknown };
+
 export interface PhasePreparation {
+  ok: true;
+  analysis: PhasePreparationAnalysis;
   keyFrameIndices: number[];
   keyFrameTimestamps: number[];
   totalFrames: number;
 }
 
+export type RefinedReleaseResultAnalysis = { [key: string]: unknown };
+
 export interface RefinedReleaseResult {
+  ok: true;
+  analysis: RefinedReleaseResultAnalysis;
   releaseIndex: number;
   releaseTimestamp: number;
   totalFrames: number;
 }
 
+export type LocateShotResponseAnalysis = { [key: string]: unknown };
+
 export interface LocateShotResponse {
+  ok: true;
+  analysis: LocateShotResponseAnalysis;
   shotIndex: number;
   shotTimestamp: number;
   totalFrames: number;
@@ -67,8 +86,9 @@ export interface LocateShotResponse {
 
 /**
  * Rhythm analysis result (present when 3+ frames provided)
+ * @nullable
  */
-export type VideoAnalysisResultRhythm = { [key: string]: unknown };
+export type VideoAnalysisResultRhythm = { [key: string]: unknown } | null;
 
 export type AnalysisResultShootingArmSide = typeof AnalysisResultShootingArmSide[keyof typeof AnalysisResultShootingArmSide];
 
@@ -143,8 +163,12 @@ export interface AnalysisResult {
 }
 
 export interface VideoAnalysisResult {
+  ok: true;
   analysis: AnalysisResult;
-  /** Rhythm analysis result (present when 3+ frames provided) */
+  /**
+     * Rhythm analysis result (present when 3+ frames provided)
+     * @nullable
+     */
   rhythm?: VideoAnalysisResultRhythm;
   /** 0-based index of the frame selected for primary analysis */
   bestFrameIndex: number;

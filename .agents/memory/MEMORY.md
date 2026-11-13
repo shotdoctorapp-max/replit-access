@@ -4,3 +4,4 @@
 - [Frame accuracy evidence](frame-accuracy-evidence.md) — distinguish source PTS, requested samples, displayed thumbnails, and published API provenance.
 - [React Native modal dismissal](react-native-modal-dismissal.md) — Modal.onDismiss is iOS-only in RN 0.81; Android needs a separate post-close handoff before native dialogs.
 - [Missing-score policy](scoring-policy.md) — invalid scores fail; an explicitly unobservable elbow is excluded, never zero-filled.
+- [Native API compatibility](native-api-compatibility.md) — analysis envelopes must preserve response fields used by already-installed binaries.

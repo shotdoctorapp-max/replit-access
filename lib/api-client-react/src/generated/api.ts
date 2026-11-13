@@ -30,6 +30,7 @@ import type {
   LocateShotResponse,
   PhasePreparation,
   RefinedReleaseResult,
+  VideoAnalysisError,
   VideoAnalysisResult,
   WaitlistResult,
   WaitlistSignup
@@ -378,7 +379,7 @@ export const analyzeVideo = async (analyzeVideoRequest: AnalyzeVideoRequest, opt
 
 
 
-export const getAnalyzeVideoMutationOptions = <TError = ErrorType<void>,
+export const getAnalyzeVideoMutationOptions = <TError = ErrorType<VideoAnalysisError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeVideo>>, TError,{data: BodyType<AnalyzeVideoRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof analyzeVideo>>, TError,{data: BodyType<AnalyzeVideoRequest>}, TContext> => {
 
@@ -407,12 +408,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type AnalyzeVideoMutationResult = NonNullable<Awaited<ReturnType<typeof analyzeVideo>>>
     export type AnalyzeVideoMutationBody = BodyType<AnalyzeVideoRequest>
-    export type AnalyzeVideoMutationError = ErrorType<void>
+    export type AnalyzeVideoMutationError = ErrorType<VideoAnalysisError>
 
     /**
  * @summary Analyze shooting form from video frames
  */
-export const useAnalyzeVideo = <TError = ErrorType<void>,
+export const useAnalyzeVideo = <TError = ErrorType<VideoAnalysisError>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof analyzeVideo>>, TError,{data: BodyType<AnalyzeVideoRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof analyzeVideo>>,

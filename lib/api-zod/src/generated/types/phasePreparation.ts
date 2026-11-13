@@ -5,8 +5,11 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PhasePreparationAnalysis } from './phasePreparationAnalysis';
 
 export interface PhasePreparation {
+  ok: true;
+  analysis: PhasePreparationAnalysis;
   keyFrameIndices: number[];
   keyFrameTimestamps: number[];
   totalFrames: number;
