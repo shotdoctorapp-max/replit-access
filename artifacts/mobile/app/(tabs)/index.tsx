@@ -29,10 +29,9 @@ import type { AnalysisResult, Session } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
 import { scoreToTier, tierColor } from "@/utils/grading";
 import { extractFrames } from "@/utils/videoFrames";
-import { isObject, analysisErrorMessage } from "@/utils/analysisErrors";
-import { validateFrameMapping } from "@/utils/frameSampling";
+import { analysisErrorMessage } from "@/utils/analysisErrors";
+import { analyzeExtractedVideo } from "@/utils/videoAnalysisPipeline";
 import { getShootingHand } from "@/utils/shootingHand";
-import { planReleaseTimes, mergeRefinedRelease } from "@/utils/releaseRefinement";
 import { analyzeVideo as requestVideoAnalysis, createBugReport } from "@workspace/api-client-react";
 import { FilmingTipsSheet, shouldShowFilmingTips } from "@/components/FilmingTipsSheet";
 import { CourtBackground } from "@/components/CourtBackground";
@@ -455,55 +454,19 @@ export default function HomeScreen() {
       }
 
       setStage("extracting");
-      let extracted = await extractFrames(resolvedUri, durationMs);
-
-      setStage("selecting");
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
       const token = await getToken();
       const requestOptions = { headers: token ? { Authorization: `Bearer ${token}` } : undefined };
-      if (extracted.coarse) {
-        const location = await requestVideoAnalysis({
-          frames: extracted.base64Frames, timestamps: extracted.timestamps, shootingHand, mimeType: "image/jpeg", mode: "locate",
-        }, requestOptions);
-        if (!isObject(location) || !("shotIndex" in location) || !Number.isInteger(location.shotIndex) ||
-            location.totalFrames !== extracted.timestamps.length ||
-            location.shotIndex < 0 || location.shotIndex >= extracted.timestamps.length ||
-            location.shotTimestamp !== extracted.timestamps[location.shotIndex]) {
-          throw new Error("Could not locate the shot in this clip. Please retry with a shorter clip.");
-        }
-        extracted = await extractFrames(resolvedUri, extracted.durationMs, location.shotTimestamp);
-      }
-      const preparation = await requestVideoAnalysis({
-        frames: extracted.base64Frames, timestamps: extracted.timestamps, shootingHand, mimeType: "image/jpeg", mode: "prepare",
-      }, requestOptions);
-      if (!isObject(preparation) || !("keyFrameIndices" in preparation)) throw new Error("Incomplete shot preparation.");
-      const preparedIndices = validateFrameMapping(preparation.keyFrameIndices, preparation.keyFrameTimestamps,
-        preparation.totalFrames, extracted.timestamps, extracted.thumbnailUris);
-      const requestedTimes = planReleaseTimes(extracted.timestamps[preparedIndices[2]], extracted.durationMs,
-        extracted.timestamps[preparedIndices[1]]);
-      const fine = await extractFrames(resolvedUri, extracted.durationMs, undefined, requestedTimes);
-      const refinement = await requestVideoAnalysis({
-        frames: fine.base64Frames, timestamps: fine.timestamps, shootingHand, mimeType: "image/jpeg", mode: "refine-release",
-      }, requestOptions);
-      if (!isObject(refinement) || !("releaseIndex" in refinement) || !Number.isInteger(refinement.releaseIndex) ||
-          refinement.releaseIndex < 0 || refinement.releaseIndex >= fine.timestamps.length ||
-          refinement.totalFrames !== fine.timestamps.length ||
-          refinement.releaseTimestamp !== fine.timestamps[refinement.releaseIndex]) {
-        throw new Error("The refined Release could not be matched to this video.");
-      }
-      const finalFrames = mergeRefinedRelease(extracted, preparedIndices, fine, refinement.releaseIndex);
-      const { base64Frames, thumbnailUris, timestamps } = finalFrames;
-      const data = await requestVideoAnalysis({
-        frames: base64Frames, timestamps, shootingHand, phaseIndices: finalFrames.phaseIndices, mimeType: "image/jpeg", mode: "analyze",
-      }, requestOptions);
-      if (!isObject(data) || !isObject(data.analysis) ||
-          !("bestFrameIndex" in data)) throw new Error("Incomplete analysis response. Please retry.");
-      const selectedIndices = validateFrameMapping(data.keyFrameIndices, data.keyFrameTimestamps,
-        data.totalFrames, timestamps, thumbnailUris);
-      if (data.bestFrameIndex !== selectedIndices[1]) throw new Error("Analysis frame mismatch. Please retry.");
-
-      setStage("analyzing");
+      const { data, selectedIndices, thumbnailUris, timestamps } = await analyzeExtractedVideo({
+        shootingHand,
+        extract: async (anchor, times) => {
+          const frames = await extractFrames(resolvedUri, durationMs, anchor, times);
+          durationMs = frames.durationMs;
+          setStage("selecting");
+          return frames;
+        },
+        request: body => requestVideoAnalysis(body, requestOptions),
+        onAnalyzing: () => setStage("analyzing"),
+      });
 
       setBestFrameInfo({ index: data.bestFrameIndex, total: data.totalFrames });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -515,17 +478,10 @@ export default function HomeScreen() {
       const capturedFrameUri = `${FileSystem.documentDirectory}shotdoc_frame_${sessionId}_best.jpg`;
       await FileSystem.copyAsync({ from: thumbnailUris[data.bestFrameIndex], to: capturedFrameUri });
 
-      // Only validated server indices may own annotation/display positions.
-      const [dipIdx, setPointIdx, releaseIdx] = selectedIndices;
-
-      const candidateFrames: { index: number; label: string }[] = [
-        { index: dipIdx,      label: "Dip"       },
-        { index: setPointIdx, label: "Set Point"  },
-        { index: releaseIdx,  label: "Release"    },
-      ];
-
-      // Keep all three positions; never compress the annotation index space.
-      const keyFrameEntries = candidateFrames;
+      // Incomplete evidence has one honestly labeled frame, never fake phases.
+      const keyFrameEntries = selectedIndices.map((index, i) => ({
+        index, label: data.keyFrameLabels?.[i] ?? (selectedIndices.length === 3 ? ["Dip", "Set Point", "Release"][i] : "Available frame"),
+      }));
 
       // Persist key frames in Documents, not the purgeable cache.
       const keyFrameUris: string[] = [];
@@ -556,6 +512,8 @@ export default function HomeScreen() {
         timestamp: data.timestamp,
         imageUri: capturedFrameUri,
         analysis: data.analysis,
+        captureQuality: data.captureQuality,
+        confidence: data.confidence,
         rhythm: data.rhythm as unknown as import("@/context/SessionContext").RhythmAnalysis | undefined,
         isVideo: true,
         bestFrameIndex: data.bestFrameIndex,

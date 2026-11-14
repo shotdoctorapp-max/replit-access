@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type ErrorRequestHandler } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -77,5 +77,21 @@ app.use(
 );
 
 app.use("/api", router);
+
+const analysisErrorHandler: ErrorRequestHandler = (error, req, res, next) => {
+  if (req.path !== "/api/analyze-video" || res.headersSent) {
+    next(error);
+    return;
+  }
+  const status = error?.status === 413 ? 413 : error?.type === "entity.parse.failed" ? 400 : 500;
+  req.log.error({ status, errorType: error?.type }, "Analysis request failed outside route handler");
+  res.status(status).json({
+    ok: false,
+    error: status === 413 ? "This video request is too large. Please use a smaller clip."
+      : status === 400 ? "The video request could not be read. Please try again."
+        : "We couldn't analyze this video. Please try again.",
+  });
+};
+app.use(analysisErrorHandler);
 
 export default app;

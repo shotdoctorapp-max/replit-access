@@ -3,6 +3,7 @@ export const MAX_SELECTION_IMAGES = 48;
 export const COARSE_IMAGES = 32;
 export const SAMPLE_STEP_MS = 100;
 export const DENSE_WINDOW_MS = 4700;
+export class NoReadableFramesError extends Error {}
 
 export function planFrameTimes(durationMs: number, anchorMs?: number): { timestamps: number[]; coarse: boolean } {
   if (!Number.isFinite(durationMs) || durationMs < 300 || durationMs > 60_000) {
@@ -27,10 +28,11 @@ export function planFrameTimes(durationMs: number, anchorMs?: number): { timesta
 export function validateFrameMapping(
   indices: unknown, serverTimes: unknown, totalFrames: number,
   timestamps: number[], thumbnailUris: string[],
+  expectedCount = 3,
 ): number[] {
   if (totalFrames !== timestamps.length || thumbnailUris.length !== timestamps.length ||
-      !Array.isArray(indices) || indices.length !== 3 ||
-      !Array.isArray(serverTimes) || serverTimes.length !== 3 ||
+      !Array.isArray(indices) || indices.length !== expectedCount ||
+      !Array.isArray(serverTimes) || serverTimes.length !== expectedCount ||
       indices.some((n, i) => typeof n !== "number" || !Number.isInteger(n) || n < 0 ||
         n >= timestamps.length || (i > 0 && n <= indices[i - 1]) ||
         !thumbnailUris[n] || serverTimes[i] !== timestamps[n])) {

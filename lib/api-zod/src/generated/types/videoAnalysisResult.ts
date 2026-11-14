@@ -5,12 +5,17 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AnalysisConfidence } from './analysisConfidence';
 import type { AnalysisResult } from './analysisResult';
+import type { CaptureQuality } from './captureQuality';
 import type { VideoAnalysisResultRhythm } from './videoAnalysisResultRhythm';
 
 export interface VideoAnalysisResult {
   ok: true;
   analysis: AnalysisResult;
+  captureQuality: CaptureQuality;
+  confidence: AnalysisConfidence;
+  keyFrameLabels?: string[];
   /**
      * Rhythm analysis result (present when 3+ frames provided)
      * @nullable

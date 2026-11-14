@@ -27,4 +27,6 @@ export interface AnalyzeVideoRequest {
      * @maxItems 3
      */
   phaseIndices?: number[];
+  /** Grade available chronological images without claiming complete Dip, Set Point or Release evidence */
+  availableEvidence?: boolean;
 }

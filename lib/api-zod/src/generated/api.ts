@@ -81,7 +81,8 @@ export const AnalyzeVideoBody = zod.object({
   "mimeType": zod.string().default(analyzeVideoBodyMimeTypeDefault),
   "mode": zod.enum(['analyze', 'locate', 'prepare', 'refine-release']).default(analyzeVideoBodyModeDefault).describe('Locate returns a coarse shot anchor only; analyze returns validated final phases'),
   "shootingHand": zod.enum(['right', 'left']),
-  "phaseIndices": zod.array(zod.number()).min(analyzeVideoBodyPhaseIndicesMin).max(analyzeVideoBodyPhaseIndicesMax).optional().describe('Dip, Set Point and independently refined Release positions in the final supplied array')
+  "phaseIndices": zod.array(zod.number()).min(analyzeVideoBodyPhaseIndicesMin).max(analyzeVideoBodyPhaseIndicesMax).optional().describe('Dip, Set Point and independently refined Release positions in the final supplied array'),
+  "availableEvidence": zod.boolean().optional().describe('Grade available chronological images without claiming complete Dip, Set Point or Release evidence')
 })
 
 export const analyzeVideoResponseOneAnalysisOverallScoreMin = 0;
@@ -110,6 +111,11 @@ export const analyzeVideoResponseOneAnalysisComponentsBalanceScoreMax = 100;
 
 export const analyzeVideoResponseOneAnalysisComponentsEyeTrackingScoreMin = 0;
 export const analyzeVideoResponseOneAnalysisComponentsEyeTrackingScoreMax = 100;
+
+export const analyzeVideoResponseOneCaptureQualityTipsMax = 3;
+
+export const analyzeVideoResponseOneCaptureQualityAssessedComponentsMin = 0;
+export const analyzeVideoResponseOneCaptureQualityAssessedComponentsMax = 8;
 
 
 
@@ -178,6 +184,19 @@ export const AnalyzeVideoResponse = zod.union([zod.object({
   "label": zod.string()
 })).optional()
 }),
+  "captureQuality": zod.object({
+  "issues": zod.array(zod.object({
+  "code": zod.string(),
+  "message": zod.string(),
+  "tip": zod.string(),
+  "severity": zod.enum(['minor', 'major'])
+})),
+  "tips": zod.array(zod.string()).max(analyzeVideoResponseOneCaptureQualityTipsMax),
+  "assessedComponents": zod.number().min(analyzeVideoResponseOneCaptureQualityAssessedComponentsMin).max(analyzeVideoResponseOneCaptureQualityAssessedComponentsMax),
+  "totalComponents": zod.literal(8)
+}),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "keyFrameLabels": zod.array(zod.string()).optional(),
   "rhythm": zod.record(zod.string(), zod.unknown()).nullish().describe('Rhythm analysis result (present when 3+ frames provided)'),
   "bestFrameIndex": zod.number().describe('0-based index of the frame selected for primary analysis'),
   "totalFrames": zod.number(),

@@ -70,6 +70,11 @@ function SessionItem({ session, onPress, onDelete }: {
         <View style={styles.scoreRow}>
           <Text style={[styles.score, { color: scoreColor }]} adjustsFontSizeToFit numberOfLines={1}>{tier}</Text>
         </View>
+        {session.confidence === "low" && (
+          <Text testID={`low-confidence-${session.id}`} style={{ color: colors.mutedForeground, fontSize: 11, marginTop: 4 }}>
+            Low confidence
+          </Text>
+        )}
         {weakestLabel ? (
           <View style={[styles.tag, { backgroundColor: colors.destructive + "20" }]}>
             <Text style={[styles.tagText, { color: colors.destructive }]}>

@@ -5,11 +5,10 @@ export const COMPONENT_KEYS = [
 
 export const RHYTHM_WEIGHT = 0.15;
 export function enforceElbowEvidence(analysis: any) {
-  if (!analysis || typeof analysis.elbowVisible !== "boolean" ||
-      !["image-left", "image-right"].includes(analysis.shootingArmSide) || !analysis.components?.elbowPosition) {
+  if (!analysis || !analysis.components) {
     throw new ScoringEvidenceError();
   }
-  if (!analysis.elbowVisible) {
+  if (analysis.elbowVisible !== true || !["image-left", "image-right"].includes(analysis.shootingArmSide)) {
     analysis.components.elbowPosition = { score: null, feedback: "Can't see from this angle" };
     if (Array.isArray(analysis.annotations)) {
       analysis.annotations = analysis.annotations.filter((annotation: { zone?: unknown } | null) =>
@@ -22,7 +21,7 @@ export const COMPONENT_WEIGHTS = Object.fromEntries(COMPONENT_KEYS.map(key =>
 
 export class ScoringEvidenceError extends Error {
   constructor() {
-    super("Some shooting mechanics could not be assessed clearly. Film your full body and keep your hands and release visible, then try again.");
+    super("We couldn't find enough visible shooting mechanics to grade. Please film a person taking a shot and try again.");
   }
 }
 
@@ -30,8 +29,8 @@ function validScore(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
 }
 
-/** Weighted evidence composite; an explicitly unobservable elbow is the only
- * excluded component. All other missing/invalid evidence fails, never defaults.
+/** Weighted evidence composite over observed components only.
+ * Missing evidence is excluded, never zero-filled. Corrupt scores still fail.
  * Rhythm contributes 15% only when independently validated. Round once.
  */
 export function calculateShotScore(components: unknown, reliableRhythmScore: unknown = null) {
@@ -39,14 +38,16 @@ export function calculateShotScore(components: unknown, reliableRhythmScore: unk
   const source = components as Record<string, { score?: unknown; feedback?: unknown } | undefined>;
   const scores = COMPONENT_KEYS.map(key => {
     const component = source[key];
-    if (!component || (!(key === "elbowPosition" && component.score === null) && !validScore(component.score)) ||
+    if (!component) return null;
+    if ((component.score !== null && component.score !== undefined && !validScore(component.score)) ||
         typeof component.feedback !== "string" || !component.feedback.trim()) {
       throw new ScoringEvidenceError();
     }
-    return component.score;
+    return component.score ?? null;
   });
   if (reliableRhythmScore !== null && !validScore(reliableRhythmScore)) throw new ScoringEvidenceError();
   const denominator = COMPONENT_KEYS.reduce((sum, key, i) => sum + (scores[i] === null ? 0 : COMPONENT_WEIGHTS[key]), 0);
+  if (denominator === 0) throw new ScoringEvidenceError();
   const biomechanicsMean = COMPONENT_KEYS.reduce((sum, key, i) =>
     sum + (scores[i] === null ? 0 : (scores[i] as number) * COMPONENT_WEIGHTS[key]), 0) / denominator;
   const total = reliableRhythmScore === null

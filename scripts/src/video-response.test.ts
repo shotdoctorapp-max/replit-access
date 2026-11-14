@@ -76,6 +76,8 @@ test("final analysis preserves biomechanics, frame mapping and History input", (
   };
   const response = videoSuccess({
     analysis, rhythm: null, timestamp: "2026-11-13T00:00:00Z",
+    confidence: "high",
+    captureQuality: { issues: [], tips: [], assessedComponents: 8, totalComponents: 8 },
     bestFrameIndex: 1, totalFrames: 3,
     keyFrameIndices: [0, 1, 2], keyFrameTimestamps: [0, 100, 200],
   });

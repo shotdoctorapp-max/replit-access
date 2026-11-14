@@ -6,7 +6,8 @@ import { BIOMECHANICS_SYSTEM_PROMPT, RHYTHM_SYSTEM_PROMPT } from "../lib/prompts
 import { analysisRateLimit } from "../middlewares/analysisRateLimit";
 import { videoSuccess } from "../lib/videoResponse";
 import { PREPARE_RELEASE_PROMPT, REFINE_RELEASE_PROMPT, validateRefinedRelease } from "../lib/releaseRefinement";
-import { calculateShotScore, enforceElbowEvidence, reliableRhythm, ScoringEvidenceError } from "../lib/scoring";
+import { calculateShotScore, reliableRhythm, ScoringEvidenceError } from "../lib/scoring";
+import { assessCaptureQuality, parsePartialAnalysis } from "../lib/partialAnalysis";
 import { DIP_SELECTION_PROMPT, LOCATE_SHOT_PROMPT, SET_RELEASE_SELECTION_PROMPT, FrameSelectionError, labeledImages, selectWithCorrection, rhythmShotContext, providerFailure, validateDipBeforeSetPoint, validateSetReleaseIndices, verifyRelease } from "../lib/frameSelection";
 
 const router = Router();
@@ -21,13 +22,18 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
     if (typeof cost === "number" && Number.isFinite(cost)) providerCostUsd += cost;
   };
   try {
-    const { frames, timestamps, mode = "analyze", mimeType = "image/jpeg", shootingHand, phaseIndices } = req.body as {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+      res.status(400).json({ ok: false, error: "Please supply video frames to analyze." });
+      return;
+    }
+    const { frames, timestamps, mode = "analyze", mimeType = "image/jpeg", shootingHand, phaseIndices, availableEvidence = false } = req.body as {
       frames: string[];
       timestamps?: number[];
       mimeType?: string;
       mode?: "locate" | "analyze" | "prepare" | "refine-release";
       shootingHand?: "right" | "left";
       phaseIndices?: number[];
+      availableEvidence?: boolean;
     };
     if (!["right", "left"].includes(shootingHand!)) {
       res.status(400).json({ ok: false, error: "Choose your shooting hand before analyzing." });
@@ -40,7 +46,9 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
     }
 
     // Application bounds, not an asserted provider image limit.
-    if (frames.length > 48 || (frames.length > 1 && frames.length < 3) ||
+    if (frames.length > 48 || typeof availableEvidence !== "boolean" ||
+        (availableEvidence && mode !== "analyze") ||
+        (frames.length === 2 && !availableEvidence) ||
         (frames.length === 1 && mode !== "analyze") ||
         frames.some(f => typeof f !== "string" || !f || f.length > 400_000) ||
         frames.reduce((sum, f) => sum + f.length, 0) > 10_000_000 ||
@@ -55,7 +63,7 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
       return;
     }
     if ((mode === "locate" && frames.length > 32) ||
-        ((mode === "prepare" || (mode === "analyze" && !phaseIndices)) && frames.length > 1 &&
+         ((mode === "prepare" || (mode === "analyze" && !phaseIndices && !availableEvidence)) && frames.length > 1 &&
           timestamps.some((t, i) => i > 0 && Math.abs(t - timestamps[i - 1] - 100) > 1))) {
       res.status(400).json({ ok: false, error: "Final phase selection requires consecutive 100ms samples. Use locate mode for a coarse shot window first." });
       return;
@@ -107,7 +115,10 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
       res.json(videoSuccess({ shotIndex: indices[0], shotTimestamp: timestamps[indices[0]], totalFrames: frames.length }));
       return;
     }
-    if (mode === "analyze" && phaseIndices) {
+    if (availableEvidence) {
+      // No phase labels are asserted for sparse/incomplete evidence.
+      indices = [0];
+    } else if (mode === "analyze" && phaseIndices) {
       if (!Array.isArray(phaseIndices) || phaseIndices.length !== 3 ||
           phaseIndices.some((index, i) => !Number.isInteger(index) || index < 0 ||
             index >= frames.length || (i > 0 && index <= phaseIndices[i - 1]))) {
@@ -196,9 +207,11 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
 
     // Rhythm is separate from selection: it cannot replace the validated phases.
     const stepOneJobs = [
-      ...(frames.length >= 3 ? ["rhythm" as const] : []),
+      ...(frames.length >= 3 && !availableEvidence ? ["rhythm" as const] : []),
     ];
-    const stepOneResults = await batchProcess(
+    const stepOneResults = await batchProcess<"rhythm", {
+      job: "rhythm"; response: { choices: { message: { content: string | null } }[] };
+    }>(
       stepOneJobs,
       async (job) => {
         const response = await openrouter.chat.completions.create({
@@ -226,8 +239,11 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
         };
       },
       { concurrency: 1, retries: 3, minTimeout: 1000, maxTimeout: 12000 }
-    );
-    const rhythmResult = stepOneResults.find((result) => result.job === "rhythm")?.response ?? null;
+    ).catch(() => {
+      req.log.warn("Optional rhythm analysis unavailable; grading visible mechanics only");
+      return [];
+    });
+    const rhythmResult = stepOneResults[0]?.response ?? null;
 
     // Parse rhythm
     let rhythm: { dipFrame?: number; setPointFrame?: number; armExtendFrame?: number; ballLeavesHandFrame?: number; followThroughFrame?: number; ballRiseFrame?: number; bodyRiseFrame?: number; pattern?: string; rhythmScore?: number; observations?: string[] } | null = null;
@@ -237,8 +253,9 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
         const jsonMatch = rhythmContent.match(/\{[\s\S]*\}/);
         rhythm = z.object({
           rhythmScore: z.number().min(0).max(100).optional(),
-          pattern: z.string().optional(),
+          pattern: z.enum(["synchronized", "set-then-drive", "disconnected", "unknown"]).optional(),
           observations: z.array(z.string()).optional(),
+          adjustments: z.array(z.string()).catch([]),
           dipFrame: z.number().optional(),
           armExtendFrame: z.number().optional(),
           ballLeavesHandFrame: z.number().optional(),
@@ -268,7 +285,12 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
     > = [];
     biomechanicsUserContent.push({ type: "text", text: `The shooter is ${shootingHand!.toUpperCase()}-handed. The SHOOTING hand is behind/under the ball; the GUIDE hand is on the side. Grade ONLY the shooting arm's elbow. Identify shootingArmSide and elbowVisible before scoring.` });
 
-    if (isVideoSession) {
+    if (availableEvidence) {
+      biomechanicsUserContent.push(
+        { type: "text", text: "AVAILABLE EVIDENCE: these chronological images do not have validated shot-phase labels. Grade any visibly assessable shooting mechanics across them; leave unknown mechanics null. Do not invent a Dip, Set Point or Release. For annotations use frameIndex 0 ONLY and coordinates from the FIRST supplied image; omit zones hidden in that first image." },
+        ...labeledFrameMessages,
+      );
+    } else if (isVideoSession) {
       biomechanicsUserContent.push(
         {
           type: "image_url",
@@ -353,17 +375,18 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
 
     // Parse biomechanics
     const content = analysisResponse.choices[0]?.message?.content ?? "{}";
-    let analysis;
+    let parsedAnalysis;
     try {
       if (analysisResponse.choices[0]?.finish_reason !== "stop") throw new Error("Incomplete analysis");
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      analysis = AnalyzeFormResponse.shape.analysis.omit({ overallScore: true })
-        .passthrough().parse(JSON.parse(jsonMatch ? jsonMatch[0] : content));
-    } catch {
+      parsedAnalysis = parsePartialAnalysis(JSON.parse(jsonMatch ? jsonMatch[0] : content), availableEvidence || frames.length === 1 ? 1 : 3);
+    } catch (error) {
+      if (error instanceof ScoringEvidenceError) throw error;
       req.log.error("Failed to parse biomechanics JSON");
       res.status(422).json({ ok: false, error: "The analysis was incomplete. Please try again." });
       return;
     }
+    const { analysis } = parsedAnalysis;
 
     req.log.info(
       { rhythmReliable, dipFrame: rhythm?.dipFrame, armExtendFrame: rhythm?.armExtendFrame, rhythmScore: rhythm?.rhythmScore },
@@ -372,16 +395,13 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
 
     let score;
     try {
-      enforceElbowEvidence(analysis);
       score = calculateShotScore(analysis?.components, rhythmReliable ? rhythm!.rhythmScore : null);
     } catch (error) {
       req.log.warn("Rejected biomechanics JSON: invalid evidence; no zero substituted");
       throw error;
     }
-    req.log.info({ ...score, modelOverallScore: typeof analysis.overallScore === "number" ? analysis.overallScore : null,
-      rhythmIncluded: rhythmReliable }, "Evidence-based score calculation");
-    analysis.overallScore = score.overallScore;
-    const validated = AnalyzeFormResponse.safeParse({ analysis, timestamp: new Date().toISOString() });
+    req.log.info({ ...score, rhythmIncluded: rhythmReliable }, "Evidence-based score calculation");
+    const validated = AnalyzeFormResponse.safeParse({ analysis: { ...analysis, overallScore: score.overallScore }, timestamp: new Date().toISOString() });
     if (!validated.success) {
       req.log.warn({ errors: validated.error.issues }, "Video analysis failed schema validation");
       res.status(422).json({ ok: false, error: "The analysis was incomplete. Please try again." });
@@ -391,12 +411,14 @@ router.post("/analyze-video", analysisRateLimit, async (req, res) => {
     req.log.info({ model: ANALYSIS_MODEL, providerCostUsd }, "Analysis provider cost");
     res.json(videoSuccess({
       analysis: validated.data.analysis,
+      ...assessCaptureQuality(analysis.components, parsedAnalysis.issues, availableEvidence),
       rhythm: rhythmReliable ? rhythm : null,
       bestFrameIndex,
       totalFrames: frames.length,
       timestamp: new Date().toISOString(),
-      keyFrameIndices: isVideoSession ? [dipIdx, setPointIdx, releaseIdx] : [0],
+      keyFrameIndices: indices,
       keyFrameTimestamps: indices.map(i => timestamps[i]),
+      keyFrameLabels: availableEvidence ? ["Available frame"] : isVideoSession ? ["Dip", "Set Point", "Release"] : ["Photo"],
     }));
   } catch (err) {
     req.log.warn({ model: ANALYSIS_MODEL, providerCostUsd }, "Partial analysis provider cost");

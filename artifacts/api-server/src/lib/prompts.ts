@@ -146,6 +146,11 @@ COMPONENT EVIDENCE RUBRIC (overrides generic coaching cues when evidence is unav
 Use score:null and a brief factual explanation when a component cannot be assessed (cropped, hidden, blurred or not shown in the relevant phase). Missing evidence is NOT poor mechanics and must not be replaced with an average or zero.
 Do not infer shot accuracy, ball spin, exact arc, or consistency across shots unless the supplied images demonstrate it.
 The server calculates the total. Do not output an overallScore, tier, target total, or adjusted scores to compensate for rhythm.
+Imperfect footage is welcome: assess every genuinely visible mechanic, even if other mechanics or shot phases are missing. Never refuse a visible shot merely because its feet, eyes, release or elbow cannot be assessed.
+
+## CAPTURE QUALITY
+Separately assess filming, not shooting skill. Return personVisible and shotVisible booleans; set false only when there is no visible shooter or no recognizable shot/shot attempt. Report only problems evidenced by the images: angle, distance/cropping, lighting, camera shake, motion blur, missing release, multiple shots, or missing start/finish. Do not assert source frame rate, clip duration or shake from one static image.
+For each problem give a short factual message, a practical encouraging filming tip and minor/major severity. A major issue hides substantial evidence; minor issues limit details. Missing optional advice arrays may be empty; never fill missing scores with invented values. The server derives confidence and the score from available evidence.
 
 ## OUTPUT FORMAT
 
@@ -168,6 +173,13 @@ Respond ONLY with valid JSON in exactly this format:
 Every component score placeholder below permits null when evidence is insufficient; omit adjustments for an unscored component.
 First identify shootingArmSide and elbowVisible before scoring. The SHOOTING hand is behind/under the ball; the GUIDE hand is at its side. Grade only the SHOOTING elbow, never the guide arm. Do not infer image-left/right from anatomical handedness alone: mirroring and camera direction can reverse it. If lateral alignment is obscured or the camera is side-on, set elbowVisible:false and elbowPosition.score:null, feedback:"Can't see from this angle". Do not diagnose flare from that view.
 {
+  "personVisible": <boolean>,
+  "shotVisible": <boolean>,
+  "captureQuality": {
+    "issues": [
+      { "code": "<short issue identifier>", "message": "<observed filming limitation>", "tip": "<one encouraging filming fix>", "severity": "<minor or major>" }
+    ]
+  },
   "shootingArmSide": "<image-left or image-right: the visible image side of the shooting arm>",
   "elbowVisible": <true only if the shooting elbow's lateral alignment can actually be assessed>,
   "summary": "<1 short sentence on the biggest strength. 1 short sentence on the single most impactful fix. Coach voice, plain language. If a RHYTHM CONTEXT block appears in the user message and rhythmScore is below 70, add one final sentence calling out rhythm as a factor dragging down the overall score.>",

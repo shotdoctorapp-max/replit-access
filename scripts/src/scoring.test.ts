@@ -42,10 +42,14 @@ test("changing visible component evidence affects the total without manufactured
   assert.equal(JSON.stringify(changed), before);
 });
 
-test("missing, nonnumeric, out-of-range, or unexplained evidence cannot produce a total", () => {
-  for (const score of [undefined, null, NaN, Infinity, -1, 101, "72"]) {
+test("missing evidence is excluded; corrupt or unexplained numeric evidence is rejected", () => {
+  for (const score of [NaN, Infinity, -1, 101, "72"]) {
     const input = { ...components(Array(8).fill(72)), stance: { score, feedback: "Cropped feet" } };
     assert.throws(() => calculateShotScore(input), ScoringEvidenceError);
+  }
+  for (const score of [undefined, null]) {
+    const input = { ...components(Array(8).fill(72)), stance: { score, feedback: "Cropped feet" } };
+    assert.equal(calculateShotScore(input).overallScore, 72);
   }
   assert.throws(() => calculateShotScore(null), ScoringEvidenceError);
   assert.throws(() => calculateShotScore({}), ScoringEvidenceError);
@@ -55,7 +59,7 @@ test("missing, nonnumeric, out-of-range, or unexplained evidence cannot produce 
   assert.throws(() => calculateShotScore(components(Array(8).fill(72)), NaN), ScoringEvidenceError);
 });
 
-test("only an explicitly unobservable elbow is excluded without inventing a score", () => {
+test("unobservable mechanics are excluded without inventing a score", () => {
   const input = { ...components(Array(8).fill(72)), elbowPosition: { score: null, feedback: "Can't see from this angle" } };
   const before = JSON.stringify(input);
   for (const rhythm of [null, 90]) {
@@ -75,7 +79,9 @@ test("only an explicitly unobservable elbow is excluded without inventing a scor
   assert.equal(model.components.elbowPosition.score, null);
   assert.deepEqual(model.components.elbowPosition, { score: null, feedback: "Can't see from this angle" });
   assert.deepEqual(model.annotations, [{ zone: "stance", label: "Visible base" }]);
-  assert.throws(() => enforceElbowEvidence({ components: input }), ScoringEvidenceError);
+  const unknownArm = { components: { ...input } };
+  enforceElbowEvidence(unknownArm);
+  assert.equal(unknownArm.components.elbowPosition.score, null);
 });
 
 test("partial results survive the API contract and JSON round trip without inventing a grade", () => {

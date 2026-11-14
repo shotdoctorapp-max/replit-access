@@ -52,6 +52,8 @@ export interface AnalyzeVideoRequest {
      * @maxItems 3
      */
   phaseIndices?: number[];
+  /** Grade available chronological images without claiming complete Dip, Set Point or Release evidence */
+  availableEvidence?: boolean;
 }
 
 export type PhasePreparationAnalysis = { [key: string]: unknown };
@@ -162,9 +164,55 @@ export interface AnalysisResult {
   annotations?: FrameAnnotation[];
 }
 
+export type CaptureIssueSeverity = typeof CaptureIssueSeverity[keyof typeof CaptureIssueSeverity];
+
+
+export const CaptureIssueSeverity = {
+  minor: 'minor',
+  major: 'major',
+} as const;
+
+export interface CaptureIssue {
+  code: string;
+  message: string;
+  tip: string;
+  severity: CaptureIssueSeverity;
+}
+
+export type CaptureQualityTotalComponents = typeof CaptureQualityTotalComponents[keyof typeof CaptureQualityTotalComponents];
+
+
+export const CaptureQualityTotalComponents = {
+  NUMBER_8: 8,
+} as const;
+
+export interface CaptureQuality {
+  issues: CaptureIssue[];
+  /** @maxItems 3 */
+  tips: string[];
+  /**
+     * @minimum 0
+     * @maximum 8
+     */
+  assessedComponents: number;
+  totalComponents: CaptureQualityTotalComponents;
+}
+
+export type AnalysisConfidence = typeof AnalysisConfidence[keyof typeof AnalysisConfidence];
+
+
+export const AnalysisConfidence = {
+  high: 'high',
+  medium: 'medium',
+  low: 'low',
+} as const;
+
 export interface VideoAnalysisResult {
   ok: true;
   analysis: AnalysisResult;
+  captureQuality: CaptureQuality;
+  confidence: AnalysisConfidence;
+  keyFrameLabels?: string[];
   /**
      * Rhythm analysis result (present when 3+ frames provided)
      * @nullable

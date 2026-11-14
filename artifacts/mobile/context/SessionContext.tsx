@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { AnalysisConfidence, CaptureQuality } from "@workspace/api-client-react";
 import React, {
   createContext,
   useCallback,
@@ -125,6 +126,8 @@ export interface Session {
   timestamp: string;
   imageUri: string;
   analysis: AnalysisResult;
+  captureQuality?: CaptureQuality;
+  confidence?: AnalysisConfidence;
   rhythm?: RhythmAnalysis;
   isVideo?: boolean;
   bestFrameIndex?: number;

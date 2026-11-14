@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
-import { useSessions, type RhythmAnalysis, type FrameAnnotation } from "@/context/SessionContext";
+import { useSessions, type Session, type RhythmAnalysis, type FrameAnnotation } from "@/context/SessionContext";
 import { ScoreRing } from "@/components/ScoreRing";
 import { ComponentBar } from "@/components/ComponentBar";
 import { DrillCard } from "@/components/DrillCard";
@@ -192,8 +192,6 @@ function RhythmSection({ rhythm, sessionId }: { rhythm: RhythmAnalysis; sessionI
 export default function AnalysisScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { sessions } = useSessions();
 
   const session = useMemo(() => sessions.find((s) => s.id === id), [sessions, id]);
@@ -208,6 +206,13 @@ export default function AnalysisScreen() {
     );
   }
 
+  return <AnalysisContent key={session.id} session={session} />;
+}
+
+function AnalysisContent({ session }: { session: Session }) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { analysis } = session;
   const overallScore = analysis.overallScore;
   const scoreColor = tierColor(overallScore);
@@ -472,6 +477,31 @@ export default function AnalysisScreen() {
             </View>
           )}
         </View>
+
+        {session.confidence && (
+          <View style={[styles.summaryCard, { backgroundColor: colors.surface1, borderColor: colors.border }]}
+            testID="capture-quality">
+            <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_600SemiBold", fontSize: 12 }}>
+              {session.confidence.toUpperCase()} CONFIDENCE
+              {session.captureQuality ? ` · ${session.captureQuality.assessedComponents}/8 mechanics assessed` : ""}
+            </Text>
+            {session.confidence !== "high" && (
+              <>
+                <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 16, marginTop: 10 }}>
+                  Film better next time
+                </Text>
+                <Text style={{ color: colors.mutedForeground, fontSize: 13, marginTop: 6 }}>
+                  Your score reflects what we could see. A clearer view helps us give more detailed feedback.
+                </Text>
+                {(session.captureQuality?.tips ?? []).slice(0, 3).map((tip, i) => (
+                  <Text key={tip} style={{ color: colors.foreground, fontSize: 14, lineHeight: 20, marginTop: 10 }}>
+                    {i + 1}. {tip}
+                  </Text>
+                ))}
+              </>
+            )}
+          </View>
+        )}
 
         <View style={[styles.summaryCard, { backgroundColor: colors.surface1, borderColor: scoreColor + "50" }]}>
           <View style={styles.summaryTop}>

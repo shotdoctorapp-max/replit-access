@@ -7,6 +7,7 @@
  */
 
 export * from './analysisComponents';
+export * from './analysisConfidence';
 export * from './analysisResult';
 export * from './analysisResultShootingArmSide';
 export * from './analyzeRequest';
@@ -16,6 +17,10 @@ export * from './analyzeVideoRequest';
 export * from './analyzeVideoRequestMode';
 export * from './analyzeVideoRequestShootingHand';
 export * from './bugReportResult';
+export * from './captureIssue';
+export * from './captureIssueSeverity';
+export * from './captureQuality';
+export * from './captureQualityTotalComponents';
 export * from './componentScore';
 export * from './confirmWaitlistParams';
 export * from './createBugReportRequest';

@@ -13,8 +13,8 @@ export function analysisErrorMessage(error: unknown): string {
       return "This video hasn't been downloaded from iCloud yet. Open it in Photos to download it, then try again.";
     }
     if ("data" in error && isObject(error.data) && "code" in error.data &&
-        ["SCORING_EVIDENCE_INSUFFICIENT", "FRAME_SELECTION_UNCERTAIN"].includes(String(error.data.code))) {
-      return "We couldn't clearly assess the shot. Try a shorter clip with your full body and shooting hand visible.";
+        error.data.code === "SCORING_EVIDENCE_INSUFFICIENT") {
+      return "We couldn't find visible shooting mechanics to grade. Record one person taking a shot and try again.";
     }
   }
   return ANALYSIS_FAILURE_MESSAGE;
