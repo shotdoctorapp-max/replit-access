@@ -135,3 +135,48 @@ test("sparse extraction skips phase claims; malformed or infrastructure response
     request: async () => { throw new Error("Network unavailable"); },
   }), /Network unavailable/);
 });
+
+test("phase detection failures about the clip still grade available frames", async () => {
+  const extracted = { base64Frames: ["a", "b", "c"], thumbnailUris: ["a", "b", "c"],
+    timestamps: [0, 100, 200], coarse: false, durationMs: 1000 };
+  const phaseFailures: unknown[] = [
+    Object.assign(new Error("HTTP 400"), { status: 400, data: { ok: false, error: "bad samples" } }),
+    Object.assign(new Error("HTTP 502"), { status: 502, data: { ok: false, code: "PROVIDER_ERROR" } }),
+    new Error("Phase frames could not be matched to the video. Please retry analysis."),
+    { ok: true }, // malformed prepare body -> zod error
+  ];
+  for (const failure of phaseFailures) {
+    const modes: string[] = [];
+    const response = await analyzeExtractedVideo({
+      shootingHand: "right", extract: async () => extracted,
+      request: async body => {
+        modes.push(String(body.mode));
+        if (body.mode === "prepare") {
+          if (failure instanceof Error) throw failure;
+          return failure;
+        }
+        assert.equal(body.availableEvidence, true);
+        return result(true);
+      },
+    });
+    assert.deepEqual(modes, ["prepare", "analyze"]);
+    assert.equal(response.data.confidence, "low");
+  }
+});
+
+test("signed-out, rate-limited and offline failures abort instead of grading", async () => {
+  const extracted = { base64Frames: ["a", "b", "c"], thumbnailUris: ["a", "b", "c"],
+    timestamps: [0, 100, 200], coarse: false, durationMs: 1000 };
+  for (const failure of [
+    Object.assign(new Error("HTTP 401"), { status: 401 }),
+    Object.assign(new Error("HTTP 429"), { status: 429 }),
+    new TypeError("Network request failed"),
+  ]) {
+    let calls = 0;
+    await assert.rejects(analyzeExtractedVideo({
+      shootingHand: "right", extract: async () => extracted,
+      request: async () => { calls++; throw failure; },
+    }), (error: unknown) => error === failure);
+    assert.equal(calls, 1);
+  }
+});
