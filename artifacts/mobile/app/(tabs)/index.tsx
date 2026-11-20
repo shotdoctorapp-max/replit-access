@@ -454,8 +454,14 @@ export default function HomeScreen() {
       }
 
       setStage("extracting");
-      const token = await getToken();
-      const requestOptions = { headers: token ? { Authorization: `Bearer ${token}` } : undefined };
+      // Clerk session tokens expire after ~60 seconds. One analysis makes up to
+      // four sequential requests (locate, prepare, refine-release, analyze) with
+      // frame extraction and AI calls in between, which routinely takes longer
+      // than that. Fetch a fresh token for every request, never reuse one.
+      const authorizedRequest = async (body: Parameters<typeof requestVideoAnalysis>[0]) => {
+        const token = await getToken();
+        return requestVideoAnalysis(body, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+      };
       const { data, selectedIndices, thumbnailUris, timestamps } = await analyzeExtractedVideo({
         shootingHand,
         extract: async (anchor, times) => {
@@ -464,7 +470,7 @@ export default function HomeScreen() {
           setStage("selecting");
           return frames;
         },
-        request: body => requestVideoAnalysis(body, requestOptions),
+        request: authorizedRequest,
         onAnalyzing: () => setStage("analyzing"),
       });
 

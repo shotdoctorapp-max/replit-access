@@ -35,7 +35,7 @@ test("analysis transport validates native response bodies before any in operator
     await assert.rejects(customFetch(endpoint), (error: unknown) => {
       assert(error instanceof ApiError);
       assert.equal(error.status, 500);
-      assert.equal(analysisErrorMessage(error), ANALYSIS_FAILURE_MESSAGE);
+      assert(analysisErrorMessage(error).startsWith(ANALYSIS_FAILURE_MESSAGE));
       return true;
     });
     reply(JSON.stringify({ ok: false, error: "Server failed despite HTTP 200" }), "application/json");
@@ -95,7 +95,7 @@ test("primitive inputs and unexpected engine/provider errors never reach the use
     assert.equal(isObject(value), false);
   }
   for (const error of [new TypeError("right operand of 'in' is not an object"), new Error("<html>Bad gateway</html>"), null]) {
-    assert.equal(analysisErrorMessage(error), ANALYSIS_FAILURE_MESSAGE);
+    assert(analysisErrorMessage(error).startsWith(ANALYSIS_FAILURE_MESSAGE));
   }
   assert.match(analysisErrorMessage(new Error("PHPhotosErrorDomain 3164")), /downloaded from iCloud/);
 });

@@ -13,6 +13,20 @@ export function isPhaseSelectionError(error: unknown): boolean {
     "code" in error.data && error.data.code === "FRAME_SELECTION_UNCERTAIN";
 }
 
+/**
+ * Phase detection (locate / prepare / refine-release) only improves which
+ * frames are labeled Dip, Set Point and Release. When it fails for reasons
+ * about the clip or the model's answer, the user should still get a score from
+ * the frames we have. Only failures that the final request would hit too
+ * (signed out, rate limited, offline) abort the whole analysis.
+ */
+export function mustAbortAnalysis(error: unknown): boolean {
+  const status = isObject(error) && "status" in error && typeof error.status === "number" ? error.status : undefined;
+  if (status === 401 || status === 403 || status === 429) return true;
+  // fetch() rejects with a TypeError when the device is offline.
+  return error instanceof TypeError;
+}
+
 type PipelineOptions = {
   extract: (anchor?: number, times?: number[]) => Promise<ExtractedFrames>;
   request: (body: AnalyzeVideoRequest) => Promise<unknown>;
@@ -65,9 +79,14 @@ export async function analyzeExtractedVideo({ extract, request, shootingHand, on
     extracted = { ...extracted, ...merged };
     phaseIndices = merged.phaseIndices;
   } catch (error) {
+    if (mustAbortAnalysis(error)) throw error;
     if (!(error instanceof IncompletePhases) && !(error instanceof NoReadableFramesError) &&
-        !isPhaseSelectionError(error)) throw error;
-    // Explicitly uncertain phases are not invented, nor relabeled as validated.
+        !isPhaseSelectionError(error)) {
+      console.warn("Phase detection failed; grading available frames instead", error);
+    }
+    // Phases that could not be verified are not invented, nor relabeled as
+    // validated: the final request grades the available frames instead.
+    phaseIndices = undefined;
   }
   onAnalyzing?.();
   const data = videoResultSchema.parse(await request({
